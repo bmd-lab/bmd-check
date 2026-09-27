@@ -80,6 +80,64 @@ DAV:   4   -1.111000000000E+01   -1.00000E-02   -2.00000E-03   12   7.000E-02   
 """
 
 
+# Static SCF whose final completed electronic cycle reaches EDIFF = 1E-6.
+OSZICAR_STATIC_CONVERGED = """\
+       N       E                     dE             d eps       ncg     rms          rms(c)
+DAV:   1   -1.000000000000E+01   -1.00000E+01   -1.00000E+01   10   1.000E+00   2.000E-01
+DAV:   2   -1.080000000000E+01   -8.00000E-01   -2.00000E-02   12   1.000E-01   2.000E-02
+DAV:   3   -1.080000010000E+01   -1.00000E-07   -2.00000E-08   12   1.000E-04   2.000E-05
+   1 F= -.10800000E+02 E0= -.10800000E+02  d E =-.108000E+02
+"""
+
+INCAR_RELAX = """\
+ENCUT = 520
+EDIFF = 1E-6
+EDIFFG = -0.05
+IBRION = 2
+ISIF = 2
+NSW = 50
+"""
+
+# Two ionic steps; every completed electronic cycle reaches EDIFF = 1E-6.
+OSZICAR_RELAX_TWO_STEP_SCF_CONVERGED = """\
+       N       E                     dE             d eps       ncg     rms          rms(c)
+DAV:   1   -1.000000000000E+01   -1.00000E+01   -1.00000E+01   10   1.000E+00   2.000E-01
+DAV:   2   -1.100000000000E+01   -1.00000E-07   -2.00000E-08   12   1.000E-04   2.000E-05
+   1 F= -.11000000E+02 E0= -.10950000E+02  d E =-.110000E+02
+RMM:   1   -1.200000000000E+01   -1.00000E+00   -1.00000E-01   10   5.000E-02   1.000E-02
+RMM:   2   -1.210000000000E+01   -1.00000E-07   -1.00000E-08   12   4.000E-05   8.000E-06
+   2 F= -.12100000E+02 E0= -.12050000E+02  d E =-.110000E+01
+"""
+
+OUTCAR_RELAX_FORCES_CONVERGED = """\
+ POSITION                                       TOTAL-FORCE (eV/Angst)
+ -----------------------------------------------------------------------------------
+      0.00000000      0.00000000      0.00000000      3.00000000      4.00000000      0.00000000
+      0.50000000      0.50000000      0.50000000      0.00000000      0.00000000      1.00000000
+ -----------------------------------------------------------------------------------
+ POSITION                                       TOTAL-FORCE (eV/Angst)
+ -----------------------------------------------------------------------------------
+      0.00000000      0.00000000      0.00000000      0.01000000      0.02000000      0.00000000
+      0.50000000      0.50000000      0.50000000      0.00000000      0.00000000      0.01000000
+ -----------------------------------------------------------------------------------
+""" + NORMAL_OUTCAR
+
+# Normal VASP termination, but the final maximum force (0.5 eV/A) is far above
+# |EDIFFG| = 0.05 eV/A: NSW was exhausted without ionic convergence.
+OUTCAR_RELAX_FORCES_UNCONVERGED = """\
+ POSITION                                       TOTAL-FORCE (eV/Angst)
+ -----------------------------------------------------------------------------------
+      0.00000000      0.00000000      0.00000000      3.00000000      4.00000000      0.00000000
+      0.50000000      0.50000000      0.50000000      0.00000000      0.00000000      1.00000000
+ -----------------------------------------------------------------------------------
+ POSITION                                       TOTAL-FORCE (eV/Angst)
+ -----------------------------------------------------------------------------------
+      0.00000000      0.00000000      0.00000000      0.30000000      0.40000000      0.00000000
+      0.50000000      0.50000000      0.50000000      0.00000000      0.00000000      0.10000000
+ -----------------------------------------------------------------------------------
+""" + NORMAL_OUTCAR
+
+
 def write_inputs(directory: Path, *, missing: str | None = None) -> None:
     values = {"POSCAR": POSCAR, "INCAR": INCAR, "KPOINTS": KPOINTS}
     for name, contents in values.items():
@@ -215,10 +273,30 @@ def write_stage_inputs(directory: Path) -> None:
 
 
 def write_stage_complete(directory: Path) -> None:
+    """Write normal termination plus positive electronic and ionic convergence evidence."""
+
+    write_stage_inputs(directory)
+    (directory / "INCAR").write_text(INCAR_RELAX, encoding="utf-8")
+    (directory / "OUTCAR").write_text(OUTCAR_RELAX_FORCES_CONVERGED, encoding="utf-8")
+    (directory / "OSZICAR").write_text(OSZICAR_RELAX_TWO_STEP_SCF_CONVERGED, encoding="utf-8")
+
+
+def write_stage_terminated_unverified(directory: Path) -> None:
+    """Write VASP normal termination without any convergence evidence."""
+
     write_stage_inputs(directory)
     (directory / "OUTCAR").write_text(NORMAL_OUTCAR, encoding="utf-8")
     (directory / "OSZICAR").write_text(" 1 F= -.1 E0= -.1 d E =0\n", encoding="utf-8")
     (directory / "vasprun.xml").write_text("<modeling></modeling>", encoding="utf-8")
+
+
+def write_stage_relax_unconverged(directory: Path) -> None:
+    """Write a normally terminated relaxation whose final force misses EDIFFG."""
+
+    write_stage_inputs(directory)
+    (directory / "INCAR").write_text(INCAR_RELAX, encoding="utf-8")
+    (directory / "OUTCAR").write_text(OUTCAR_RELAX_FORCES_UNCONVERGED, encoding="utf-8")
+    (directory / "OSZICAR").write_text(OSZICAR_RELAX_TWO_STEP_SCF_CONVERGED, encoding="utf-8")
 
 
 def write_stage_partial(directory: Path) -> None:
@@ -291,11 +369,23 @@ def test_non_empty_partial_output_is_not_pre_run(tmp_path: Path) -> None:
 def test_manual_completed_vasp_without_scheduler_is_completed(tmp_path: Path) -> None:
     write_inputs(tmp_path)
     (tmp_path / "OUTCAR").write_text(NORMAL_OUTCAR, encoding="utf-8")
+    (tmp_path / "OSZICAR").write_text(OSZICAR_STATIC_CONVERGED, encoding="utf-8")
 
     analysis = analyze_calculation_directory(tmp_path)
 
     assert analysis.state == LifecycleState.COMPLETED
     assert analysis.normal_completion is True
+
+
+def test_manual_normal_termination_without_convergence_evidence_is_unknown(tmp_path: Path) -> None:
+    write_inputs(tmp_path)
+    (tmp_path / "OUTCAR").write_text(NORMAL_OUTCAR, encoding="utf-8")
+
+    analysis = analyze_calculation_directory(tmp_path)
+
+    assert analysis.state == LifecycleState.UNKNOWN
+    assert analysis.normal_completion is True
+    assert "convergence could not be established" in analysis.message
 
 
 def test_truncated_vasprun_does_not_imply_completed(tmp_path: Path) -> None:
@@ -387,8 +477,7 @@ def test_successful_scheduler_and_normal_vasp_evidence_is_completed(tmp_path: Pa
     root = tmp_path / "flow"
     stage = root / "stage_01"
     stage.mkdir(parents=True)
-    write_inputs(stage)
-    (stage / "OUTCAR").write_text(NORMAL_OUTCAR, encoding="utf-8")
+    write_stage_complete(stage)
     write_submission(root, stage_dir=stage)
 
     analysis = analyze_calculation_directory(
@@ -632,6 +721,7 @@ def test_relocated_completed_bmd_snapshot_uses_local_normal_completion(tmp_path:
     )
     write_inputs(tmp_path)
     (tmp_path / "OUTCAR").write_text(NORMAL_OUTCAR, encoding="utf-8")
+    (tmp_path / "OSZICAR").write_text(OSZICAR_STATIC_CONVERGED, encoding="utf-8")
 
     analysis = analyze_calculation_directory(
         tmp_path,
@@ -650,12 +740,29 @@ def test_completed_bmd_snapshot_does_not_run_incomplete_diagnostics(tmp_path: Pa
     )
     write_inputs(tmp_path)
     (tmp_path / "OUTCAR").write_text(NORMAL_OUTCAR, encoding="utf-8")
-    (tmp_path / "OSZICAR").write_text(OSZICAR_TWO_STEP, encoding="utf-8")
+    (tmp_path / "OSZICAR").write_text(OSZICAR_STATIC_CONVERGED, encoding="utf-8")
 
     analysis = analyze_calculation_directory(tmp_path)
 
     assert analysis.state == LifecycleState.COMPLETED
     assert analysis.diagnostics is None
+
+
+def test_normally_terminated_static_whose_scf_missed_ediff_is_incomplete(tmp_path: Path) -> None:
+    # OSZICAR_TWO_STEP ends with dE = -1E-1 against EDIFF = 1E-6.
+    write_single_stage_submission(
+        tmp_path,
+        result_dir="/bmd-db/guest/flows/vasp_run_hse_static-20260830",
+    )
+    write_inputs(tmp_path)
+    (tmp_path / "OUTCAR").write_text(NORMAL_OUTCAR, encoding="utf-8")
+    (tmp_path / "OSZICAR").write_text(OSZICAR_TWO_STEP, encoding="utf-8")
+
+    analysis = analyze_calculation_directory(tmp_path)
+
+    assert analysis.state == LifecycleState.INCOMPLETE
+    assert analysis.stage_completion[0].convergence.not_converged_scopes == ("electronic",)
+    assert analysis.diagnostics is not None
 
 
 def test_pre_run_bmd_snapshot_does_not_run_execution_diagnostics(tmp_path: Path) -> None:
@@ -845,9 +952,9 @@ def test_relocated_cli_lists_multistage_acquisition_and_producer_provenance(
     assert "Calculation state: COMPLETED" in captured.out
     assert f"current acquisition directory: {tmp_path.resolve()}" in captured.out
     assert f"original producer run directory: {producer_root}" in captured.out
-    assert "1. stage_01 - completed" in captured.out
-    assert "2. stage_02 - completed" in captured.out
-    assert "3. stage_03 - completed" in captured.out
+    assert "1. stage_01 - completed (VASP normal termination; convergence established)" in captured.out
+    assert "2. stage_02 - completed (VASP normal termination; convergence established)" in captured.out
+    assert "3. stage_03 - completed (VASP normal termination; convergence established)" in captured.out
     assert f"current stage: stage_03 ({(tmp_path / 'stage_03').resolve()})" in captured.out
 
 

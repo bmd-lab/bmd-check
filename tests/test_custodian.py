@@ -17,6 +17,7 @@ from test_lifecycle import (
     INCAR,
     KPOINTS,
     NORMAL_OUTCAR,
+    OSZICAR_STATIC_CONVERGED,
     POSCAR,
     write_inputs,
     write_single_stage_submission,
@@ -366,6 +367,7 @@ def test_no_custodian_file_remains_uncluttered_for_completed_calculation(
     for name, contents in {"POSCAR": POSCAR, "INCAR": INCAR, "KPOINTS": KPOINTS}.items():
         (tmp_path / name).write_text(contents, encoding="utf-8")
     (tmp_path / "OUTCAR").write_text(NORMAL_OUTCAR, encoding="utf-8")
+    (tmp_path / "OSZICAR").write_text(OSZICAR_STATIC_CONVERGED, encoding="utf-8")
 
     analysis = analyze_calculation_directory(tmp_path)
     cli.print_lifecycle_analysis(analysis)

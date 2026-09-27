@@ -16,6 +16,11 @@ from bmd_agent.resources.bmdex import (
     BmdexDomainContextEnrichment,
     BmdexDomainContextEvidence,
 )
+from bmd_agent.resources.completion import (
+    STAGE_CONVERGED,
+    StageCompletion,
+    StageConvergence,
+)
 from bmd_agent.resources.custodian import (
     ConfiguredCustodianComponent,
     CustodianPolicyEvidence,
@@ -255,7 +260,9 @@ def test_completed_static_calculation_is_especially_concise() -> None:
     assert "Electronic convergence: reached" in output
     assert "Final energy: -12.579584 eV" in output
     assert "Band gap: 1.232 eV" in output
-    assert "No execution problems were detected." in output
+    assert "SLURM recorded a successful exit." in output
+    assert "Convergence criteria were met." in output
+    assert "No execution problems were detected." not in output
     assert "What happened" not in output
 
 
@@ -311,6 +318,16 @@ def test_completed_si_hse_path_summary_uses_producer_workflow_identity() -> None
         message="complete",
         bmd_workflow=workflow,
         scientific=scientific(),
+        stage_completion=tuple(
+            StageCompletion(
+                index=index,
+                label=f"stage {index}",
+                started=True,
+                terminated_normally=True,
+                convergence=StageConvergence(STAGE_CONVERGED),
+            )
+            for index in range(1, 4)
+        ),
     )
 
     output = render_concise_summary(build_lifecycle_concise_summary(analysis))
@@ -324,7 +341,9 @@ def test_completed_si_hse_path_summary_uses_producer_workflow_identity() -> None
     assert "Electronic convergence: reached" in output
     assert "Final energy: -12.579584 eV" in output
     assert "Band gap: 1.232 eV" in output
-    assert "No execution problems were detected." in output
+    assert "VASP recorded normal termination in every workflow stage." in output
+    assert "Convergence criteria were met in every workflow stage." in output
+    assert "No execution problems were detected." not in output
     assert "SOC" not in output
     assert "What happened" not in output
     assert "Why this may have happened" not in output
