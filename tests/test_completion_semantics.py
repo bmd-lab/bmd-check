@@ -463,6 +463,53 @@ def test_job_scheduler_success_without_calculation_evidence_is_unknown() -> None
     assert FORBIDDEN_COMPLETION_CLAIM not in output
 
 
+@pytest.mark.parametrize("converged_ionic", [True, False])
+def test_job_completed_with_missing_exit_code_is_not_scheduler_success(
+    converged_ionic: bool,
+) -> None:
+    job = bmd_job(
+        stages=(RELAX,),
+        trajectories=(
+            trajectory(
+                stage_type="relax",
+                completed_ionic_steps=10,
+                converged_electronic=True,
+                converged_ionic=converged_ionic,
+            ),
+        ),
+        scheduler_record=scheduler(state="COMPLETED", exit_code=None),
+    )
+
+    summary = build_job_concise_summary(job)
+    output = flat(render_concise_summary(summary))
+
+    # A missing exit code is missing evidence: not success, and not failure.
+    assert summary.status == "UNKNOWN"
+    assert "no exit code was available, so successful execution is not established" in output
+    assert "SLURM recorded a successful exit" not in output
+    assert FORBIDDEN_COMPLETION_CLAIM not in output
+
+
+def test_path_completed_with_missing_exit_code_is_not_scheduler_success(tmp_path: Path) -> None:
+    root = tmp_path / "flow"
+    stage_1, stage_2 = write_two_stage_workflow(root)
+    write_stage_complete(stage_1)
+
+    def lookup(job_id: str) -> object:
+        return scheduler_record(job_id=job_id, state="COMPLETED", exit_code=None)
+
+    views = {directory: invocation_view(directory, lookup) for directory in (root, stage_1)}
+
+    # Without positive scheduler success, a missing later stage is not INCOMPLETE.
+    assert set(views.values()) == {views[root]}
+    assert views[root][0] == "UNKNOWN"
+    assert views[root][1] == "UNKNOWN"
+
+    write_stage_complete(stage_2)
+    # Local normal-termination plus convergence evidence still completes the workflow.
+    assert invocation_view(root, lookup)[:2] == ("COMPLETED", "COMPLETED")
+
+
 def test_job_nonzero_exit_is_failed_not_incomplete() -> None:
     job = bmd_job(scheduler_record=scheduler(state="COMPLETED", exit_code="1:0"))
 

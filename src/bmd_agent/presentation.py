@@ -101,11 +101,19 @@ def build_job_concise_summary(
                 _job_completion_evidence_lines(inspection),
             )
         )
-    elif _job_scheduler_success(inspection):
+    elif _job_scheduler_success(inspection) or _job_scheduler_exit_code_missing(inspection):
         unsuccessful = _completion_gap_sections(
             _job_stage_completion(inspection),
             status=status,
-            execution_succeeded=True,
+            execution_succeeded=_job_scheduler_success(inspection),
+            preface=(
+                ()
+                if _job_scheduler_success(inspection)
+                else (
+                    "SLURM recorded the job as COMPLETED, but no exit code was available, "
+                    "so successful execution is not established.",
+                )
+            ),
         )
         sections.extend(section for section in unsuccessful if section.title != "Assessment")
     else:
@@ -784,23 +792,37 @@ def _job_status(inspection: JobInspection) -> str:
         return "PENDING"
     if state in {"RUNNING", "COMPLETING", "RESIZING", "SUSPENDED", "STAGE_OUT"}:
         return "RUNNING"
-    if state == "COMPLETED" and (
-        inspection.scheduler is None or inspection.scheduler.exit_code in {None, "0:0"}
-    ):
+    if _job_scheduler_success(inspection):
         # A successful process exit is necessary but not sufficient: every
         # declared stage must also carry positive convergence evidence.
         return workflow_completion_status(
             _job_stage_completion(inspection),
             execution_succeeded=True,
         )
+    if _job_scheduler_exit_code_missing(inspection):
+        # COMPLETED without an exit code is missing evidence: neither
+        # successful execution nor failure is established.
+        return "UNKNOWN"
     if state:
         return "FAILED"
     return "UNKNOWN"
 
 
 def _job_scheduler_success(inspection: JobInspection) -> bool:
-    return _scheduler_state(inspection) == "COMPLETED" and (
-        inspection.scheduler is None or inspection.scheduler.exit_code in {None, "0:0"}
+    """Successful scheduler execution requires SLURM COMPLETED with exit code 0:0."""
+
+    return (
+        _scheduler_state(inspection) == "COMPLETED"
+        and inspection.scheduler is not None
+        and inspection.scheduler.exit_code == "0:0"
+    )
+
+
+def _job_scheduler_exit_code_missing(inspection: JobInspection) -> bool:
+    return (
+        _scheduler_state(inspection) == "COMPLETED"
+        and inspection.scheduler is not None
+        and not inspection.scheduler.exit_code
     )
 
 
@@ -908,8 +930,9 @@ def _completion_gap_sections(
     *,
     status: str,
     execution_succeeded: bool,
+    preface: Sequence[str] = (),
 ) -> list[ConciseSection]:
-    lines = completion_gap_lines(stages, execution_succeeded=execution_succeeded)
+    lines = (*preface, *completion_gap_lines(stages, execution_succeeded=execution_succeeded))
     if not stages:
         lines = (*lines, "No calculation evidence was available to establish completion.")
     return [
