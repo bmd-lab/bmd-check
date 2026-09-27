@@ -378,3 +378,39 @@ def normalize_job_id(job_id: str) -> str:
         raise ValueError("SLURM job ID must be a positive decimal integer")
 
     return re.sub(r"\.(?:batch|extern|\d+)$", "", candidate)
+
+
+# SLURM states in which the job (or step) has not finished. For these states
+# sacct's ExitCode field is not a termination observation: SLURM records the
+# exit code when the job or step ends, and reports its initial value (0:0)
+# before then.
+ACTIVE_SLURM_STATES = frozenset(
+    {
+        "BOOT_FAIL_REQUEUE_FED",
+        "CONFIGURING",
+        "COMPLETING",
+        "PENDING",
+        "REQUEUED",
+        "RESIZING",
+        "RUNNING",
+        "STAGE_OUT",
+        "SUSPENDED",
+    }
+)
+
+
+def describe_exit_code(state: str | None, exit_code: str | None) -> str:
+    """Describe a sacct ExitCode field without treating it as an exit that occurred.
+
+    For an active job or step the raw value is kept but labelled as the value
+    SLURM currently reports, because no exit has happened yet. For an inactive
+    record the raw value is returned unchanged, or ``unavailable`` if absent.
+    """
+
+    raw = str(exit_code or "").strip()
+    tokens = str(state or "").strip().upper().split()
+    current_state = tokens[0] if tokens else ""
+    if current_state in ACTIVE_SLURM_STATES:
+        reported = f"SLURM currently reports {raw}" if raw else "SLURM reports no exit code"
+        return f"not yet applicable (job is {current_state}; {reported})"
+    return raw or "unavailable"

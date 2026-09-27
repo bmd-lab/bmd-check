@@ -70,7 +70,7 @@ from bmd_agent.resources.run import (
     inspect_remote_run,
     serialize_job_trajectory_evidence,
 )
-from bmd_agent.resources.slurm import get_job_accounting, get_queue
+from bmd_agent.resources.slurm import describe_exit_code, get_job_accounting, get_queue
 from bmd_agent.resources.vasp import (
     RemotePathError,
     read_remote_structure,
@@ -352,7 +352,10 @@ def print_lifecycle_analysis(
     if analysis.scheduler is not None:
         print("Scheduler observation:")
         _print_optional_value("state", analysis.scheduler.state)
-        _print_optional_value("exit", analysis.scheduler.exit_code)
+        _print_optional_value(
+            "exit",
+            describe_exit_code(analysis.scheduler.state, analysis.scheduler.exit_code),
+        )
         _print_optional_value("elapsed", analysis.scheduler.elapsed)
         _print_optional_value("node", analysis.scheduler.node_list)
         print()
@@ -1162,7 +1165,6 @@ def _print_job_record(record: object) -> None:
         ("user", "user"),
         ("account", "account"),
         ("state", "state"),
-        ("exit", "exit_code"),
         ("reason", "reason"),
         ("node", "node_list"),
         ("elapsed", "elapsed"),
@@ -1171,6 +1173,14 @@ def _print_job_record(record: object) -> None:
         ("partition", "partition"),
     ):
         print(f"  {label}: {_diagnosis_value(getattr(record, attribute, None))}")
+        if attribute == "state":
+            print(
+                "  exit: "
+                + describe_exit_code(
+                    getattr(record, "state", None),
+                    getattr(record, "exit_code", None),
+                )
+            )
     print("  resources:")
     for label, attribute in (
         ("nodes", "node_count"),
@@ -1193,7 +1203,7 @@ def _print_job_record(record: object) -> None:
             print(
                 f"    {getattr(step, 'job_id_raw', 'step')}: "
                 f"state={_diagnosis_value(getattr(step, 'state', None))}, "
-                f"exit={_diagnosis_value(getattr(step, 'exit_code', None))}, "
+                f"exit={describe_exit_code(getattr(step, 'state', None), getattr(step, 'exit_code', None))}, "
                 f"MaxRSS={_diagnosis_value(getattr(step, 'max_rss', None))}"
             )
 
@@ -1249,7 +1259,7 @@ def print_run_inspection(inspection: RunInspection) -> None:
         record = inspection.scheduler
         print(f"  job id:    {record.job_id}")
         print(f"  state:     {record.state}")
-        print(f"  exit:      {record.exit_code}")
+        print(f"  exit:      {describe_exit_code(record.state, record.exit_code)}")
         print(f"  elapsed:   {record.elapsed}")
         print(f"  start:     {record.start}")
         print(f"  end:       {record.end}")
@@ -1361,7 +1371,11 @@ def print_run_diagnosis(diagnosis: RunDiagnosis) -> None:
     termination = diagnosis.termination
     print(f"Termination evidence ({termination.evidence_type}):")
     _print_optional_value("scheduler state", termination.scheduler_state)
-    _print_optional_value("scheduler exit", termination.scheduler_exit_code)
+    if termination.scheduler_state is not None or termination.scheduler_exit_code is not None:
+        print(
+            "  scheduler exit: "
+            + describe_exit_code(termination.scheduler_state, termination.scheduler_exit_code)
+        )
     _print_optional_value("elapsed", termination.scheduler_elapsed)
     _print_optional_value("time limit", termination.scheduler_timelimit)
     _print_optional_value("scheduler reports timeout", termination.scheduler_reports_timeout)
