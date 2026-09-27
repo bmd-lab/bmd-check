@@ -13,6 +13,7 @@ import warnings
 from typing import Any
 
 from bmd_agent.config import SlurmClusterResource
+from bmd_agent.resources.compute import ComputePolicyObservation
 from bmd_agent.deployment import DeploymentContext
 from bmd_agent.profiling import profile_phase
 from bmd_agent.resources.custodian import (
@@ -316,6 +317,9 @@ class RunInspection:
     execution_diagnostics: RemoteExecutionDiagnosticEvidence = field(
         default_factory=RemoteExecutionDiagnosticEvidence
     )
+    # Current BMD Compute policy used for input-effect checks; None when the
+    # caller did not consult BMD Compute at all.
+    compute_policy: ComputePolicyObservation | None = None
 
 
 @dataclass(frozen=True)
@@ -599,9 +603,12 @@ def inspect_remote_run(
     submission_payload: Mapping[str, Any] | None = None,
     attempt_payload: Mapping[str, Any] | None = None,
     attempt_checked: bool = False,
+    compute_policy: ComputePolicyObservation | None = None,
 ) -> RunInspection:
     """Inspect a BMD Compute run through configured read-only resources."""
 
+    if compute_policy is not None:
+        modifier_policies = compute_policy.policies
     timeout = _remote_command_timeout(cluster, timeout)
     scheduler_timeout = _scheduler_accounting_timeout(cluster, scheduler_timeout)
 
@@ -817,6 +824,7 @@ def inspect_remote_run(
         custodian_policy=producer["custodian_policy"],
         custodian_evidence=custodian_evidence,
         execution_diagnostics=execution_diagnostics,
+        compute_policy=compute_policy,
     )
 
 
@@ -830,13 +838,16 @@ def compare_remote_runs(
     modifier_policies: Iterable[Mapping[str, Any]] = (),
     timeout: float | None = None,
     scheduler_timeout: float | None = None,
+    compute_policy: ComputePolicyObservation | None = None,
 ) -> RunComparison:
     """Inspect and compare multiple remote runs through the read-only boundary."""
 
     if len(flow_roots) < 2:
         raise RunInspectionError("compare-runs requires at least two remote flow roots")
 
-    policy_tuple = tuple(modifier_policies)
+    policy_tuple = (
+        compute_policy.policies if compute_policy is not None else tuple(modifier_policies)
+    )
     inspections = tuple(
         inspect_remote_run(
             cluster,
@@ -847,6 +858,7 @@ def compare_remote_runs(
             modifier_policies=policy_tuple,
             timeout=timeout,
             scheduler_timeout=scheduler_timeout,
+            compute_policy=compute_policy,
         )
         for flow_root in flow_roots
     )
@@ -870,6 +882,7 @@ def diagnose_remote_run(
     submission_payload: Mapping[str, Any] | None = None,
     attempt_payload: Mapping[str, Any] | None = None,
     attempt_checked: bool = False,
+    compute_policy: ComputePolicyObservation | None = None,
 ) -> RunDiagnosis:
     """Describe termination and convergence trajectory evidence for one run."""
 
@@ -891,6 +904,7 @@ def diagnose_remote_run(
         submission_payload=submission_payload,
         attempt_payload=attempt_payload,
         attempt_checked=attempt_checked,
+        compute_policy=compute_policy,
     )
     with profile_phase("vasp_trajectory_evidence"):
         trajectories = _observe_stage_trajectories(
@@ -921,6 +935,7 @@ def inspect_slurm_job(
     scheduler_timeout: float | None = None,
     max_vasprun_bytes: int = _DIAGNOSE_VASPRUN_MAX_BYTES,
     deployment: DeploymentContext | None = None,
+    compute_policy: ComputePolicyObservation | None = None,
 ) -> JobInspection:
     """Inspect one scheduler job and supported calculation evidence read-only."""
 
@@ -962,6 +977,7 @@ def inspect_slurm_job(
                     submission_payload=resolution._submission_payload,
                     attempt_payload=resolution._attempt_payload,
                     attempt_checked=resolution._attempt_checked,
+                    compute_policy=compute_policy,
                 )
         except (RunInspectionError, RemotePathError, subprocess.SubprocessError) as exc:
             return JobInspection(
@@ -1090,6 +1106,9 @@ def inspect_slurm_job(
                     max_vasprun_bytes=max_vasprun_bytes,
                     scheduler_observation=(scheduler, scheduler_error),
                     expected_job_id=normalized_job_id,
+                    derive_scientific=True,
+                    scientific_parser=scientific_parser,
+                    compute_policy=compute_policy,
                 )
         except (RunInspectionError, RemotePathError, subprocess.SubprocessError) as exc:
             producer_reason = (

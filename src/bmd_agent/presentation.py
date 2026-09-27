@@ -37,6 +37,13 @@ from bmd_agent.resources.run import (
 )
 
 
+BMDEX_CONTEXT_TITLE = "Context from BMDex"
+BMDEX_CONTEXT_PREFACE = (
+    "General supporting context from BMDex about this kind of calculation. "
+    "It is not a diagnosis of this run and does not establish why it stopped."
+)
+
+
 @dataclass(frozen=True)
 class ConciseSection:
     """One student-facing group of already synthesized statements."""
@@ -289,7 +296,7 @@ def _unsuccessful_job_sections(
 
     context_lines = _context_lines(enrichment)
     if context_lines:
-        sections.append(ConciseSection("Why this may have happened", context_lines))
+        sections.append(ConciseSection(BMDEX_CONTEXT_TITLE, context_lines))
 
     memory_lines = _memory_lines(inspection.oom)
     if memory_lines:
@@ -333,7 +340,7 @@ def _unsuccessful_lifecycle_sections(
 
     context_lines = _context_lines(enrichment)
     if context_lines:
-        sections.append(ConciseSection("Why this may have happened", context_lines))
+        sections.append(ConciseSection(BMDEX_CONTEXT_TITLE, context_lines))
 
     memory_lines = _memory_lines(diagnostics.oom if diagnostics is not None else None)
     if memory_lines:
@@ -449,9 +456,12 @@ def _context_lines(
             record.contextual_statement,
             observed_tags=observed_tags,
         )
-        if lines and selected:
-            lines.append("")
+        if not selected:
+            continue
+        if not lines:
+            lines.append(BMDEX_CONTEXT_PREFACE)
         lines.extend(selected)
+        lines.append(_bmdex_record_attribution(record))
 
     assessment = enrichment.assessment
     if assessment is not None and any(
@@ -464,6 +474,18 @@ def _context_lines(
             "A long period without new VASP output does not, by itself, establish that the calculation is frozen."
         )
     return tuple(_ordered_unique(lines))
+
+
+def _bmdex_record_attribution(record: Any) -> str:
+    """Name the BMDex record and the authorities it cites, without restating them."""
+
+    authorities = _ordered_unique(
+        str(source.get("authority") or source.get("source_type") or "").strip()
+        for source in record.sources
+        if isinstance(source, Mapping)
+    )
+    cited = f"; cites {', '.join(authorities)}" if authorities else ""
+    return f"Source: BMDex record {record.record_id}{cited}."
 
 
 def _concise_context_sentences(

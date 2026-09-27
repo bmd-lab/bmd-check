@@ -242,3 +242,102 @@ def _first_error_line(stderr: str | None) -> str:
             return stripped
 
     return ""
+
+
+PRODUCER_CAPABILITY = "producer_capability"
+
+COMPUTE_POLICY_AVAILABLE = "available"
+COMPUTE_POLICY_UNAVAILABLE = "unavailable"
+COMPUTE_POLICY_NOT_CONFIGURED = "not_configured"
+
+POLICY_ALIGNMENT_SAME = "same_commit"
+POLICY_ALIGNMENT_SAME_UNVERIFIED = "same_commit_worktree_not_verified_clean"
+POLICY_ALIGNMENT_DIFFERENT = "different_commit"
+POLICY_ALIGNMENT_UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True)
+class ComputePolicyObservation:
+    """BMD Compute modifier/input-effect policy as read from the configured checkout.
+
+    ``status`` distinguishes evidence that is unavailable (producer not
+    configured, failed, or did not declare policies) from available evidence
+    that happens to declare no policies. The source fields describe the
+    *current* configured checkout, not the checkout that produced any
+    historical run.
+    """
+
+    status: str
+    policies: tuple[Mapping[str, Any], ...] = ()
+    reason: str | None = None
+    repository: str | None = None
+    commit: str | None = None
+    dirty: bool | None = None
+    provenance_available: bool | None = None
+    evidence_type: str = PRODUCER_CAPABILITY
+
+    @property
+    def available(self) -> bool:
+        return self.status == COMPUTE_POLICY_AVAILABLE
+
+
+def compute_policy_not_configured(reason: str) -> ComputePolicyObservation:
+    return ComputePolicyObservation(status=COMPUTE_POLICY_NOT_CONFIGURED, reason=reason)
+
+
+def observe_compute_policies(
+    repository: GitRepositoryResource,
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[str]] | None = None,
+) -> ComputePolicyObservation:
+    """Read modifier policies and their source provenance from BMD Compute."""
+
+    try:
+        if runner is None:
+            capabilities = inspect_compute_capabilities(repository)
+        else:
+            capabilities = inspect_compute_capabilities(repository, runner=runner)
+    except ComputeCapabilityError as exc:
+        return ComputePolicyObservation(status=COMPUTE_POLICY_UNAVAILABLE, reason=str(exc))
+
+    source = capabilities.source
+    provenance = {
+        "repository": source.get("repository"),
+        "commit": source.get("commit"),
+        "dirty": source.get("dirty"),
+        "provenance_available": source.get("provenance_available"),
+    }
+    policies = capabilities.payload.get("modifier_policies")
+    if not isinstance(policies, list):
+        return ComputePolicyObservation(
+            status=COMPUTE_POLICY_UNAVAILABLE,
+            reason="BMD Compute capability payload does not declare modifier_policies",
+            **provenance,
+        )
+    return ComputePolicyObservation(
+        status=COMPUTE_POLICY_AVAILABLE,
+        policies=tuple(policy for policy in policies if isinstance(policy, Mapping)),
+        **provenance,
+    )
+
+
+def compute_policy_alignment(
+    policy: ComputePolicyObservation | None,
+    run_producer_git: Mapping[str, Any],
+) -> str:
+    """Compare the current policy checkout with the commit that produced a run."""
+
+    if policy is None or not policy.available:
+        return POLICY_ALIGNMENT_UNKNOWN
+    run_commit = run_producer_git.get("git_commit")
+    if not isinstance(policy.commit, str) or not policy.commit:
+        return POLICY_ALIGNMENT_UNKNOWN
+    if not isinstance(run_commit, str) or not run_commit:
+        return POLICY_ALIGNMENT_UNKNOWN
+    if policy.commit != run_commit:
+        return POLICY_ALIGNMENT_DIFFERENT
+    run_state = str(run_producer_git.get("state") or "").lower()
+    if policy.dirty is not False or run_state != "clean":
+        # Either checkout may carry uncommitted changes (or its state is unknown).
+        return POLICY_ALIGNMENT_SAME_UNVERIFIED
+    return POLICY_ALIGNMENT_SAME

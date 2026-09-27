@@ -13,6 +13,7 @@ import warnings
 import pytest
 
 from bmd_agent import cli
+from bmd_agent.resources.compute import compute_policy_not_configured
 import bmd_agent.resources.run as run_resource
 from bmd_agent.config import ResourceRegistry, SlurmClusterResource
 from bmd_agent.deployment import DeploymentContext, load_deployment_profile
@@ -1247,7 +1248,7 @@ def test_inspect_slurm_job_delegates_bmd_compute_workdir_to_existing_diagnosis()
         "20893681",
         remote_runner=remote,
         slurm_runner=job_slurm_runner(work_dir=FLOW_ROOT),
-        scientific_parser=fake_direct_scientific_parser,
+        scientific_parser=fake_scientific_parser,
         max_vasprun_bytes=0,
     )
 
@@ -1256,6 +1257,11 @@ def test_inspect_slurm_job_delegates_bmd_compute_workdir_to_existing_diagnosis()
     assert inspection.bmd_compute is not None
     assert inspection.direct_vasp is None
     assert inspection.bmd_compute.inspection.workflow_stages[0].stage_type == "relax"
+    # The WorkDir fallback derives final scientific results like exact resolution.
+    scientific = inspection.bmd_compute.inspection.scientific
+    assert scientific.final_formula == "Example2"
+    assert scientific.final_energy_ev == -12.5
+    assert "skipped" not in " ".join(scientific.unavailable)
 
 
 def test_authoritative_job_record_resolves_generic_workdir_into_common_bmd_analysis() -> None:
@@ -2882,7 +2888,11 @@ def test_cli_job_trajectory_json_uses_existing_inspection_once(
         raise AssertionError("text summary should not be used for trajectory JSON")
 
     monkeypatch.setattr(cli, "load_resources", lambda: registry)
-    monkeypatch.setattr(cli, "modifier_policies_from_compute", lambda registry: ((), None))
+    monkeypatch.setattr(
+        cli,
+        "compute_policy_from_registry",
+        lambda registry, **kwargs: compute_policy_not_configured("not configured in test"),
+    )
     monkeypatch.setattr(cli, "inspect_slurm_job", fake_inspect_slurm_job)
     monkeypatch.setattr(cli, "print_job_inspection", fail_text_summary)
 
@@ -2915,7 +2925,11 @@ def test_cli_job_defaults_to_concise_summary_and_verbose_keeps_detailed_evidence
     )
 
     monkeypatch.setattr(cli, "load_resources", lambda: registry)
-    monkeypatch.setattr(cli, "modifier_policies_from_compute", lambda registry: ((), None))
+    monkeypatch.setattr(
+        cli,
+        "compute_policy_from_registry",
+        lambda registry, **kwargs: compute_policy_not_configured("not configured in test"),
+    )
     monkeypatch.setattr(cli, "inspect_slurm_job", lambda *args, **kwargs: inspection)
 
     exit_code = cli.main(["job", "20893681"])
