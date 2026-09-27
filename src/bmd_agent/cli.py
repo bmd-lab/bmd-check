@@ -32,9 +32,17 @@ from bmd_agent.resources.bmdex import (
     enrich_lifecycle_with_bmdex_domain_context,
 )
 from bmd_agent.resources.compute import (
+    COMPUTE_POLICY_NOT_CONFIGURED,
+    POLICY_ALIGNMENT_DIFFERENT,
+    POLICY_ALIGNMENT_SAME,
+    POLICY_ALIGNMENT_SAME_UNVERIFIED,
     ComputeCapabilities,
     ComputeCapabilityError,
+    ComputePolicyObservation,
+    compute_policy_alignment,
+    compute_policy_not_configured,
     inspect_compute_capabilities,
+    observe_compute_policies,
 )
 from bmd_agent.resources.git import GitInspection, inspect_repository
 from bmd_agent.resources.input_check import (
@@ -732,7 +740,7 @@ def show_inspect_run(flow_root: str, registry: ResourceRegistry | None = None) -
 
     registry = registry or load_resources()
     cluster = powerslurm_cluster(registry)
-    modifier_policies, _ = modifier_policies_from_compute(registry)
+    compute_policy = compute_policy_from_registry(registry)
 
     print("BMD Compute Run Inspection")
     print("==========================")
@@ -742,7 +750,7 @@ def show_inspect_run(flow_root: str, registry: ResourceRegistry | None = None) -
         inspection = inspect_remote_run(
             cluster,
             flow_root,
-            modifier_policies=modifier_policies,
+            compute_policy=compute_policy,
         )
 
     except RemotePathError as exc:
@@ -781,7 +789,7 @@ def show_compare_runs(flow_roots: list[str], registry: ResourceRegistry | None =
 
     registry = registry or load_resources()
     cluster = powerslurm_cluster(registry)
-    modifier_policies, policy_warning = modifier_policies_from_compute(registry)
+    compute_policy = compute_policy_from_registry(registry)
 
     print("BMD Compute Run Comparison")
     print("==========================")
@@ -791,7 +799,7 @@ def show_compare_runs(flow_roots: list[str], registry: ResourceRegistry | None =
         comparison = compare_remote_runs(
             cluster,
             flow_roots,
-            modifier_policies=modifier_policies,
+            compute_policy=compute_policy,
         )
 
     except RemotePathError as exc:
@@ -817,7 +825,7 @@ def show_compare_runs(flow_roots: list[str], registry: ResourceRegistry | None =
         print(f"Unable to compare runs: {exc}")
         return 1
 
-    print_run_comparison(comparison, policy_warning=policy_warning)
+    print_run_comparison(comparison, compute_policy=compute_policy)
     return 0
 
 
@@ -826,7 +834,7 @@ def show_diagnose_run(flow_root: str, registry: ResourceRegistry | None = None) 
 
     registry = registry or load_resources()
     cluster = powerslurm_cluster(registry)
-    modifier_policies, _ = modifier_policies_from_compute(registry)
+    compute_policy = compute_policy_from_registry(registry)
 
     print("BMD Compute Run Diagnosis")
     print("=========================")
@@ -836,7 +844,7 @@ def show_diagnose_run(flow_root: str, registry: ResourceRegistry | None = None) 
         diagnosis = diagnose_remote_run(
             cluster,
             flow_root,
-            modifier_policies=modifier_policies,
+            compute_policy=compute_policy,
         )
 
     except RemotePathError as exc:
@@ -916,12 +924,12 @@ def _show_job(
         cluster = powerslurm_cluster(registry)
         deployment = resolve_deployment_context(registry, cluster_key=cluster.key)
         if profiling:
-            modifier_policies, _ = modifier_policies_from_compute(
+            compute_policy = compute_policy_from_registry(
                 registry,
                 runner=profiled_runner(subprocess.run, role="producer"),
             )
         else:
-            modifier_policies, _ = modifier_policies_from_compute(registry)
+            compute_policy = compute_policy_from_registry(registry)
 
     if not trajectory_json and verbose:
         print("BMD Job Inspection")
@@ -940,7 +948,7 @@ def _show_job(
                 inspection = inspect_slurm_job(
                     cluster,
                     job_id,
-                    modifier_policies=modifier_policies,
+                    compute_policy=compute_policy,
                     deployment=deployment,
                     remote_runner=ssh_session.runner("remote"),
                     slurm_runner=ssh_session.runner("scheduler"),
@@ -1284,6 +1292,13 @@ def print_run_inspection(inspection: RunInspection) -> None:
 
     print("Executed VASP inputs (executed_input):")
     _print_executed_input_summary(inspection)
+    print()
+    _print_compute_policy_context(
+        inspection.compute_policy,
+        run_labels=((None, inspection.producer_git),),
+        has_checks=bool(inspection.input_expectations),
+        trailing_blank=not inspection.input_expectations,
+    )
     if inspection.input_expectations:
         print("  requested/executed checks (agent_comparison):")
         for expectation in inspection.input_expectations:
@@ -1368,7 +1383,7 @@ def print_run_diagnosis(diagnosis: RunDiagnosis) -> None:
 def print_run_comparison(
     comparison: RunComparison,
     *,
-    policy_warning: str | None = None,
+    compute_policy: ComputePolicyObservation | None = None,
 ) -> None:
     """Print a concise baseline-relative run comparison."""
 
@@ -1393,6 +1408,14 @@ def print_run_comparison(
         print(f"  reason: {comparison.initial_structure.reason}")
     print()
 
+    _print_compute_policy_context(
+        compute_policy,
+        run_labels=tuple(
+            (comparison.labels[inspection.flow_root], inspection.producer_git)
+            for inspection in comparison.inspections
+        ),
+        has_checks=any(inspection.input_expectations for inspection in comparison.inspections),
+    )
     print("Executed-input checks:")
     any_checks = False
     for inspection in comparison.inspections:
@@ -1408,7 +1431,12 @@ def print_run_comparison(
             if expectation.reason:
                 print(f"    reason: {expectation.reason}")
     if not any_checks:
-        print("  unavailable: no producer option/input-effect checks were available")
+        if compute_policy is not None and not compute_policy.available:
+            print("  not performed: BMD Compute policy evidence is unavailable")
+        elif compute_policy is not None:
+            print("  none: no BMD Compute input-effect policy applies to the requested options")
+        else:
+            print("  unavailable: no producer option/input-effect checks were available")
     print()
 
     print("Final structure/result differences (agent_comparison):")
@@ -1434,9 +1462,6 @@ def print_run_comparison(
     if comparison.energy_warning:
         print()
         print(f"Warning: {comparison.energy_warning}")
-    if policy_warning:
-        print()
-        print(f"Modifier policy warning: {policy_warning}")
 
 
 def _trajectory_heading(trajectory: object) -> str:
@@ -2358,30 +2383,77 @@ def _quote_cli_target(target: str) -> str:
     return f'"{target}"' if any(character.isspace() for character in target) else target
 
 
-def modifier_policies_from_compute(
+def compute_policy_from_registry(
     registry: ResourceRegistry,
     *,
     runner: Callable[..., subprocess.CompletedProcess[str]] | None = None,
-) -> tuple[tuple[Mapping[str, Any], ...], str | None]:
-    """Return configured producer modifier policies when the capability adapter can read them."""
+) -> ComputePolicyObservation:
+    """Return BMD Compute policy evidence, or why it is unavailable."""
 
     try:
         repository = bmd_compute_repository(registry)
-    except ConfigurationError:
-        return (), None
+    except ConfigurationError as exc:
+        return compute_policy_not_configured(str(exc))
+    return observe_compute_policies(repository, runner=runner)
 
-    try:
-        if runner is None:
-            capabilities = inspect_compute_capabilities(repository)
-        else:
-            capabilities = inspect_compute_capabilities(repository, runner=runner)
-    except ComputeCapabilityError as exc:
-        return (), str(exc)
 
-    policies = capabilities.payload.get("modifier_policies")
-    if not isinstance(policies, list):
-        return (), None
-    return tuple(policy for policy in policies if isinstance(policy, Mapping)), None
+_POLICY_ALIGNMENT_TEXT = {
+    POLICY_ALIGNMENT_SAME: "same commit as the current BMD Compute checkout",
+    POLICY_ALIGNMENT_SAME_UNVERIFIED: (
+        "same commit, but a clean worktree was not verified for both checkouts; "
+        "the policy used when this run was produced is not established"
+    ),
+    POLICY_ALIGNMENT_DIFFERENT: (
+        "different commit; checks use the current checkout's policy, which is not "
+        "established to be the policy used when this run was produced"
+    ),
+}
+
+
+def _print_compute_policy_context(
+    policy: ComputePolicyObservation | None,
+    *,
+    run_labels: tuple[tuple[str | None, Mapping[str, Any]], ...],
+    has_checks: bool,
+    trailing_blank: bool = True,
+) -> None:
+    """Print where input-effect expectations came from, or why they are absent."""
+
+    if policy is None:
+        return
+    print(f"BMD Compute input-effect policy ({policy.evidence_type}):")
+    if not policy.available:
+        label = "not configured" if policy.status == COMPUTE_POLICY_NOT_CONFIGURED else "unavailable"
+        print(f"  status: {label}")
+        if policy.reason:
+            print(f"  reason: {policy.reason}")
+        print("  requested/executed checks were not performed; this is missing evidence, not a finding")
+        print()
+        return
+    print(f"  status: available ({len(policy.policies)} polic{'y' if len(policy.policies) == 1 else 'ies'})")
+    print(
+        f"  source: current checkout {_display_commit(policy.commit)} "
+        f"({_display_dirty_state(policy.dirty)})"
+    )
+    for label, producer_git in run_labels:
+        prefix = f"{label} " if label else ""
+        print(
+            f"  {prefix}run produced by: {_display_commit(producer_git.get('git_commit'))} "
+            f"({producer_git.get('state', 'unavailable')})"
+        )
+        alignment = compute_policy_alignment(policy, producer_git)
+        print(
+            f"  {prefix}policy alignment: "
+            + _POLICY_ALIGNMENT_TEXT.get(
+                alignment,
+                "unknown; commit provenance is incomplete, so the policy used when "
+                "this run was produced is not established",
+            )
+        )
+    if not has_checks:
+        print("  checks: no policy applies to the requested options")
+    if trailing_blank:
+        print()
 
 
 def _display_commit(value: object) -> str:

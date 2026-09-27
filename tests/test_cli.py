@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from bmd_agent import cli
+from bmd_agent.resources.compute import compute_policy_not_configured
 from bmd_agent.config import ConfigurationError, ResourceRegistry, SlurmClusterResource
 from bmd_agent.resources.run import (
     InitialStructureComparison,
@@ -305,7 +306,11 @@ def test_cli_compare_runs_summary(
     )
 
     monkeypatch.setattr(cli, "load_resources", lambda: registry)
-    monkeypatch.setattr(cli, "modifier_policies_from_compute", lambda registry: ((), None))
+    monkeypatch.setattr(
+        cli,
+        "compute_policy_from_registry",
+        lambda registry, **kwargs: compute_policy_not_configured("not configured in test"),
+    )
     monkeypatch.setattr(cli, "compare_remote_runs", lambda cluster, flow_roots, **kwargs: comparison)
 
     exit_code = cli.main(["compare-runs", "/flow/a", "/flow/b"])
