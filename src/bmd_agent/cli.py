@@ -321,9 +321,13 @@ def print_lifecycle_analysis(
             print(f"  workflow root: {workflow.workflow_root}")
         if workflow.stage_evidence:
             print("  workflow stages:")
+            completion = {item.index: item for item in analysis.stage_completion}
             for stage_evidence in workflow.stage_evidence:
                 index = stage_evidence.stage_index if stage_evidence.stage_index is not None else "?"
-                status = _local_stage_status(stage_evidence)
+                status = _local_stage_status(
+                    stage_evidence,
+                    completion.get(stage_evidence.stage_index),
+                )
                 print(f"    {index}. {stage_evidence.label} - {status}")
         if workflow.current_stage is not None:
             stage = workflow.current_stage
@@ -1883,11 +1887,21 @@ def _local_file_status(observation: object) -> str:
     return f"present, {size} bytes"
 
 
-def _local_stage_status(stage_evidence: object) -> str:
+def _local_stage_status(stage_evidence: object, completion: object = None) -> str:
+    convergence = getattr(getattr(completion, "convergence", None), "status", None)
+    convergence_text = {
+        "converged": "convergence established",
+        "not_converged": "convergence not reached",
+        "undetermined": "convergence not established",
+    }.get(convergence)
     if getattr(stage_evidence, "normal_completion", False):
-        return "completed"
+        if convergence == "converged":
+            return "completed (VASP normal termination; convergence established)"
+        if convergence_text:
+            return f"VASP normal termination; {convergence_text}"
+        return "VASP normal termination"
     if getattr(stage_evidence, "has_meaningful_execution", False):
-        return "partial"
+        return f"partial; {convergence_text}" if convergence_text else "partial"
     if getattr(stage_evidence, "has_required_inputs", False):
         return "inputs present"
     return "unavailable"

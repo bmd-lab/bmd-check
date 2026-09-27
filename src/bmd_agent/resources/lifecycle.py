@@ -10,6 +10,13 @@ import posixpath
 from typing import Any
 import warnings
 
+from bmd_agent.resources.completion import (
+    WORKFLOW_COMPLETED,
+    WORKFLOW_INCOMPLETE,
+    StageCompletion,
+    stage_convergence,
+    workflow_completion_status,
+)
 from bmd_agent.resources.custodian import (
     CustodianInterventionEvidence,
     CustodianPolicyEvidence,
@@ -119,6 +126,7 @@ class LifecycleAnalysis:
     diagnostics: LocalExecutionDiagnostics | None = None
     evidence_gaps: tuple[str, ...] = ()
     limitations: tuple[str, ...] = ()
+    stage_completion: tuple[StageCompletion, ...] = ()
 
 
 SchedulerLookup = Callable[[str], SlurmAccountingRecord | None]
@@ -207,7 +215,13 @@ def _analyze_bmd_workflow(
     input_files = _observe_files(target, _INPUT_FILENAMES)
     output_files = _observe_files(target, _OUTPUT_FILENAMES)
     log_files = _observe_bmd_logs(workflow)
-    meaningful_execution = _has_meaningful_files(output_files) or _has_meaningful_files(log_files)
+    # Lifecycle state is a workflow-level claim, so execution evidence is read
+    # from every declared stage rather than only the invocation directory.
+    meaningful_execution = (
+        _has_meaningful_files(output_files)
+        or _has_meaningful_files(log_files)
+        or any(evidence.has_meaningful_execution for evidence in workflow.stage_evidence)
+    )
     if workflow.relocated:
         scheduler, scheduler_error = (
             None,
@@ -216,43 +230,34 @@ def _analyze_bmd_workflow(
     else:
         scheduler, scheduler_error = _lookup_scheduler(workflow.job_id, scheduler_lookup)
     normal_completion = _detect_normal_completion(target)
-    workflow_complete = _all_required_stages_complete(workflow)
-    producer_success = _producer_success(workflow.attempt_state)
     scientific = _derive_local_scientific(target, workflow.submission)
     structure = _structure_from_inputs(input_files)
     incar_settings = _incar_settings(input_files)
     gaps = _input_gaps(input_files)
-    limitations: list[str] = []
     diagnostics = (
         _derive_bmd_execution_diagnostics(workflow, scheduler=scheduler)
         if meaningful_execution
         else None
     )
+    stage_completion = _bmd_stage_completion(workflow, diagnostics)
+    execution_succeeded = _scheduler_success(scheduler)
+    workflow_status = workflow_completion_status(
+        stage_completion,
+        execution_succeeded=execution_succeeded,
+    )
 
-    if scheduler is not None and _is_active_scheduler_state(scheduler.state):
+    def result(
+        state: LifecycleState,
+        message: str,
+        *,
+        include_diagnostics: bool = True,
+        limitations: Sequence[str] = (),
+    ) -> LifecycleAnalysis:
         return LifecycleAnalysis(
-            state=LifecycleState.RUNNING,
+            state=state,
             directory=current,
             calculation_kind="BMD Compute",
-            message="Active scheduler evidence indicates the calculation is running.",
-            input_files=input_files,
-            output_files=output_files | log_files,
-            bmd_workflow=workflow,
-            scheduler=scheduler,
-            normal_completion=normal_completion,
-            structure=structure,
-            incar_settings=incar_settings,
-            scientific=scientific,
-            diagnostics=diagnostics,
-            evidence_gaps=tuple(gaps),
-        )
-
-    if workflow_complete:
-        return LifecycleAnalysis(
-            state=LifecycleState.COMPLETED,
-            directory=current,
-            calculation_kind="BMD Compute",
-            message="All producer-declared stages have durable local VASP normal-completion evidence.",
+            message=message,
             input_files=input_files,
             output_files=output_files | log_files,
             bmd_workflow=workflow,
@@ -262,128 +267,82 @@ def _analyze_bmd_workflow(
             structure=structure,
             incar_settings=incar_settings,
             scientific=scientific,
-            diagnostics=(
-                diagnostics
-                if diagnostics is not None
-                and diagnostics.custodian is not None
-                and bool(diagnostics.custodian.corrections)
-                else None
-            ),
+            diagnostics=diagnostics if include_diagnostics else None,
             evidence_gaps=tuple(gaps),
+            limitations=tuple(limitations),
+            stage_completion=stage_completion,
         )
 
-    if _scheduler_success(scheduler) and (normal_completion or producer_success or workflow_complete):
-        return LifecycleAnalysis(
-            state=LifecycleState.COMPLETED,
-            directory=current,
-            calculation_kind="BMD Compute",
-            message="BMD Compute and scheduler evidence indicate successful completion.",
-            input_files=input_files,
-            output_files=output_files | log_files,
-            bmd_workflow=workflow,
-            scheduler=scheduler,
-            normal_completion=normal_completion,
-            structure=structure,
-            incar_settings=incar_settings,
-            scientific=scientific,
-            diagnostics=diagnostics,
-            evidence_gaps=tuple(gaps),
+    if scheduler is not None and _is_active_scheduler_state(scheduler.state):
+        return result(
+            LifecycleState.RUNNING,
+            "Active scheduler evidence indicates the calculation is running.",
+        )
+
+    if workflow_status == WORKFLOW_COMPLETED:
+        return result(
+            LifecycleState.COMPLETED,
+            (
+                "Every producer-declared stage has VASP normal-termination evidence "
+                "and positive convergence evidence."
+            ),
+            include_diagnostics=(
+                diagnostics is not None
+                and diagnostics.custodian is not None
+                and bool(diagnostics.custodian.corrections)
+            ),
         )
 
     if scheduler is not None and _is_inactive_unsuccessful_scheduler_state(scheduler):
-        return LifecycleAnalysis(
-            state=LifecycleState.INCOMPLETE,
-            directory=current,
-            calculation_kind="BMD Compute",
-            message="Scheduler evidence indicates execution stopped before successful completion.",
-            input_files=input_files,
-            output_files=output_files | log_files,
-            bmd_workflow=workflow,
-            scheduler=scheduler,
-            normal_completion=normal_completion,
-            structure=structure,
-            incar_settings=incar_settings,
-            scientific=scientific,
-            diagnostics=diagnostics,
-            evidence_gaps=tuple(gaps),
+        return result(
+            LifecycleState.INCOMPLETE,
+            "Scheduler evidence indicates execution stopped before successful completion.",
         )
 
     if scheduler is not None and _scheduler_nonzero_exit(scheduler) and not normal_completion:
-        return LifecycleAnalysis(
-            state=LifecycleState.INCOMPLETE,
-            directory=current,
-            calculation_kind="BMD Compute",
-            message="Scheduler exit status is non-zero and successful VASP completion is absent.",
-            input_files=input_files,
-            output_files=output_files | log_files,
-            bmd_workflow=workflow,
-            scheduler=scheduler,
-            normal_completion=normal_completion,
-            structure=structure,
-            incar_settings=incar_settings,
-            scientific=scientific,
-            evidence_gaps=tuple(gaps),
+        return result(
+            LifecycleState.INCOMPLETE,
+            "Scheduler exit status is non-zero and successful VASP completion is absent.",
         )
 
-    if _has_required_inputs(input_files) and not meaningful_execution:
-        return LifecycleAnalysis(
-            state=LifecycleState.PRE_RUN,
-            directory=current,
-            calculation_kind="BMD Compute",
-            message="Inputs are present and no meaningful execution output was observed.",
-            input_files=input_files,
-            output_files=output_files | log_files,
-            bmd_workflow=workflow,
-            scheduler=scheduler,
-            scheduler_error=scheduler_error,
-            normal_completion=normal_completion,
-            structure=structure,
-            incar_settings=incar_settings,
-            scientific=scientific,
-            evidence_gaps=tuple(gaps),
+    if workflow_status == WORKFLOW_INCOMPLETE:
+        return result(
+            LifecycleState.INCOMPLETE,
+            (
+                "Execution ended, but not every producer-declared stage has "
+                "normal-termination and convergence evidence."
+            ),
+        )
+
+    has_inputs = _has_required_inputs(input_files) or any(
+        evidence.has_required_inputs for evidence in workflow.stage_evidence
+    )
+    if has_inputs and not meaningful_execution:
+        return result(
+            LifecycleState.PRE_RUN,
+            "Inputs are present and no meaningful execution output was observed.",
         )
 
     if meaningful_execution:
+        limitations: list[str] = []
         if workflow.job_id and scheduler is None:
             limitations.append(scheduler_error or "scheduler accounting was unavailable")
         limitations.append(
             "partial execution evidence is present, but no reliable active/inactive execution state was established"
         )
-        return LifecycleAnalysis(
-            state=LifecycleState.UNKNOWN,
-            directory=current,
-            calculation_kind="BMD Compute",
-            message="BMD Compute evidence was found, but lifecycle state is not deterministic.",
-            input_files=input_files,
-            output_files=output_files | log_files,
-            bmd_workflow=workflow,
-            scheduler=scheduler,
-            scheduler_error=scheduler_error,
-            normal_completion=normal_completion,
-            structure=structure,
-            incar_settings=incar_settings,
-            scientific=scientific,
-            diagnostics=diagnostics,
-            evidence_gaps=tuple(gaps),
-            limitations=tuple(limitations),
+        if execution_succeeded:
+            limitations.append(
+                "a successful scheduler exit does not by itself establish convergence or workflow completion"
+            )
+        return result(
+            LifecycleState.UNKNOWN,
+            "BMD Compute evidence was found, but lifecycle state is not deterministic.",
+            limitations=limitations,
         )
 
-    return LifecycleAnalysis(
-        state=LifecycleState.UNKNOWN,
-        directory=current,
-        calculation_kind="BMD Compute",
-        message="BMD Compute provenance was found, but calculation inputs or execution evidence are incomplete.",
-        input_files=input_files,
-        output_files=output_files | log_files,
-        bmd_workflow=workflow,
-        scheduler=scheduler,
-        scheduler_error=scheduler_error,
-        normal_completion=normal_completion,
-        structure=structure,
-        incar_settings=incar_settings,
-        scientific=scientific,
-        diagnostics=diagnostics,
-        evidence_gaps=tuple(gaps),
+    return result(
+        LifecycleState.UNKNOWN,
+        "BMD Compute provenance was found, but calculation inputs or execution evidence are incomplete.",
     )
 
 
@@ -401,79 +360,90 @@ def _analyze_direct_vasp_directory(directory: Path) -> LifecycleAnalysis:
         if meaningful_execution
         else None
     )
+    stage_completion = (
+        _direct_stage_completion(diagnostics, normal_completion=normal_completion)
+        if meaningful_execution
+        else ()
+    )
 
-    if normal_completion:
+    def result(
+        state: LifecycleState,
+        message: str,
+        *,
+        include_diagnostics: bool = True,
+        limitations: Sequence[str] = (),
+        normal: bool = False,
+    ) -> LifecycleAnalysis:
         return LifecycleAnalysis(
-            state=LifecycleState.COMPLETED,
+            state=state,
             directory=directory,
             calculation_kind="direct VASP",
-            message="Durable VASP normal-completion evidence was found.",
+            message=message,
             input_files=input_files,
             output_files=output_files,
-            normal_completion=True,
+            normal_completion=normal,
             structure=structure,
             incar_settings=incar_settings,
             scientific=scientific,
-            diagnostics=(
-                diagnostics
-                if diagnostics is not None
-                and diagnostics.custodian is not None
-                and bool(diagnostics.custodian.corrections)
-                else None
-            ),
+            diagnostics=diagnostics if include_diagnostics else None,
             evidence_gaps=tuple(gaps),
+            limitations=tuple(limitations),
+            stage_completion=stage_completion,
+        )
+
+    if normal_completion:
+        status = workflow_completion_status(stage_completion)
+        if status == WORKFLOW_COMPLETED:
+            return result(
+                LifecycleState.COMPLETED,
+                "VASP normal-termination evidence and positive convergence evidence were found.",
+                include_diagnostics=(
+                    diagnostics is not None
+                    and diagnostics.custodian is not None
+                    and bool(diagnostics.custodian.corrections)
+                ),
+                normal=True,
+            )
+        if status == WORKFLOW_INCOMPLETE:
+            return result(
+                LifecycleState.INCOMPLETE,
+                "VASP terminated normally, but its convergence criteria were not reached.",
+                normal=True,
+            )
+        return result(
+            LifecycleState.UNKNOWN,
+            (
+                "VASP normal-termination evidence was found, but convergence could not "
+                "be established from the available evidence."
+            ),
+            limitations=(
+                "normal VASP termination does not by itself establish electronic or ionic convergence",
+            ),
+            normal=True,
         )
 
     if _has_required_inputs(input_files) and not meaningful_execution:
-        return LifecycleAnalysis(
-            state=LifecycleState.PRE_RUN,
-            directory=directory,
-            calculation_kind="direct VASP",
-            message="Inputs are present and no meaningful execution output was observed.",
-            input_files=input_files,
-            output_files=output_files,
-            normal_completion=False,
-            structure=structure,
-            incar_settings=incar_settings,
-            scientific=scientific,
-            evidence_gaps=tuple(gaps),
+        return result(
+            LifecycleState.PRE_RUN,
+            "Inputs are present and no meaningful execution output was observed.",
         )
 
     if meaningful_execution:
-        return LifecycleAnalysis(
-            state=LifecycleState.UNKNOWN,
-            directory=directory,
-            calculation_kind="direct VASP",
-            message=(
+        return result(
+            LifecycleState.UNKNOWN,
+            (
                 "Partial VASP execution evidence is present, but no scheduler/provenance "
                 "or durable normal-completion evidence establishes whether it is active or stopped."
             ),
-            input_files=input_files,
-            output_files=output_files,
-            normal_completion=False,
-            structure=structure,
-            incar_settings=incar_settings,
-            scientific=scientific,
-            diagnostics=diagnostics,
-            evidence_gaps=tuple(gaps),
             limitations=(
                 "manual VASP directory has no scheduler/provenance evidence for lifecycle status",
             ),
         )
 
     if any(observation.present for observation in input_files.values()):
-        return LifecycleAnalysis(
-            state=LifecycleState.UNKNOWN,
-            directory=directory,
-            calculation_kind="direct VASP",
-            message="Some VASP input evidence is present, but required inputs are incomplete.",
-            input_files=input_files,
-            output_files=output_files,
-            normal_completion=False,
-            structure=structure,
-            incar_settings=incar_settings,
-            scientific=scientific,
-            evidence_gaps=tuple(gaps),
+        return result(
+            LifecycleState.UNKNOWN,
+            "Some VASP input evidence is present, but required inputs are incomplete.",
         )
 
     return LifecycleAnalysis(
@@ -485,6 +455,60 @@ def _analyze_direct_vasp_directory(directory: Path) -> LifecycleAnalysis:
         output_files=output_files,
         evidence_gaps=("no recognizable BMD Compute or VASP calculation evidence was found",),
     )
+
+
+def _bmd_stage_completion(
+    workflow: BmdWorkflowDiscovery,
+    diagnostics: LocalExecutionDiagnostics | None,
+) -> tuple[StageCompletion, ...]:
+    """Build completion evidence for every producer-declared stage."""
+
+    evidence_by_index = {
+        item.stage_index: item for item in workflow.stage_evidence if item.stage_index is not None
+    }
+    trajectories = {
+        item.stage_index: item
+        for item in (diagnostics.trajectories if diagnostics is not None else ())
+        if item.stage_index is not None
+    }
+    completion: list[StageCompletion] = []
+    for index, payload in enumerate(workflow.workflow_stages, start=1):
+        stage = _workflow_stage_from_mapping(index, payload)
+        evidence = evidence_by_index.get(index)
+        started = bool(evidence is not None and evidence.has_meaningful_execution)
+        trajectory = trajectories.get(index) if started else None
+        completion.append(
+            StageCompletion(
+                index=index,
+                label=_stage_display_label(stage),
+                started=started,
+                terminated_normally=bool(evidence.normal_completion) if evidence is not None else False,
+                convergence=stage_convergence(trajectory),
+            )
+        )
+    return tuple(completion)
+
+
+def _direct_stage_completion(
+    diagnostics: LocalExecutionDiagnostics | None,
+    *,
+    normal_completion: bool,
+) -> tuple[StageCompletion, ...]:
+    trajectory = diagnostics.trajectories[0] if diagnostics and diagnostics.trajectories else None
+    return (
+        StageCompletion(
+            index=1,
+            label="direct VASP",
+            started=True,
+            terminated_normally=normal_completion,
+            convergence=stage_convergence(trajectory),
+        ),
+    )
+
+
+def _stage_display_label(stage: WorkflowStage) -> str:
+    theory = str(stage.theory).upper() if stage.theory else "unknown theory"
+    return f"{theory} {stage.stage_type or 'calculation'}"
 
 
 def _discover_bmd_workflow(
@@ -666,18 +690,6 @@ def _stage_evidence(bindings: Sequence[LocalStageBinding]) -> tuple[LocalStageEv
             )
         )
     return tuple(evidence)
-
-
-def _all_required_stages_complete(workflow: BmdWorkflowDiscovery) -> bool:
-    if not workflow.workflow_stages:
-        return False
-    required = set(range(1, len(workflow.workflow_stages) + 1))
-    completed = {
-        evidence.stage_index
-        for evidence in workflow.stage_evidence
-        if evidence.stage_index is not None and evidence.normal_completion
-    }
-    return required.issubset(completed)
 
 
 def _derive_bmd_execution_diagnostics(
@@ -1494,15 +1506,6 @@ def _scheduler_nonzero_exit(scheduler: SlurmAccountingRecord | None) -> bool:
     if scheduler is None:
         return False
     return bool(scheduler.exit_code and scheduler.exit_code != "0:0")
-
-
-def _producer_success(payload: Mapping[str, Any] | None) -> bool:
-    if payload is None:
-        return False
-    status = str(payload.get("status") or payload.get("state") or "").lower()
-    if status in {"success", "succeeded", "completed", "complete"}:
-        return True
-    return any(isinstance(payload.get(key), Mapping) for key in ("result", "results", "results_summary", "completed_result"))
 
 
 def _find_job_id(

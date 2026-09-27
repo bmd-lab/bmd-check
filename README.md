@@ -111,6 +111,21 @@ bmd-agent 21853598
 bmd-agent ./copied-calculation
 ```
 
+The reported status is an evidence claim about the whole calculation:
+
+- `COMPLETED`: every declared workflow stage has positive convergence evidence
+  (electronic, plus ionic for relaxations) and VASP normal termination or a
+  successful scheduler exit. SLURM `COMPLETED 0:0` alone is never enough.
+- `INCOMPLETE`: execution ended, but a required stage is missing, did not
+  terminate normally, or did not meet its convergence criteria.
+- `FAILED`: the scheduler reports an unsuccessful state or a nonzero exit.
+- `UNKNOWN`: the available evidence cannot establish completion. Missing
+  evidence, or the absence of reported errors, is not treated as convergence.
+- `PENDING`, `RUNNING`, and `PRE_RUN` describe queue and execution state.
+
+The same workflow-level status is reported whether Agent is run from the
+workflow root or from any stage directory.
+
 Use `--verbose` for detailed evidence, provenance, parser limitations, and
 scheduler accounting. On job inspection, use `--profile` for
 developer-oriented acquisition and performance telemetry. Additional

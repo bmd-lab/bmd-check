@@ -1,11 +1,21 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+import os
 import re
 import textwrap
 from typing import Any, Iterable, Mapping, Sequence
 
 from bmd_agent.resources.bmdex import BmdexDomainContextEnrichment
+from bmd_agent.resources.completion import (
+    STAGE_CONVERGED,
+    STAGE_NOT_CONVERGED,
+    WORKFLOW_INCOMPLETE,
+    StageCompletion,
+    completion_gap_lines,
+    stage_convergence,
+    workflow_completion_status,
+)
 from bmd_agent.resources.custodian import (
     CustodianInterventionEvidence,
     TerminationEvidenceAssessment,
@@ -86,8 +96,26 @@ def build_job_concise_summary(
     elif status == "COMPLETED":
         sections.extend(_completed_sections(_job_scientific(inspection)))
         sections.append(
-            ConciseSection("Execution", ("No execution problems were detected.",))
+            ConciseSection(
+                "Completion evidence",
+                _job_completion_evidence_lines(inspection),
+            )
         )
+    elif _job_scheduler_success(inspection) or _job_scheduler_exit_code_missing(inspection):
+        unsuccessful = _completion_gap_sections(
+            _job_stage_completion(inspection),
+            status=status,
+            execution_succeeded=_job_scheduler_success(inspection),
+            preface=(
+                ()
+                if _job_scheduler_success(inspection)
+                else (
+                    "SLURM recorded the job as COMPLETED, but no exit code was available, "
+                    "so successful execution is not established.",
+                )
+            ),
+        )
+        sections.extend(section for section in unsuccessful if section.title != "Assessment")
     else:
         unsuccessful = _unsuccessful_job_sections(inspection, contextual_enrichment)
         sections.extend(section for section in unsuccessful if section.title != "Assessment")
@@ -164,7 +192,10 @@ def build_lifecycle_concise_summary(
     elif status == "COMPLETED":
         sections.extend(_completed_sections(analysis.scientific))
         sections.append(
-            ConciseSection("Execution", ("No execution problems were detected.",))
+            ConciseSection(
+                "Completion evidence",
+                _lifecycle_completion_evidence_lines(analysis),
+            )
         )
     elif status == "PRE_RUN":
         sections.append(
@@ -291,7 +322,13 @@ def _unsuccessful_lifecycle_sections(
         if diagnostics is not None and diagnostics.custodian is not None
         else ()
     )
-    lines = _lifecycle_termination_lines(analysis, termination, custodian)
+    gap_lines = ()
+    if _lifecycle_status(analysis) != "FAILED" and analysis.stage_completion:
+        gap_lines = completion_gap_lines(
+            _lifecycle_display_stage_completion(analysis),
+            execution_succeeded=_lifecycle_scheduler_success(analysis),
+        )
+    lines = gap_lines or _lifecycle_termination_lines(analysis, termination, custodian)
     sections = [ConciseSection("What happened", lines)]
 
     context_lines = _context_lines(enrichment)
@@ -302,7 +339,11 @@ def _unsuccessful_lifecycle_sections(
     if memory_lines:
         sections.append(ConciseSection("Memory", memory_lines))
 
-    assessment = _assessment_lines(termination)
+    assessment = (
+        _completion_assessment_lines(analysis.state.value)
+        if gap_lines
+        else _assessment_lines(termination)
+    )
     assessment = tuple(
         _ordered_unique(
             (
@@ -577,8 +618,8 @@ def _progress_lines(
             lines.append(f"An incomplete electronic cycle contains {count} observed {noun}.")
 
     electronic = trajectory.converged_electronic
-    if electronic is None and scientific is not None:
-        electronic = scientific.electronic_convergence
+    if electronic is None:
+        electronic = _same_directory_electronic_convergence(trajectory, scientific)
     if electronic is True:
         lines.append("Electronic convergence was reached.")
     elif electronic is False:
@@ -616,7 +657,7 @@ def _job_stage_summaries(
     summaries: list[ConciseStageSummary] = []
     for stage in diagnosis.inspection.workflow_stages:
         trajectory = trajectories.get(stage.index)
-        status = _stage_status(stage, trajectory)
+        status = _stage_status(trajectory)
         if trajectory is focus and status != "COMPLETED" and job_status in {"FAILED", "RUNNING"}:
             status = job_status
         summaries.append(ConciseStageSummary(stage.index, _stage_label(stage), status))
@@ -630,16 +671,16 @@ def _lifecycle_stage_summaries(
     if workflow is None or len(workflow.workflow_stages) < 2:
         return ()
     evidence_by_index = {item.stage_index: item for item in workflow.stage_evidence}
+    completion_by_index = {item.index: item for item in analysis.stage_completion}
     summaries: list[ConciseStageSummary] = []
     for index, raw in enumerate(workflow.workflow_stages, start=1):
         stage_index = _int_value(raw.get("index")) or index
         evidence = evidence_by_index.get(stage_index)
+        completion = completion_by_index.get(index)
         if evidence is None:
             status = "UNKNOWN"
-        elif evidence.normal_completion:
-            status = "COMPLETED"
         elif evidence.has_meaningful_execution:
-            status = "INCOMPLETE"
+            status = _local_stage_status(completion, running=analysis.state == LifecycleState.RUNNING)
         elif evidence.has_required_inputs:
             status = "NOT STARTED"
         else:
@@ -660,15 +701,33 @@ def _relocation_section(analysis: LifecycleAnalysis) -> ConciseSection | None:
     return ConciseSection("Location", tuple(lines))
 
 
-def _stage_status(
-    stage: WorkflowStage,
-    trajectory: StageTrajectoryObservation | None,
-) -> str:
+def _stage_status(trajectory: StageTrajectoryObservation | None) -> str:
+    """Stage status from positive/negative convergence evidence, never from absence of errors."""
+
     if trajectory is None or not _trajectory_has_observations(trajectory):
         return "NOT STARTED"
-    if _is_relaxation_stage(stage.stage_type):
-        return "COMPLETED" if trajectory.converged_ionic is True else "INCOMPLETE"
-    return "COMPLETED" if trajectory.converged_electronic is True else "INCOMPLETE"
+    convergence = stage_convergence(trajectory).status
+    if convergence == STAGE_CONVERGED:
+        return "COMPLETED"
+    if convergence == STAGE_NOT_CONVERGED:
+        return "INCOMPLETE"
+    return "UNKNOWN"
+
+
+def _local_stage_status(completion: StageCompletion | None, *, running: bool) -> str:
+    if completion is None:
+        return "UNKNOWN"
+    if completion.complete and completion.terminated_normally is True:
+        return "COMPLETED"
+    if completion.convergence.status == STAGE_NOT_CONVERGED and (
+        completion.terminated_normally is True or not running
+    ):
+        return "INCOMPLETE"
+    if running:
+        return "RUNNING"
+    if completion.terminated_normally is False:
+        return "INCOMPLETE"
+    return "UNKNOWN"
 
 
 def _job_calculation_label(inspection: JobInspection) -> str:
@@ -733,13 +792,197 @@ def _job_status(inspection: JobInspection) -> str:
         return "PENDING"
     if state in {"RUNNING", "COMPLETING", "RESIZING", "SUSPENDED", "STAGE_OUT"}:
         return "RUNNING"
-    if state == "COMPLETED" and (
-        inspection.scheduler is None or inspection.scheduler.exit_code in {None, "0:0"}
-    ):
-        return "COMPLETED"
+    if _job_scheduler_success(inspection):
+        # A successful process exit is necessary but not sufficient: every
+        # declared stage must also carry positive convergence evidence.
+        return workflow_completion_status(
+            _job_stage_completion(inspection),
+            execution_succeeded=True,
+        )
+    if _job_scheduler_exit_code_missing(inspection):
+        # COMPLETED without an exit code is missing evidence: neither
+        # successful execution nor failure is established.
+        return "UNKNOWN"
     if state:
         return "FAILED"
     return "UNKNOWN"
+
+
+def _job_scheduler_success(inspection: JobInspection) -> bool:
+    """Successful scheduler execution requires SLURM COMPLETED with exit code 0:0."""
+
+    return (
+        _scheduler_state(inspection) == "COMPLETED"
+        and inspection.scheduler is not None
+        and inspection.scheduler.exit_code == "0:0"
+    )
+
+
+def _job_scheduler_exit_code_missing(inspection: JobInspection) -> bool:
+    return (
+        _scheduler_state(inspection) == "COMPLETED"
+        and inspection.scheduler is not None
+        and not inspection.scheduler.exit_code
+    )
+
+
+def _job_stage_completion(inspection: JobInspection) -> tuple[StageCompletion, ...]:
+    """Build stage completion evidence from already acquired job trajectories.
+
+    Remote job inspection does not acquire the OUTCAR normal-termination marker,
+    so ``terminated_normally`` is unavailable (None) rather than assumed.
+    """
+
+    scientific = _job_scientific(inspection)
+    if inspection.bmd_compute is not None:
+        trajectories = {item.stage_index: item for item in inspection.bmd_compute.trajectories}
+        stages = []
+        for stage in inspection.bmd_compute.inspection.workflow_stages:
+            trajectory = trajectories.get(stage.index)
+            started = trajectory is not None and _trajectory_has_observations(trajectory)
+            stages.append(
+                StageCompletion(
+                    index=stage.index,
+                    label=_stage_label(stage),
+                    started=started,
+                    terminated_normally=None,
+                    convergence=stage_convergence(
+                        trajectory if started else None,
+                        electronic_fallback=_same_directory_electronic_convergence(
+                            trajectory,
+                            scientific,
+                        ),
+                    ),
+                )
+            )
+        return tuple(stages)
+    if inspection.direct_vasp is not None:
+        trajectory = inspection.direct_vasp.trajectory
+        started = _trajectory_has_observations(trajectory)
+        return (
+            StageCompletion(
+                index=1,
+                label="Direct VASP calculation",
+                started=started,
+                terminated_normally=None,
+                convergence=stage_convergence(
+                    trajectory if started else None,
+                    electronic_fallback=_same_directory_electronic_convergence(
+                        trajectory,
+                        scientific,
+                    ),
+                ),
+            ),
+        )
+    return ()
+
+
+def _same_directory_electronic_convergence(
+    trajectory: StageTrajectoryObservation | None,
+    scientific: ScientificResult | None,
+) -> bool | None:
+    """Return the final-result vasprun convergence flag only for its own stage directory."""
+
+    if trajectory is None or scientific is None or scientific.electronic_convergence is None:
+        return None
+    directory = os.path.normpath(trajectory.directory)
+    for path in scientific.source_paths:
+        text = str(path)
+        if (
+            os.path.basename(text) == "vasprun.xml"
+            and os.path.normpath(os.path.dirname(text)) == directory
+        ):
+            return scientific.electronic_convergence
+    return None
+
+
+def _job_completion_evidence_lines(inspection: JobInspection) -> tuple[str, ...]:
+    stages = _job_stage_completion(inspection)
+    lines = ["SLURM recorded a successful exit."]
+    lines.append(
+        "Convergence criteria were met in every workflow stage."
+        if len(stages) > 1
+        else "Convergence criteria were met."
+    )
+    if any(evidence.corrections for evidence in _job_custodian_evidence(inspection)):
+        lines.append("Automatic Custodian corrections were applied during the run.")
+    return tuple(lines)
+
+
+def _lifecycle_completion_evidence_lines(analysis: LifecycleAnalysis) -> tuple[str, ...]:
+    multi = len(analysis.stage_completion) > 1
+    lines = [
+        "VASP recorded normal termination in every workflow stage."
+        if multi
+        else "VASP recorded normal termination.",
+        "Convergence criteria were met in every workflow stage."
+        if multi
+        else "Convergence criteria were met.",
+    ]
+    diagnostics = analysis.diagnostics
+    if diagnostics is not None and diagnostics.custodian is not None and diagnostics.custodian.corrections:
+        lines.append("Automatic Custodian corrections were applied during the run.")
+    return tuple(lines)
+
+
+def _completion_gap_sections(
+    stages: Sequence[StageCompletion],
+    *,
+    status: str,
+    execution_succeeded: bool,
+    preface: Sequence[str] = (),
+) -> list[ConciseSection]:
+    lines = (*preface, *completion_gap_lines(stages, execution_succeeded=execution_succeeded))
+    if not stages:
+        lines = (*lines, "No calculation evidence was available to establish completion.")
+    return [
+        ConciseSection("What happened", tuple(lines)),
+        ConciseSection("Assessment", _completion_assessment_lines(status)),
+    ]
+
+
+def _completion_assessment_lines(status: str) -> tuple[str, ...]:
+    if status == WORKFLOW_INCOMPLETE:
+        return (
+            "The available evidence shows the calculation did not reach completion in every required stage.",
+        )
+    return (
+        "Agent could not establish from the available evidence whether the calculation completed.",
+    )
+
+
+def _lifecycle_display_stage_completion(
+    analysis: LifecycleAnalysis,
+) -> tuple[StageCompletion, ...]:
+    workflow = analysis.bmd_workflow
+    if workflow is None:
+        return analysis.stage_completion
+    labels = {
+        index: _mapping_stage_label(raw)
+        for index, raw in enumerate(workflow.workflow_stages, start=1)
+    }
+    return tuple(
+        replace(item, label=labels.get(item.index, item.label))
+        for item in analysis.stage_completion
+    )
+
+
+def _lifecycle_scheduler_success(analysis: LifecycleAnalysis) -> bool:
+    scheduler = analysis.scheduler
+    if scheduler is None:
+        return False
+    state = str(scheduler.state or "").upper().split()
+    return bool(state) and state[0] == "COMPLETED" and scheduler.exit_code == "0:0"
+
+
+def _lifecycle_failure_evidence(analysis: LifecycleAnalysis) -> bool:
+    scheduler = analysis.scheduler
+    if scheduler is None:
+        return False
+    state = str(scheduler.state or "").upper().split()
+    if state and state[0] not in {"COMPLETED"}:
+        return True
+    return bool(scheduler.exit_code and scheduler.exit_code != "0:0")
 
 
 def _lifecycle_status(analysis: LifecycleAnalysis) -> str:
@@ -748,7 +991,7 @@ def _lifecycle_status(analysis: LifecycleAnalysis) -> str:
         return "PENDING"
     if scheduler_state in {"RUNNING", "COMPLETING", "RESIZING", "SUSPENDED", "STAGE_OUT"}:
         return "RUNNING"
-    if analysis.state == LifecycleState.INCOMPLETE:
+    if analysis.state == LifecycleState.INCOMPLETE and _lifecycle_failure_evidence(analysis):
         return "FAILED"
     return analysis.state.value
 
