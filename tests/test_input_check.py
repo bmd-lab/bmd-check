@@ -10,14 +10,15 @@ from bmd_agent import cli
 from bmd_agent.config import GitRepositoryResource, ResourceRegistry, SlurmClusterResource
 from bmd_agent.resources import input_check as input_check_module
 from bmd_agent.resources.input_check import (
-    COMPLIANT,
-    DIFFERS_FROM_BMD_REFERENCE,
+    DIFFERS_FROM_REFERENCE,
+    DIFFERS_FROM_THIS_REFERENCE,
     INSUFFICIENT_INFORMATION,
     MATCH,
+    MATCHES_THIS_REFERENCE,
+    NO_REFERENCE_FOR_THIS_REQUEST,
+    REFERENCE_CONTEXT_LIMITATION,
     REFERENCE_MISSING_FROM_SUPPLIED,
-    SUPPORTED_BUT_NONSTANDARD,
     SUPPLIED_EXTRA,
-    UNSUPPORTED,
     InputCheckObservation,
     InputReferenceObservation,
     KpointsComparison,
@@ -178,7 +179,7 @@ def producer_payload(
             },
         },
         "contract": {"reference": "generated through BMD Compute"},
-        "request": {},
+        "request": {"potcar_functional": "PBE_64"} if status == "ok" else {},
         "workflow": {
             "label": "PBE Geometry Optimisation",
             "stage_count": 1,
@@ -257,9 +258,6 @@ def run_check(
         REMOTE_DIR,
         stage="relax",
         theory="pbe",
-        nodes=1,
-        ntasks=24,
-        mem_gb=128,
         remote_runner=remote_runner_for(files or remote_files(), remote_calls),
         producer_runner=producer_runner_for(
             producer_payload() if payload is None else payload,
@@ -277,7 +275,7 @@ def test_input_reference_invokes_fixed_producer_with_stdin_and_check_false(
 
     response = generate_input_reference(
         repo,
-        build_input_reference_request(POSCAR, stage="relax", theory="pbe", resources={"nodes": 1, "ntasks": 24, "mem_gb": 128}),
+        build_input_reference_request(POSCAR, stage="relax", theory="pbe"),
         runner=producer_runner_for(producer_payload(), calls),
     )
 
@@ -289,7 +287,8 @@ def test_input_reference_invokes_fixed_producer_with_stdin_and_check_false(
     assert kwargs["text"] is True
     assert kwargs["check"] is False
     request = json.loads(str(kwargs["input"]))
-    assert request["resources"] == {"nodes": 1, "ntasks": 24, "mem_gb": 128}
+    assert "resources" not in request
+    assert "potcar_functional" not in request
     assert request["workflow_spec"]["stages"][0] == {
         "stage_type": "relax",
         "theory": "pbe",
@@ -299,7 +298,7 @@ def test_input_reference_invokes_fixed_producer_with_stdin_and_check_false(
     }
 
 
-def test_exact_generated_reference_match_is_compliant(tmp_path: Path) -> None:
+def test_exact_generated_reference_match_matches_this_reference(tmp_path: Path) -> None:
     remote_calls: list[list[str]] = []
     producer_calls: list[tuple[list[str], dict[str, object]]] = []
 
@@ -309,7 +308,8 @@ def test_exact_generated_reference_match_is_compliant(tmp_path: Path) -> None:
         producer_calls=producer_calls,
     )
 
-    assert observation.overall_status == COMPLIANT
+    assert observation.overall_status == MATCHES_THIS_REFERENCE
+    assert observation.limitations == (REFERENCE_CONTEXT_LIMITATION,)
     assert observation.matching_incar_settings == len(REFERENCE_SETTINGS)
     assert all(item.status == MATCH for item in observation.incar_comparisons)
     assert observation.kpoints_comparison is not None
@@ -322,17 +322,17 @@ def test_exact_generated_reference_match_is_compliant(tmp_path: Path) -> None:
     assert len(producer_calls) == 1
 
 
-def test_changed_incar_value_is_supported_but_nonstandard(tmp_path: Path) -> None:
+def test_changed_incar_value_differs_from_this_reference(tmp_path: Path) -> None:
     files = remote_files(incar=SUPPLIED_INCAR.replace("EDIFFG = -0.01", "EDIFFG = -0.02"))
 
     observation = run_check(tmp_path, files=files)
 
-    assert observation.overall_status == SUPPORTED_BUT_NONSTANDARD
+    assert observation.overall_status == DIFFERS_FROM_THIS_REFERENCE
     [difference] = [
         item for item in observation.incar_comparisons
         if item.setting == "EDIFFG"
     ]
-    assert difference.status == DIFFERS_FROM_BMD_REFERENCE
+    assert difference.status == DIFFERS_FROM_REFERENCE
     assert difference.supplied_value == -0.02
     assert difference.reference_value == -0.01
 
@@ -350,22 +350,22 @@ def test_typed_equivalent_incar_representations_match() -> None:
     }
 
 
-def test_supplied_extra_setting_prevents_strong_compliant_claim(tmp_path: Path) -> None:
+def test_supplied_extra_setting_is_reported_as_a_difference(tmp_path: Path) -> None:
     files = remote_files(incar=SUPPLIED_INCAR + "LORBIT = 11\n")
 
     observation = run_check(tmp_path, files=files)
 
-    assert observation.overall_status == SUPPORTED_BUT_NONSTANDARD
+    assert observation.overall_status == DIFFERS_FROM_THIS_REFERENCE
     extras = [item for item in observation.incar_comparisons if item.status == SUPPLIED_EXTRA]
     assert [item.setting for item in extras] == ["LORBIT"]
 
 
-def test_omitted_reference_setting_prevents_strong_compliant_claim(tmp_path: Path) -> None:
+def test_omitted_reference_setting_is_reported_as_a_difference(tmp_path: Path) -> None:
     files = remote_files(incar=SUPPLIED_INCAR.replace("MAGMOM = 2*0.6\n", ""))
 
     observation = run_check(tmp_path, files=files)
 
-    assert observation.overall_status == SUPPORTED_BUT_NONSTANDARD
+    assert observation.overall_status == DIFFERS_FROM_THIS_REFERENCE
     missing = [
         item for item in observation.incar_comparisons
         if item.status == REFERENCE_MISSING_FROM_SUPPLIED
@@ -373,14 +373,14 @@ def test_omitted_reference_setting_prevents_strong_compliant_claim(tmp_path: Pat
     assert [item.setting for item in missing] == ["MAGMOM"]
 
 
-def test_differing_structured_kpoints_is_nonstandard(tmp_path: Path) -> None:
+def test_differing_structured_kpoints_differs_from_this_reference(tmp_path: Path) -> None:
     files = remote_files(kpoints=KPOINTS.replace("7 7 7", "6 6 6"))
 
     observation = run_check(tmp_path, files=files)
 
-    assert observation.overall_status == SUPPORTED_BUT_NONSTANDARD
+    assert observation.overall_status == DIFFERS_FROM_THIS_REFERENCE
     assert observation.kpoints_comparison is not None
-    assert observation.kpoints_comparison.status == DIFFERS_FROM_BMD_REFERENCE
+    assert observation.kpoints_comparison.status == DIFFERS_FROM_REFERENCE
     assert observation.kpoints_comparison.supplied_summary == "Gamma 6x6x6"
     assert observation.kpoints_comparison.reference_summary == "Gamma 7x7x7"
 
@@ -451,12 +451,15 @@ def test_malformed_kpoints_is_insufficient_without_calling_producer(
     assert producer_calls == []
 
 
-def test_unsupported_workflow_from_producer_is_preserved(tmp_path: Path) -> None:
+def test_producer_refusal_is_no_reference_with_computes_reason(tmp_path: Path) -> None:
     observation = run_check(tmp_path, payload=producer_payload(status="unsupported"))
 
-    assert observation.overall_status == UNSUPPORTED
+    assert observation.overall_status == NO_REFERENCE_FOR_THIS_REQUEST
     assert observation.reference.status == "unsupported"
     assert observation.reference.error_code == "unsupported_combination"
+    assert observation.limitations[0] == (
+        "BMD Compute did not generate a reference: producer reported a structured problem"
+    )
 
 
 def test_structured_producer_error_despite_nonzero_exit_is_insufficient(
@@ -506,9 +509,6 @@ def test_producer_timeout_is_insufficient(tmp_path: Path) -> None:
         REMOTE_DIR,
         stage="relax",
         theory="pbe",
-        nodes=1,
-        ntasks=24,
-        mem_gb=128,
         remote_runner=remote_runner_for(remote_files()),
         producer_runner=timeout_runner,
     )
@@ -527,9 +527,6 @@ def test_outside_allowed_remote_root_is_rejected_before_reads(tmp_path: Path) ->
             "/outside/run",
             stage="relax",
             theory="pbe",
-            nodes=1,
-            ntasks=24,
-            mem_gb=128,
             remote_runner=remote_runner_for(remote_files(), remote_calls),
             producer_runner=producer_runner_for(producer_payload()),
         )
@@ -543,11 +540,11 @@ def test_cli_check_input_summary(
 ) -> None:
     registry = ResourceRegistry(repositories={}, clusters={})
     observation = InputCheckObservation(
-        overall_status=SUPPORTED_BUT_NONSTANDARD,
+        overall_status=DIFFERS_FROM_THIS_REFERENCE,
         remote_directory=REMOTE_DIR,
         stage_type="relax",
         theory="pbe",
-        resources={"nodes": 1, "ntasks": 24, "mem_gb": 128},
+        modifiers=(),
         proposed=ProposedInputObservation(
             directory=REMOTE_DIR,
             files={},
@@ -569,7 +566,7 @@ def test_cli_check_input_summary(
                 "EDIFFG",
                 -0.02,
                 -0.01,
-                DIFFERS_FROM_BMD_REFERENCE,
+                DIFFERS_FROM_REFERENCE,
             ),
         ),
         kpoints_comparison=KpointsComparison(
@@ -592,12 +589,6 @@ def test_cli_check_input_summary(
             "relax",
             "--theory",
             "pbe",
-            "--nodes",
-            "1",
-            "--ntasks",
-            "24",
-            "--mem-gb",
-            "128",
         ]
     )
 
@@ -608,18 +599,30 @@ def test_cli_check_input_summary(
     assert "commit:         0396e5eabcd" in captured.out
     assert "1 settings match" in captured.out
     assert "EDIFFG" in captured.out
-    assert "SUPPORTED BUT NONSTANDARD" in captured.out
+    assert "DIFFERS FROM THIS REFERENCE" in captured.out
     assert "not by itself evidence" in captured.out
 
 
-def test_cli_check_input_requires_explicit_resources(
+def test_cli_check_input_requires_stage_and_theory(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    exit_code = cli.main(["check-input", REMOTE_DIR, "--stage", "relax", "--theory", "pbe"])
+    exit_code = cli.main(["check-input", REMOTE_DIR, "--stage", "relax"])
 
     captured = capsys.readouterr()
     assert exit_code == 2
-    assert "missing required option" in captured.out
+    assert "missing required option(s): --theory" in captured.out
+
+
+@pytest.mark.parametrize("option", ["--nodes", "--ntasks", "--mem-gb"])
+def test_cli_check_input_rejects_resource_options_that_do_not_affect_the_reference(
+    option: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    exit_code = cli.main(["check-input", REMOTE_DIR, "--stage", "relax", "--theory", "pbe", option, "24"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "do not affect the generated BMD Compute reference" in captured.out
 
 
 def test_raw_traceback_from_failed_producer_is_not_exposed(tmp_path: Path) -> None:
@@ -636,7 +639,7 @@ def test_raw_traceback_from_failed_producer_is_not_exposed(tmp_path: Path) -> No
     with pytest.raises(InputReferenceError) as exc_info:
         generate_input_reference(
             repo,
-            build_input_reference_request(POSCAR, stage="relax", theory="pbe", resources={"nodes": 1, "ntasks": 24, "mem_gb": 128}),
+            build_input_reference_request(POSCAR, stage="relax", theory="pbe"),
             runner=failing_runner,
         )
 

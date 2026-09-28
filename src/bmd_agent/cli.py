@@ -634,9 +634,7 @@ def show_check_input(args: list[str], registry: ResourceRegistry | None = None) 
             parsed["directory"],
             stage=parsed["stage"],
             theory=parsed["theory"],
-            nodes=parsed["nodes"],
-            ntasks=parsed["ntasks"],
-            mem_gb=parsed["mem_gb"],
+            modifiers=parsed["modifiers"],
         )
 
     except RemotePathError as exc:
@@ -659,8 +657,9 @@ def print_input_check(observation: InputCheckObservation) -> None:
     print("====================")
     print()
 
-    print("Proposed calculation:")
+    print("Requested reference calculation:")
     print(f"  {_display_theory(observation.theory)} {_display_stage(observation.stage_type)}")
+    print(f"  modifiers: {', '.join(observation.modifiers) if observation.modifiers else 'none'}")
     print()
 
     print("Input directory:")
@@ -675,9 +674,11 @@ def print_input_check(observation: InputCheckObservation) -> None:
         _print_optional_value("sites", observation.proposed.site_count)
     print()
 
-    print("Reference resources:")
-    _print_mapping_values(dict(observation.resources), ("nodes", "ntasks", "mem_gb"))
-    print()
+    if observation.reference_description:
+        print("Generated reference:")
+        for line in observation.reference_description:
+            print(f"  {line}")
+        print()
 
     print("BMD Compute reference:")
     print(f"  producer:       {observation.reference.producer_repository or 'unavailable'}")
@@ -685,6 +686,7 @@ def print_input_check(observation: InputCheckObservation) -> None:
     print(f"  state:          {_display_dirty_state(observation.reference.producer_dirty)}")
     print(f"  schema_version: {_display_value(observation.reference.schema_version)}")
     print(f"  phase:          {_display_value(observation.reference.reference_phase)}")
+    print(f"  POTCAR:         {_display_value(observation.reference.potcar_functional)}")
     if observation.reference.workflow_label:
         print(f"  workflow:       {observation.reference.workflow_label}")
     if observation.reference.error_code or observation.reference.error_message:
@@ -693,6 +695,8 @@ def print_input_check(observation: InputCheckObservation) -> None:
             print(f"    code: {observation.reference.error_code}")
         if observation.reference.error_message:
             print(f"    message: {observation.reference.error_message}")
+        if observation.reference.error_suggestion:
+            print(f"    suggestion: {observation.reference.error_suggestion}")
     print()
 
     print("INCAR:")
@@ -723,17 +727,17 @@ def print_input_check(observation: InputCheckObservation) -> None:
             print(f"  reason:    {comparison.reason}")
     print()
 
-    print("Overall:")
+    print("Comparison with this reference:")
     print(f"  {observation.overall_status}")
     if observation.limitations:
         for limitation in observation.limitations:
-            print(f"  reason: {limitation}")
+            print(f"  note: {limitation}")
     print()
 
     print("Note:")
     print(
-        "  This compares the supplied input with the current BMD Compute "
-        "generated reference."
+        "  This compares the supplied input with the BMD Compute reference "
+        "generated for this request."
     )
     print(
         "  A difference is not by itself evidence that the supplied setting "
@@ -1862,27 +1866,26 @@ def _parse_check_input_args(args: list[str]) -> tuple[dict[str, Any] | None, str
     if len(remaining) % 2 != 0:
         return None, "options must be provided as --name value pairs"
 
-    option_names = {"--stage", "--theory", "--nodes", "--ntasks", "--mem-gb"}
+    option_names = {"--stage", "--theory", "--modifiers"}
+    retired_resource_options = {"--nodes", "--ntasks", "--mem-gb"}
     values: dict[str, str] = {}
     for index in range(0, len(remaining), 2):
         name = remaining[index]
         value = remaining[index + 1]
+        if name in retired_resource_options:
+            return None, (
+                f"{name} is no longer accepted: execution resources do not affect "
+                "the generated BMD Compute reference"
+            )
         if name not in option_names:
             return None, f"unknown option {name}"
         if name in values:
             return None, f"duplicate option {name}"
         values[name] = value
 
-    missing = [name for name in option_names if name not in values]
+    missing = [name for name in ("--stage", "--theory") if name not in values]
     if missing:
         return None, "missing required option(s): " + ", ".join(sorted(missing))
-
-    try:
-        nodes = _positive_cli_int(values["--nodes"], "--nodes")
-        ntasks = _positive_cli_int(values["--ntasks"], "--ntasks")
-        mem_gb = _positive_cli_int(values["--mem-gb"], "--mem-gb")
-    except ValueError as exc:
-        return None, str(exc)
 
     stage = values["--stage"].strip()
     theory = values["--theory"].strip()
@@ -1891,30 +1894,25 @@ def _parse_check_input_args(args: list[str]) -> tuple[dict[str, Any] | None, str
     if not theory:
         return None, "--theory must not be empty"
 
+    modifiers: tuple[str, ...] = ()
+    if "--modifiers" in values:
+        # Forwarded to BMD Compute as written; Compute validates them.
+        modifiers = tuple(item.strip() for item in values["--modifiers"].split(","))
+        if not modifiers or any(not item for item in modifiers):
+            return None, "--modifiers must be a comma-separated list of modifier names"
+
     return {
         "directory": directory,
         "stage": stage,
         "theory": theory,
-        "nodes": nodes,
-        "ntasks": ntasks,
-        "mem_gb": mem_gb,
+        "modifiers": modifiers,
     }, None
-
-
-def _positive_cli_int(value: str, label: str) -> int:
-    try:
-        parsed = int(value)
-    except ValueError as exc:
-        raise ValueError(f"{label} must be a positive integer") from exc
-    if parsed <= 0:
-        raise ValueError(f"{label} must be a positive integer")
-    return parsed
 
 
 def _check_input_usage() -> str:
     return (
         "bmd-agent check-input <remote-directory> --stage <stage> "
-        "--theory <theory> --nodes <n> --ntasks <n> --mem-gb <n>"
+        "--theory <theory> [--modifiers <name>[,<name>...]]"
     )
 
 
