@@ -219,3 +219,92 @@ def test_cli_summary_uses_declared_capabilities_only(
     assert "HSE06  Band Structure" in captured.out
     assert "PBE    DOS" in captured.out
     assert "HSE06  DOS" not in captured.out
+
+
+LEGACY_COMPUTE_SCOPE = "BMD Compute executable implementation, not a methodology authority"
+CURRENT_COMPUTE_SCOPE = (
+    "BMD Compute executable calculation methodology: the stages, theories, "
+    "settings and treatments this BMD Compute checkout implements and can execute"
+)
+
+
+@pytest.mark.parametrize(
+    "scope",
+    (LEGACY_COMPUTE_SCOPE, CURRENT_COMPUTE_SCOPE, "Any reworded human description"),
+)
+def test_scope_prose_is_not_a_compatibility_contract(scope: str) -> None:
+    payload = schema_v1_payload()
+    payload["scope"] = scope
+    for record in payload["capabilities"]:
+        record["scope"] = scope
+
+    capabilities = parse_capability_payload(json.dumps(payload))
+
+    assert capabilities.scope == scope
+    assert supported_capability_pairs(capabilities)
+
+
+def test_missing_scope_is_accepted_and_not_displayed(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    payload = schema_v1_payload()
+    del payload["scope"]
+    capabilities = parse_capability_payload(json.dumps(payload))
+    assert capabilities.scope is None
+
+    repo = repository(tmp_path, tmp_path / "python")
+    registry = ResourceRegistry(repositories={"bmd_compute": repo}, clusters={})
+    monkeypatch.setattr(cli, "load_resources", lambda: registry)
+    monkeypatch.setattr(cli, "inspect_compute_capabilities", lambda repository: capabilities)
+
+    assert cli.main(["compute"]) == 0
+    captured = capsys.readouterr()
+    assert "Scope:" not in captured.out
+    assert "HSE06  Band Structure" in captured.out
+
+
+def test_reworded_scope_is_displayed_verbatim(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    payload = schema_v1_payload()
+    payload["scope"] = CURRENT_COMPUTE_SCOPE
+    capabilities = parse_capability_payload(json.dumps(payload))
+    repo = repository(tmp_path, tmp_path / "python")
+    registry = ResourceRegistry(repositories={"bmd_compute": repo}, clusters={})
+    monkeypatch.setattr(cli, "load_resources", lambda: registry)
+    monkeypatch.setattr(cli, "inspect_compute_capabilities", lambda repository: capabilities)
+
+    assert cli.main(["compute"]) == 0
+    assert CURRENT_COMPUTE_SCOPE in capsys.readouterr().out
+
+
+def test_non_text_scope_is_rejected() -> None:
+    payload = schema_v1_payload()
+    payload["scope"] = {"authority": "anything"}
+
+    with pytest.raises(ComputeCapabilityError, match="scope must be text"):
+        parse_capability_payload(json.dumps(payload))
+
+
+@pytest.mark.parametrize("schema_version", (None, 0, 2, "1"))
+def test_compatibility_requires_machine_readable_schema_version(schema_version: object) -> None:
+    payload = schema_v1_payload()
+    if schema_version is None:
+        del payload["schema_version"]
+    else:
+        payload["schema_version"] = schema_version
+
+    with pytest.raises(ComputeCapabilityError, match="Unsupported"):
+        parse_capability_payload(json.dumps(payload))
+
+
+def test_compatibility_requires_bmd_compute_repository_identity() -> None:
+    payload = schema_v1_payload()
+    payload["source"]["repository"] = "bmdex"
+
+    with pytest.raises(ComputeCapabilityError, match="not from BMD Compute"):
+        parse_capability_payload(json.dumps(payload))

@@ -8,9 +8,13 @@ from typing import Any, Callable, Mapping
 from bmd_agent.config import GitRepositoryResource
 
 
+# Compatibility with BMD Compute's capability producer is established only from
+# machine-readable fields: ``schema_version`` and ``source.repository``. The
+# producer's ``scope`` text is a human-readable description that is preserved
+# for display but never compared as a contract.
 SCHEMA_VERSION = 1
 PRODUCER_MODULE = "backend.calculations.capabilities"
-CONTRACT_SCOPE = "BMD Compute executable implementation, not a methodology authority"
+PRODUCER_REPOSITORY_ID = "bmd_compute"
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 
@@ -30,8 +34,11 @@ class ComputeCapabilities:
         return self.payload["source"]
 
     @property
-    def scope(self) -> str:
-        return self.payload["scope"]
+    def scope(self) -> str | None:
+        """Producer-supplied human-readable scope, if any; not a contract."""
+
+        scope = self.payload.get("scope")
+        return scope if isinstance(scope, str) and scope else None
 
     @property
     def capabilities(self) -> tuple[Mapping[str, Any], ...]:
@@ -128,8 +135,8 @@ def _validate_payload(payload: Mapping[str, Any]) -> None:
         )
 
     scope = payload.get("scope")
-    if scope != CONTRACT_SCOPE:
-        raise ComputeCapabilityError("BMD Compute capability payload has an unexpected scope.")
+    if scope is not None and not isinstance(scope, str):
+        raise ComputeCapabilityError("BMD Compute capability scope must be text when present.")
 
     _validate_source(_required_mapping(payload, "source"))
     _validate_contract(_required_mapping(payload, "contract"))
@@ -138,7 +145,11 @@ def _validate_payload(payload: Mapping[str, Any]) -> None:
 
 
 def _validate_source(source: Mapping[str, Any]) -> None:
-    _required_str(source, "repository")
+    repository = _required_str(source, "repository")
+    if repository != PRODUCER_REPOSITORY_ID:
+        raise ComputeCapabilityError(
+            f"Capability payload is not from BMD Compute: source.repository={repository!r}"
+        )
 
     commit = source.get("commit")
     if commit is not None and not isinstance(commit, str):

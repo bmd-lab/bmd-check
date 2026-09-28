@@ -551,9 +551,10 @@ def print_compute_capabilities(capabilities: ComputeCapabilities) -> None:
     print(f"  state:      {_display_dirty_state(source.get('dirty'))}")
     print()
 
-    print("Scope:")
-    print(f"  {capabilities.scope}")
-    print()
+    if capabilities.scope is not None:
+        print("Scope:")
+        print(f"  {capabilities.scope}")
+        print()
 
     print("Supported capabilities:")
     for capability in capabilities.capabilities:
