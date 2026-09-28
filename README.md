@@ -136,6 +136,20 @@ BMD Agent remains independently callable on a cluster with these same commands.
 Its Python interfaces may also be called by BMD Compute in the future, but this
 repository does not implement that integration.
 
+## BMD Compute run records
+
+For BMD Compute runs, Agent reads two Compute-owned records: the Prepare-time
+submission specification `submission.json` (`bmd_compute.submission`) and the
+run-resolution record `job_<JOB_ID>.json` (`bmd_compute.job_record`). BMD
+Compute defines both contracts. Agent reads version 1 strictly, reads older
+records without a `schema` as legacy unversioned records and says so, reports
+an unsupported future version as unsupported rather than guessing, and reports
+malformed records as invalid. Records written before 2026-08-11 lack
+`flow_spec.workflow_spec` and are reported as unsupported legacy records;
+stages are not inferred from older fields. Status fields in these records are
+never used for execution state: SLURM accounting and VASP artifacts decide
+that.
+
 ## Observation boundary
 
 BMD Agent does not intentionally modify calculations, submit or cancel jobs,

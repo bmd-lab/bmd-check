@@ -250,11 +250,23 @@ def test_conflicting_submission_run_directory_is_ambiguous() -> None:
     assert "run directories conflict" in (result.reason or "")
 
 
-def test_submission_job_id_conflict_is_ambiguous() -> None:
+def test_job_id_in_submission_json_is_not_read() -> None:
+    # submission.json is written before sbatch; BMD Compute never records a
+    # job ID there, so Agent no longer looks for one.
     spec = submission()
     spec["job_id"] = "21906222"
+    spec["submission"]["job_id"] = "21906223"
 
     result = resolve(remote_payloads(spec=spec))
+
+    assert result.resolution_status == RESOLVED
+
+
+def test_attempt_state_job_id_conflict_is_ambiguous() -> None:
+    attempt = attempt_state()
+    attempt["job_id"] = "21906222"
+
+    result = resolve(remote_payloads(attempt=attempt))
 
     assert result.resolution_status == AMBIGUOUS
     assert "job IDs conflict" in (result.reason or "")

@@ -138,6 +138,21 @@ OUTCAR_RELAX_FORCES_UNCONVERGED = """\
 """ + NORMAL_OUTCAR
 
 
+
+def attempt_linked_submission_block(root: Path, job_id: str) -> dict:
+    """BMD Compute links a job ID to a run through the submission-attempt state.
+
+    submission.json is written before sbatch and never carries a job ID.
+    """
+
+    root.mkdir(parents=True, exist_ok=True)
+    attempt_path = root / "attempt.json"
+    attempt_path.write_text(
+        json.dumps({"attempt_id": "test-attempt", "state": "SUBMITTED", "job_id": job_id}),
+        encoding="utf-8",
+    )
+    return {"attempt_id": "test-attempt", "attempt_state": str(attempt_path)}
+
 def write_inputs(directory: Path, *, missing: str | None = None) -> None:
     values = {"POSCAR": POSCAR, "INCAR": INCAR, "KPOINTS": KPOINTS}
     for name, contents in values.items():
@@ -192,10 +207,11 @@ def write_submission(
                 ]
             }
         },
-        "submission": {
-            "job_id": job_id,
-            **({"attempt_state": str(attempt_state)} if attempt_state else {}),
-        },
+        "submission": (
+            {"attempt_state": str(attempt_state)}
+            if attempt_state
+            else attempt_linked_submission_block(root, job_id)
+        ),
         "paths": {
             "stage_dirs": {"stage_01": str(stage_dir)},
             "result_dir": str(result_dir),
@@ -224,7 +240,7 @@ def write_single_stage_submission(
                 ]
             }
         },
-        "submission": {"job_id": job_id},
+        "submission": attempt_linked_submission_block(root, job_id),
         "paths": {
             "stage_dirs": {},
             "result_dir": result_dir,
@@ -257,9 +273,9 @@ def write_three_stage_submission(
                 ]
             }
         },
-        "submission": {"job_id": job_id},
+        "submission": attempt_linked_submission_block(root, job_id),
         "paths": {
-            "workflow_root": producer_root,
+            "run_dir": producer_root,
             "stage_dirs": stage_paths,
             "result_dir": result_dir,
         },
@@ -1041,7 +1057,7 @@ def test_early_stage_failure_with_later_stage_absent_is_incomplete(tmp_path: Pat
                 ]
             }
         },
-        "submission": {"job_id": "21153721"},
+        "submission": attempt_linked_submission_block(root, "21153721"),
         "paths": {
             "stage_dirs": {"stage_01": str(stage_1), "stage_02": str(stage_2)},
             "result_dir": str(stage_2),

@@ -1099,6 +1099,8 @@ def print_job_inspection(
         status = (
             "not found"
             if resolution.resolution_status == "not_bmd_compute"
+            else "unsupported record"
+            if resolution.resolution_status == "unsupported_record"
             else resolution.resolution_status
         )
         print(f"  status: {status}")
@@ -1108,6 +1110,10 @@ def print_job_inspection(
             print(f"  run directory: {resolution.run_directory}")
         if resolution.submission_attempt_id:
             print(f"  submission attempt: {resolution.submission_attempt_id}")
+        if resolution.job_record_contract:
+            print(f"  job record: {resolution.job_record_contract}")
+        if resolution.submission_record_contract:
+            print(f"  submission record: {resolution.submission_record_contract}")
         if resolution.reason:
             print(f"  reason: {resolution.reason}")
         for limitation in resolution.limitations:
@@ -1217,6 +1223,10 @@ def print_run_inspection(inspection: RunInspection) -> None:
     print("Producer provenance (producer_provenance):")
     print(f"  flow root:   {inspection.flow_root}")
     print(f"  submission:  {inspection.submission_path}")
+    if inspection.submission_record is not None:
+        print(f"  record:      {inspection.submission_record.contract}")
+        for limitation in inspection.submission_record.limitations:
+            print(f"  limitation:  {limitation}")
     print(f"  git commit:  {_display_commit(inspection.producer_git.get('git_commit'))}")
     print(f"  git state:   {inspection.producer_git.get('state', 'unavailable')}")
     print()

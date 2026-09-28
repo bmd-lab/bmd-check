@@ -51,6 +51,21 @@ from test_presentation import (
 FORBIDDEN_COMPLETION_CLAIM = "No execution problems were detected."
 
 
+
+def attempt_linked_submission_block(root: Path, job_id: str) -> dict:
+    """BMD Compute links a job ID to a run through the submission-attempt state.
+
+    submission.json is written before sbatch and never carries a job ID.
+    """
+
+    root.mkdir(parents=True, exist_ok=True)
+    attempt_path = root / "attempt.json"
+    attempt_path.write_text(
+        json.dumps({"attempt_id": "test-attempt", "state": "SUBMITTED", "job_id": job_id}),
+        encoding="utf-8",
+    )
+    return {"attempt_id": "test-attempt", "attempt_state": str(attempt_path)}
+
 def slurm_success(job_id: str) -> object:
     return scheduler_record(job_id=job_id, state="COMPLETED", exit_code="0:0")
 
@@ -67,7 +82,7 @@ def write_two_stage_workflow(root: Path) -> tuple[Path, Path]:
                 ]
             }
         },
-        "submission": {"job_id": "21153721"},
+        "submission": attempt_linked_submission_block(root, "21153721"),
         "paths": {
             "stage_dirs": {"stage_01": str(stage_1), "stage_02": str(stage_2)},
             "result_dir": str(stage_2),
@@ -88,7 +103,7 @@ def write_single_relax_workflow(root: Path) -> Path:
                 ]
             }
         },
-        "submission": {"job_id": "21153721"},
+        "submission": attempt_linked_submission_block(root, "21153721"),
         "paths": {"stage_dirs": {"stage_01": str(stage)}, "result_dir": str(stage)},
     }
     root.mkdir(parents=True, exist_ok=True)

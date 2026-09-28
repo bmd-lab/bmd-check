@@ -7,6 +7,16 @@ import subprocess
 from typing import Any, Mapping
 
 from bmd_agent.config import SlurmClusterResource
+from bmd_agent.resources.compute_records import (
+    CONTRACT_V1,
+    UNSUPPORTED_LEGACY,
+    UNSUPPORTED_VERSION,
+    ComputeRecordError,
+    JobRecord,
+    SubmissionRecord,
+    parse_job_record,
+    parse_submission_record,
+)
 from bmd_agent.deployment import DeploymentContext
 from bmd_agent.profiling import profile_phase
 from bmd_agent.resources.slurm import normalize_job_id
@@ -28,6 +38,7 @@ NOT_BMD_COMPUTE = "not_bmd_compute"
 UNAVAILABLE = "unavailable"
 AMBIGUOUS = "ambiguous"
 INVALID = "invalid"
+UNSUPPORTED_RECORD = "unsupported_record"
 PRODUCER_PROVENANCE = "producer_provenance"
 PRODUCER_NAME = "BMD Compute"
 _MAX_PRODUCER_JSON_BYTES = 1024 * 1024
@@ -58,9 +69,15 @@ class JobRunResolution:
         compare=False,
     )
     _attempt_checked: bool = field(default=False, repr=False, compare=False)
+    job_record_contract: str | None = None
+    submission_record_contract: str | None = None
 
 
 class _ResolutionInvalid(ValueError):
+    pass
+
+
+class _ResolutionUnsupported(ValueError):
     pass
 
 
@@ -133,6 +150,15 @@ def resolve_bmd_compute_job(
         return JobRunResolution(
             scheduler_job_id=normalized_job_id,
             resolution_status=AMBIGUOUS,
+            producer=PRODUCER_NAME,
+            producer_state_path=str(state_path),
+            source="exact BMD Compute remote job record",
+            reason=str(exc),
+        )
+    except _ResolutionUnsupported as exc:
+        return JobRunResolution(
+            scheduler_job_id=normalized_job_id,
+            resolution_status=UNSUPPORTED_RECORD,
             producer=PRODUCER_NAME,
             producer_state_path=str(state_path),
             source="exact BMD Compute remote job record",
@@ -214,22 +240,20 @@ def _validate_resolution(
     runner,
     timeout: float,
 ) -> JobRunResolution:
-    state_job_id = _required_job_id(state, "producer state job_id")
-    _require_equal(job_id, state_job_id, "requested and producer-state job IDs")
+    record = _parse_record(parse_job_record, state, "producer state")
+    _require_equal(job_id, _normalized_job_id(record.job_id, "producer state job_id"), "requested and producer-state job IDs")
 
-    run_directory = _required_authorized_path(
-        state,
-        "run_dir",
+    run_directory = _authorized_path_value(
+        record.run_dir,
         cluster=cluster,
         label="producer state run_dir",
     )
     if not _is_within(run_directory, flows_root):
         raise _ResolutionInvalid("producer state run_dir is outside the configured BMD flows root")
 
-    remote_state_path = state.get("remote_state_path")
-    if remote_state_path is not None:
+    if record.remote_state_path is not None:
         declared_state_path = _authorized_path_value(
-            remote_state_path,
+            record.remote_state_path,
             cluster=cluster,
             label="producer state remote_state_path",
         )
@@ -239,26 +263,20 @@ def _validate_resolution(
             "resolved and producer-declared state paths",
         )
 
-    status = state.get("status")
-    if not isinstance(status, str) or not status.strip():
-        raise _ResolutionInvalid("producer state status must be a non-empty string")
-
     limitations: list[str] = [
-        "producer job state is a submission-time record and is not a scheduler lifecycle record"
+        "producer job state is a submission-time record and is not a scheduler lifecycle record",
+        *record.limitations,
     ]
-    state_spec = state.get("submission_spec")
-    if state_spec is not None and not isinstance(state_spec, Mapping):
-        raise _ResolutionInvalid("producer state submission_spec must be a JSON object")
-    state_spec = state_spec if isinstance(state_spec, Mapping) else {}
-    if not state_spec:
-        limitations.append("producer state has no embedded submission snapshot")
-    _cross_check_run_identity(
-        state,
-        state_spec,
-        run_directory,
-        job_id,
-        cluster=cluster,
-    )
+    state_spec = record.embedded_submission
+    if record.contract != CONTRACT_V1:
+        if not state_spec:
+            limitations.append("producer state has no embedded submission snapshot")
+        _cross_check_legacy_embedded_submission(
+            record,
+            state_spec,
+            run_directory,
+            cluster=cluster,
+        )
 
     submission_path = build_remote_file_path(
         run_directory,
@@ -291,7 +309,7 @@ def _validate_resolution(
             producer=PRODUCER_NAME,
             run_directory=str(run_directory),
             producer_state_path=str(state_path),
-            submission_attempt_id=_attempt_id(state_spec),
+            submission_attempt_id=record.attempt_id,
             source="exact BMD Compute remote job record",
             reason="producer-resolved run directory is not a readable directory",
             limitations=tuple(limitations),
@@ -311,7 +329,7 @@ def _validate_resolution(
             producer=PRODUCER_NAME,
             run_directory=str(run_directory),
             producer_state_path=str(state_path),
-            submission_attempt_id=_attempt_id(state_spec),
+            submission_attempt_id=record.attempt_id,
             source="exact BMD Compute remote job record",
             reason="producer-resolved run directory has no readable submission.json",
             limitations=tuple(limitations),
@@ -324,17 +342,33 @@ def _validate_resolution(
             runner=runner,
             timeout=timeout,
         )
+    submission_record = _parse_record(parse_submission_record, submission, "submission.json")
+    limitations.extend(submission_record.limitations)
     _cross_check_submission(
-        state,
-        state_spec,
-        submission,
+        record,
+        submission_record,
         run_directory,
-        job_id,
         cluster=cluster,
     )
 
-    attempt_id = _coalesce_attempt_id(state_spec, submission)
-    attempt_path = _attempt_state_path(submission, cluster=cluster)
+    attempt_id = record.attempt_id or submission_record.attempt_id
+    attempt_path = (
+        _authorized_path_value(
+            submission_record.attempt_state,
+            cluster=cluster,
+            label="submission attempt_state",
+        )
+        if submission_record.attempt_state is not None
+        else None
+    )
+    if record.contract != CONTRACT_V1:
+        legacy_state_attempt = _embedded_attempt_state(state_spec, cluster=cluster)
+        if legacy_state_attempt is not None and attempt_path is not None:
+            _require_equal(
+                str(legacy_state_attempt),
+                str(attempt_path),
+                "producer-state and submission attempt-state paths",
+            )
     attempt_payload: Mapping[str, Any] | None = None
     if attempt_path is None:
         limitations.append("submission attempt-state path is unavailable")
@@ -373,9 +407,8 @@ def _validate_resolution(
                 )
             attempt_id = _cross_check_attempt(
                 attempt_payload,
-                state,
-                state_spec,
-                submission,
+                record,
+                submission_record,
                 run_directory,
                 job_id,
                 cluster=cluster,
@@ -393,6 +426,8 @@ def _validate_resolution(
         _submission_payload=submission,
         _attempt_payload=attempt_payload,
         _attempt_checked=True,
+        job_record_contract=record.label,
+        submission_record_contract=submission_record.label,
     )
 
 
@@ -428,16 +463,25 @@ def _read_bounded_json(
     return payload
 
 
-def _cross_check_run_identity(
-    state: Mapping[str, Any],
+def _parse_record(parser, payload: Mapping[str, Any], label: str):
+    try:
+        return parser(payload)
+    except ComputeRecordError as exc:
+        if exc.kind in {UNSUPPORTED_VERSION, UNSUPPORTED_LEGACY}:
+            raise _ResolutionUnsupported(f"{label}: {exc}") from exc
+        raise _ResolutionInvalid(f"{label}: {exc}") from exc
+
+
+def _cross_check_legacy_embedded_submission(
+    record: JobRecord,
     state_spec: Mapping[str, Any],
     run_directory: PurePosixPath,
-    job_id: str,
     *,
     cluster: SlurmClusterResource,
 ) -> None:
-    spec_paths = _optional_mapping(state_spec, "paths")
-    spec_run_dir = spec_paths.get("run_dir")
+    """Legacy job records embed a submission snapshot; it must agree."""
+
+    spec_run_dir = _optional_mapping(state_spec, "paths").get("run_dir")
     if spec_run_dir is not None:
         authorized = _authorized_path_value(
             spec_run_dir,
@@ -445,63 +489,36 @@ def _cross_check_run_identity(
             label="producer state submission_spec paths.run_dir",
         )
         _require_equal(str(run_directory), str(authorized), "producer-state run directories")
-    state_name = state.get("run_name")
-    if not isinstance(state_name, str) or not state_name:
-        raise _ResolutionInvalid("producer state run_name must be a non-empty string")
     spec_name = state_spec.get("run_name")
-    if state_name is not None and spec_name is not None:
-        _require_equal(str(state_name), str(spec_name), "producer-state run names")
-    for label, candidate in _job_id_candidates(state_spec):
-        _require_equal(job_id, _normalized_job_id(candidate, label), f"requested and {label} job IDs")
+    if spec_name is not None:
+        _require_equal(record.run_name, str(spec_name), "producer-state run names")
 
 
 def _cross_check_submission(
-    state: Mapping[str, Any],
-    state_spec: Mapping[str, Any],
-    submission: Mapping[str, Any],
+    record: JobRecord,
+    submission: SubmissionRecord,
     run_directory: PurePosixPath,
-    job_id: str,
     *,
     cluster: SlurmClusterResource,
 ) -> None:
-    submission_paths = _optional_mapping(submission, "paths")
-    submission_run_dir = submission_paths.get("run_dir")
-    if not isinstance(submission_run_dir, str) or not submission_run_dir:
+    if submission.run_dir is None:
         raise _ResolutionInvalid("submission paths.run_dir must be a non-empty string")
     authorized = _authorized_path_value(
-        submission_run_dir,
+        submission.run_dir,
         cluster=cluster,
         label="submission paths.run_dir",
     )
     _require_equal(str(run_directory), str(authorized), "producer-state and submission run directories")
-
-    for label, candidate in _job_id_candidates(submission):
-        _require_equal(job_id, _normalized_job_id(candidate, label), f"requested and {label} job IDs")
-
-    state_name = state.get("run_name")
-    submission_name = submission.get("run_name")
-    if state_name is not None and submission_name is not None:
-        _require_equal(str(state_name), str(submission_name), "producer-state and submission run names")
-
-    spec_attempt = _attempt_id(state_spec)
-    submission_attempt = _attempt_id(submission)
-    if spec_attempt and submission_attempt:
-        _require_equal(spec_attempt, submission_attempt, "producer-state and submission attempt IDs")
-    state_attempt_path = _attempt_state_path(state_spec, cluster=cluster)
-    submission_attempt_path = _attempt_state_path(submission, cluster=cluster)
-    if state_attempt_path is not None and submission_attempt_path is not None:
-        _require_equal(
-            str(state_attempt_path),
-            str(submission_attempt_path),
-            "producer-state and submission attempt-state paths",
-        )
+    if submission.run_name is not None:
+        _require_equal(record.run_name, submission.run_name, "producer-state and submission run names")
+    if record.attempt_id and submission.attempt_id:
+        _require_equal(record.attempt_id, submission.attempt_id, "producer-state and submission attempt IDs")
 
 
 def _cross_check_attempt(
     attempt: Mapping[str, Any],
-    state: Mapping[str, Any],
-    state_spec: Mapping[str, Any],
-    submission: Mapping[str, Any],
+    record: JobRecord,
+    submission: SubmissionRecord,
     run_directory: PurePosixPath,
     job_id: str,
     *,
@@ -544,8 +561,8 @@ def _cross_check_attempt(
     ids = [
         value
         for value in (
-            _attempt_id(state_spec),
-            _attempt_id(submission),
+            record.attempt_id,
+            submission.attempt_id,
             _string_or_none(attempt.get("attempt_id")),
             _attempt_id(record_spec),
         )
@@ -553,24 +570,16 @@ def _cross_check_attempt(
     ]
     if len(set(ids)) > 1:
         raise _ResolutionConflict("submission attempt IDs conflict across producer artifacts")
-    state_record = _optional_mapping(attempt, "job_record")
-    state_record_job = state_record.get("job_id")
-    if state_record_job is not None:
-        _require_equal(
-            _required_job_id(state, "producer state job_id"),
-            _normalized_job_id(state_record_job, "attempt job_record.job_id"),
-            "producer-state and attempt job-record job IDs",
-        )
     return ids[0] if ids else None
 
 
-def _attempt_state_path(
-    submission: Mapping[str, Any],
+def _embedded_attempt_state(
+    state_spec: Mapping[str, Any],
     *,
     cluster: SlurmClusterResource,
 ) -> PurePosixPath | None:
-    submission_block = _optional_mapping(submission, "submission")
-    paths = _optional_mapping(submission, "paths")
+    submission_block = _optional_mapping(state_spec, "submission")
+    paths = _optional_mapping(state_spec, "paths")
     values = tuple(
         value
         for value in (
@@ -585,7 +594,7 @@ def _attempt_state_path(
         _authorized_path_value(
             value,
             cluster=cluster,
-            label="submission attempt_state",
+            label="producer state submission attempt_state",
         )
         for value in values
     )
@@ -621,12 +630,6 @@ def _authorized_path_value(
         raise _ResolutionInvalid(f"{label} is not authorized: {exc}") from exc
 
 
-def _required_job_id(payload: Mapping[str, Any], label: str) -> str:
-    if "job_id" not in payload:
-        raise _ResolutionInvalid(f"{label} is missing")
-    return _normalized_job_id(payload.get("job_id"), label)
-
-
 def _normalized_job_id(value: Any, label: str) -> str:
     if value is None:
         raise _ResolutionInvalid(f"{label} is missing")
@@ -636,35 +639,20 @@ def _normalized_job_id(value: Any, label: str) -> str:
         raise _ResolutionInvalid(f"{label} is invalid") from exc
 
 
-def _job_id_candidates(payload: Mapping[str, Any]) -> tuple[tuple[str, Any], ...]:
+def _job_id_candidates(attempt: Mapping[str, Any]) -> tuple[tuple[str, Any], ...]:
+    """Job IDs BMD Compute writes in a submission-attempt state record."""
+
     candidates: list[tuple[str, Any]] = []
-    if payload.get("job_id") is not None:
-        candidates.append(("submission/attempt job_id", payload["job_id"]))
-    nested = _optional_mapping(payload, "submission")
-    if nested.get("job_id") is not None:
-        candidates.append(("submission block job_id", nested["job_id"]))
-    record = _optional_mapping(payload, "job_record")
+    if attempt.get("job_id") is not None:
+        candidates.append(("attempt job_id", attempt["job_id"]))
+    record = _optional_mapping(attempt, "job_record")
     if record.get("job_id") is not None:
         candidates.append(("attempt job_record.job_id", record["job_id"]))
     return tuple(candidates)
 
 
-def _coalesce_attempt_id(
-    state_spec: Mapping[str, Any],
-    submission: Mapping[str, Any],
-) -> str | None:
-    state_id = _attempt_id(state_spec)
-    submission_id = _attempt_id(submission)
-    if state_id and submission_id:
-        _require_equal(state_id, submission_id, "producer-state and submission attempt IDs")
-    return state_id or submission_id
-
-
 def _attempt_id(payload: Mapping[str, Any]) -> str | None:
-    submission = _optional_mapping(payload, "submission")
-    return _string_or_none(
-        submission.get("attempt_id") or payload.get("submission_attempt_id")
-    )
+    return _string_or_none(_optional_mapping(payload, "submission").get("attempt_id"))
 
 
 def _optional_mapping(payload: Mapping[str, Any], key: str) -> Mapping[str, Any]:

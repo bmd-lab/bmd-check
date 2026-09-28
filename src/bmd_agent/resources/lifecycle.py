@@ -29,6 +29,11 @@ from bmd_agent.resources.diagnostics import (
     BoundedLogDiagnostic as LocalLogDiagnostic,
     diagnostic_log_messages,
 )
+from bmd_agent.resources.compute_records import (
+    ComputeRecordError,
+    SubmissionRecord,
+    parse_submission_record,
+)
 from bmd_agent.resources.oom import OomDiagnosticEvidence, assess_oom_evidence
 from bmd_agent.resources.run import (
     ConvergenceProgressAssessment,
@@ -100,6 +105,8 @@ class BmdWorkflowDiscovery:
     job_id: str | None = None
     attempt_state_path: Path | None = None
     attempt_state: Mapping[str, Any] | None = None
+    record_contract: str | None = None
+    record_limitations: tuple[str, ...] = ()
     custodian_policy: CustodianPolicyEvidence = field(
         default_factory=lambda: CustodianPolicyEvidence(
             available=False,
@@ -195,14 +202,28 @@ def analyze_calculation_directory(
     """Classify a calculation directory from local, read-only evidence."""
 
     current = Path(directory).resolve()
-    workflow = _discover_bmd_workflow(current, max_ancestor_levels=max_ancestor_levels)
+    workflow, rejected_records = _discover_bmd_workflow(
+        current,
+        max_ancestor_levels=max_ancestor_levels,
+    )
     if workflow is not None:
-        return _analyze_bmd_workflow(
+        analysis = _analyze_bmd_workflow(
             current,
             workflow,
             scheduler_lookup=scheduler_lookup,
         )
-    return _analyze_direct_vasp_directory(current)
+        return _with_limitations(analysis, (*workflow.record_limitations, *rejected_records))
+    return _with_limitations(_analyze_direct_vasp_directory(current), rejected_records)
+
+
+def _with_limitations(analysis: LifecycleAnalysis, extra: Sequence[str]) -> LifecycleAnalysis:
+    if not extra:
+        return analysis
+    return replace(analysis, limitations=tuple(_ordered_unique((*analysis.limitations, *extra))))
+
+
+def _ordered_unique(values: Sequence[str]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(values))
 
 
 def _analyze_bmd_workflow(
@@ -515,38 +536,45 @@ def _discover_bmd_workflow(
     current: Path,
     *,
     max_ancestor_levels: int,
-) -> BmdWorkflowDiscovery | None:
+) -> tuple[BmdWorkflowDiscovery | None, tuple[str, ...]]:
+    """Find the nearest BMD Compute workflow and report submission records not read."""
+
+    rejected: list[str] = []
     for root in _bounded_ancestors(current, max_ancestor_levels=max_ancestor_levels):
         submission_path = root / "submission.json"
         if not submission_path.is_file():
             continue
         try:
             submission = _read_json(submission_path)
-            workflow = _workflow_from_submission(root, submission_path, submission, current)
+        except Exception:
+            rejected.append(f"{submission_path} could not be read as a JSON object")
+            continue
+        try:
+            record = parse_submission_record(submission)
+        except ComputeRecordError as exc:
+            rejected.append(f"{submission_path} was not used: {exc}")
+            continue
+        try:
+            workflow = _workflow_from_submission(root, submission_path, submission, record, current)
         except Exception:
             continue
         if workflow is not None:
-            return workflow
-    return None
+            return workflow, tuple(rejected)
+    return None, tuple(rejected)
 
 
 def _workflow_from_submission(
     root: Path,
     submission_path: Path,
     submission: Mapping[str, Any],
+    record: SubmissionRecord,
     current: Path,
 ) -> BmdWorkflowDiscovery | None:
-    flow_spec = _mapping(submission.get("flow_spec"))
-    workflow_spec = _mapping(flow_spec.get("workflow_spec"))
-    stages = tuple(
-        item for item in workflow_spec.get("stages", ())
-        if isinstance(item, Mapping)
-    )
-    if not stages:
-        return None
-    paths = _mapping(submission.get("paths"))
+    stages = record.workflow_stages
+    stage_dirs = {label: path for _index, label, path in record.stage_dirs}
+    paths = {"stage_dirs": stage_dirs, "result_dir": record.result_dir}
     stage_bindings = _stage_bindings(root, paths, stage_count=len(stages))
-    producer_root = _producer_root_text(paths)
+    producer_root = _producer_root_text(_mapping(submission.get("paths")))
     relocated_stage_bindings = _relocated_stage_bindings(
         root,
         paths,
@@ -566,11 +594,7 @@ def _workflow_from_submission(
         return None
     current_stage = _current_stage_binding(current, root, stage_bindings)
     stage_evidence = _stage_evidence(stage_bindings)
-    attempt_state_path = _optional_local_path(
-        _mapping(submission.get("submission")).get("attempt_state")
-        or paths.get("submission_attempt_state"),
-        root=root,
-    )
+    attempt_state_path = _optional_local_path(record.attempt_state, root=root)
     attempt_state = _read_json(attempt_state_path) if attempt_state_path and attempt_state_path.is_file() else None
     return BmdWorkflowDiscovery(
         workflow_root=root,
@@ -585,6 +609,8 @@ def _workflow_from_submission(
         job_id=_find_job_id(submission, attempt_state),
         attempt_state_path=attempt_state_path,
         attempt_state=attempt_state,
+        record_contract=record.label,
+        record_limitations=record.limitations,
         custodian_policy=parse_custodian_policy_provenance(submission),
     )
 
@@ -1512,10 +1538,9 @@ def _find_job_id(
     submission: Mapping[str, Any],
     attempt_payload: Mapping[str, Any] | None,
 ) -> str | None:
-    candidates: list[Any] = [
-        submission.get("job_id"),
-        _mapping(submission.get("submission")).get("job_id"),
-    ]
+    # submission.json is written before sbatch and never carries a job ID;
+    # the submission-attempt state record does.
+    candidates: list[Any] = []
     if attempt_payload is not None:
         candidates.extend(
             [
@@ -1549,10 +1574,10 @@ def _path_text(value: Any) -> str | None:
 
 
 def _producer_root_text(paths: Mapping[str, Any]) -> str | None:
-    for key in ("workflow_root", "flow_root", "run_root", "root_dir", "run_dir"):
-        path = _path_text(paths.get(key))
-        if path is not None:
-            return path
+    # BMD Compute records the run directory as paths.run_dir.
+    path = _path_text(paths.get("run_dir"))
+    if path is not None:
+        return path
     stage_dirs = paths.get("stage_dirs")
     if isinstance(stage_dirs, Mapping):
         stage_paths = [
