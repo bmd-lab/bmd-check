@@ -24,10 +24,20 @@ from bmd_agent.resources.vasp import (
 )
 
 
-COMPLIANT = "COMPLIANT"
-SUPPORTED_BUT_NONSTANDARD = "SUPPORTED BUT NONSTANDARD"
-UNSUPPORTED = "UNSUPPORTED"
+# check-input compares supplied inputs with one BMD Compute-generated
+# reference. Its results describe that comparison only: they never claim that
+# an input is compliant, standard, supported or erroneous in general.
+MATCHES_THIS_REFERENCE = "MATCHES THIS REFERENCE"
+DIFFERS_FROM_THIS_REFERENCE = "DIFFERS FROM THIS REFERENCE"
+NO_REFERENCE_FOR_THIS_REQUEST = "NO REFERENCE FOR THIS REQUEST"
 INSUFFICIENT_INFORMATION = "INSUFFICIENT INFORMATION"
+
+REFERENCE_CONTEXT_LIMITATION = (
+    "BMD Compute Desired Output workflows can apply automatic treatments, and later "
+    "workflow stages can inherit or determine settings at run time from previous stages. "
+    "Differences from a standalone generated reference may therefore be expected and are "
+    "not by themselves errors."
+)
 
 SUPPLIED_INPUT = "supplied_input"
 BMD_COMPUTE_REFERENCE = "bmd_compute_reference"
@@ -35,7 +45,7 @@ AGENT_COMPARISON = "agent_comparison"
 UNAVAILABLE = "unavailable"
 
 MATCH = "match"
-DIFFERS_FROM_BMD_REFERENCE = "differs_from_bmd_reference"
+DIFFERS_FROM_REFERENCE = "differs_from_reference"
 SUPPLIED_EXTRA = "supplied_extra"
 REFERENCE_MISSING_FROM_SUPPLIED = "reference_missing_from_supplied"
 
@@ -72,9 +82,11 @@ class InputReferenceObservation:
     producer_repository: str | None = None
     producer_commit: str | None = None
     producer_dirty: bool | None = None
+    potcar_functional: str | None = None
     workflow_label: str | None = None
     error_code: str | None = None
     error_message: str | None = None
+    error_suggestion: str | None = None
     producer_stderr_summary: str | None = None
 
 
@@ -102,11 +114,12 @@ class InputCheckObservation:
     remote_directory: str
     stage_type: str
     theory: str
-    resources: Mapping[str, int]
+    modifiers: tuple[str, ...]
     proposed: ProposedInputObservation
     reference: InputReferenceObservation
     incar_comparisons: tuple[InputSettingComparison, ...] = ()
     kpoints_comparison: KpointsComparison | None = None
+    reference_description: tuple[str, ...] = ()
     limitations: tuple[str, ...] = ()
     evidence_type: str = AGENT_COMPARISON
 
@@ -139,22 +152,22 @@ def check_remote_input_directory(
     *,
     stage: str,
     theory: str,
-    nodes: int,
-    ntasks: int,
-    mem_gb: int,
+    modifiers: Sequence[str] = (),
     remote_runner: RunnerBytes = subprocess.run,
     producer_runner: RunnerText = subprocess.run,
     timeout: float = 20,
 ) -> InputCheckObservation:
-    """Compare proposed remote VASP inputs with BMD Compute's generated reference."""
+    """Compare supplied remote VASP inputs with one BMD Compute-generated reference.
 
-    resources = {
-        "nodes": _positive_int(nodes, "nodes"),
-        "ntasks": _positive_int(ntasks, "ntasks"),
-        "mem_gb": _positive_int(mem_gb, "mem_gb"),
-    }
+    The reference is requested for exactly the stage, theory and user-supplied
+    modifiers given here. Agent does not infer modifiers, Desired Output
+    treatments or previous-stage context, and it leaves the POTCAR functional to
+    BMD Compute.
+    """
+
     stage = str(stage).strip()
     theory = str(theory).strip()
+    modifiers = tuple(str(item) for item in modifiers)
     directory = authorize_remote_path(
         remote_directory,
         allowed_roots=cluster.allowed_remote_roots,
@@ -168,59 +181,44 @@ def check_remote_input_directory(
     )
     proposed = _proposed_observation(str(directory), read_inputs)
 
+    def insufficient(reason: str, reference: InputReferenceObservation | None = None) -> InputCheckObservation:
+        return _insufficient(
+            str(directory),
+            stage,
+            theory,
+            modifiers,
+            proposed,
+            reason,
+            reference=reference,
+        )
+
     missing_or_unreadable = [
         f"{name}: {observation.error or 'missing'}"
         for name, observation in read_inputs.observations.items()
         if not observation.present or observation.error
     ]
     if missing_or_unreadable:
-        return _insufficient(
-            str(directory),
-            stage,
-            theory,
-            resources,
-            proposed,
+        return insufficient(
             "Required supplied input evidence is unavailable: "
-            + "; ".join(missing_or_unreadable),
+            + "; ".join(missing_or_unreadable)
         )
 
     supplied_incar, incar_error = parse_incar_contents(read_inputs.contents["INCAR"])
     if incar_error:
-        return _insufficient(
-            str(directory),
-            stage,
-            theory,
-            resources,
-            proposed,
-            f"Supplied INCAR could not be parsed: {incar_error}",
-        )
+        return insufficient(f"Supplied INCAR could not be parsed: {incar_error}")
 
     supplied_kpoints = parse_kpoints_contents(read_inputs.contents["KPOINTS"])
     if supplied_kpoints.error:
-        return _insufficient(
-            str(directory),
-            stage,
-            theory,
-            resources,
-            proposed,
-            f"Supplied KPOINTS could not be parsed: {supplied_kpoints.error}",
-        )
+        return insufficient(f"Supplied KPOINTS could not be parsed: {supplied_kpoints.error}")
 
     if proposed.error:
-        return _insufficient(
-            str(directory),
-            stage,
-            theory,
-            resources,
-            proposed,
-            f"Supplied POSCAR could not be parsed: {proposed.error}",
-        )
+        return insufficient(f"Supplied POSCAR could not be parsed: {proposed.error}")
 
     request = build_input_reference_request(
         read_inputs.contents["POSCAR"].decode("utf-8", "replace"),
         stage=stage,
         theory=theory,
-        resources=resources,
+        modifiers=modifiers,
     )
 
     try:
@@ -231,14 +229,9 @@ def check_remote_input_directory(
             timeout=timeout,
         )
     except InputReferenceError as exc:
-        return _insufficient(
-            str(directory),
-            stage,
-            theory,
-            resources,
-            proposed,
+        return insufficient(
             str(exc),
-            reference=InputReferenceObservation(
+            InputReferenceObservation(
                 status=UNAVAILABLE,
                 error_code=exc.kind,
                 error_message=str(exc),
@@ -247,50 +240,44 @@ def check_remote_input_directory(
         )
 
     reference = _reference_observation(response)
-    if response.status == "unsupported":
+    description = describe_generated_reference(stage, theory, modifiers, str(directory), reference)
+    limitations = (REFERENCE_CONTEXT_LIMITATION,)
+
+    def result(status: str, extra: Sequence[str] = (), **fields: Any) -> InputCheckObservation:
         return InputCheckObservation(
-            overall_status=UNSUPPORTED,
+            overall_status=status,
             remote_directory=str(directory),
             stage_type=stage,
             theory=theory,
-            resources=resources,
+            modifiers=modifiers,
             proposed=proposed,
             reference=reference,
-            limitations=_error_limitations(reference),
+            reference_description=description,
+            limitations=(*extra, *limitations),
+            **fields,
         )
 
+    if response.status == "unsupported":
+        # BMD Compute declined to generate a reference for this standalone
+        # request. That is not a statement about the supplied input.
+        return result(NO_REFERENCE_FOR_THIS_REQUEST, _compute_refusal_reasons(reference))
+
     if response.status == "error":
-        return InputCheckObservation(
-            overall_status=INSUFFICIENT_INFORMATION,
-            remote_directory=str(directory),
-            stage_type=stage,
-            theory=theory,
-            resources=resources,
-            proposed=proposed,
-            reference=reference,
-            limitations=_error_limitations(reference),
-        )
+        return result(INSUFFICIENT_INFORMATION, _compute_refusal_reasons(reference))
 
     stages = response.stages
     if len(stages) != 1:
-        return _insufficient(
-            str(directory),
-            stage,
-            theory,
-            resources,
-            proposed,
-            "BMD Compute input-reference v1 comparison expected exactly one reference stage.",
-            reference=reference,
+        return result(
+            INSUFFICIENT_INFORMATION,
+            ("BMD Compute input-reference v1 comparison expected exactly one reference stage.",),
         )
 
     reference_stage = stages[0]
-    reference_incar = _reference_incar_settings(reference_stage)
-    reference_kpoints = _reference_kpoints(reference_stage)
     incar_comparisons = compare_incar_settings(
         supplied_incar,
-        reference_incar,
+        _reference_incar_settings(reference_stage),
     )
-    kpoints_comparison = compare_kpoints(supplied_kpoints, reference_kpoints)
+    kpoints_comparison = compare_kpoints(supplied_kpoints, _reference_kpoints(reference_stage))
 
     if kpoints_comparison.status == "unavailable":
         overall = INSUFFICIENT_INFORMATION
@@ -298,18 +285,12 @@ def check_remote_input_directory(
         any(item.status != MATCH for item in incar_comparisons)
         or kpoints_comparison.status != MATCH
     ):
-        overall = SUPPORTED_BUT_NONSTANDARD
+        overall = DIFFERS_FROM_THIS_REFERENCE
     else:
-        overall = COMPLIANT
+        overall = MATCHES_THIS_REFERENCE
 
-    return InputCheckObservation(
-        overall_status=overall,
-        remote_directory=str(directory),
-        stage_type=stage,
-        theory=theory,
-        resources=resources,
-        proposed=proposed,
-        reference=reference,
+    return result(
+        overall,
         incar_comparisons=incar_comparisons,
         kpoints_comparison=kpoints_comparison,
     )
@@ -320,9 +301,14 @@ def build_input_reference_request(
     *,
     stage: str,
     theory: str,
-    resources: Mapping[str, int],
+    modifiers: Sequence[str] = (),
 ) -> dict[str, Any]:
-    """Build the narrow single-stage BMD Compute input-reference request."""
+    """Build the single-stage BMD Compute input-reference request.
+
+    Modifiers are forwarded exactly as supplied; BMD Compute validates them.
+    No POTCAR functional or execution resources are sent: BMD Compute chooses
+    the functional, and resources do not affect the generated reference.
+    """
 
     return {
         "structure": {
@@ -335,7 +321,7 @@ def build_input_reference_request(
                 {
                     "stage_type": stage,
                     "theory": theory,
-                    "modifiers": [],
+                    "modifiers": list(modifiers),
                     "label": None,
                     "options": {},
                 }
@@ -343,9 +329,36 @@ def build_input_reference_request(
             "label": None,
             "recipe": None,
         },
-        "resources": dict(resources),
-        "potcar_functional": "PBE_64",
     }
+
+
+def describe_generated_reference(
+    stage: str,
+    theory: str,
+    modifiers: Sequence[str],
+    directory: str,
+    reference: InputReferenceObservation,
+) -> tuple[str, ...]:
+    """State exactly what reference was requested from and reported by BMD Compute."""
+
+    return (
+        f"requested stage/theory: {stage} / {theory}",
+        f"requested modifiers: {', '.join(modifiers) if modifiers else 'none'}",
+        f"structure: supplied POSCAR from {directory}/POSCAR",
+        f"reference phase: {reference.reference_phase or 'unavailable'} (pre-execution inputs BMD Compute would generate)",
+        "previous-stage context: none (standalone single-stage request)",
+        "Desired Output automatic-treatment resolution: not applied",
+        f"BMD Compute commit: {reference.producer_commit or 'unavailable'}",
+        f"POTCAR functional reported by BMD Compute: {reference.potcar_functional or 'not reported'}",
+    )
+
+
+def _compute_refusal_reasons(reference: InputReferenceObservation) -> tuple[str, ...]:
+    message = reference.error_message or reference.error_code or "no reason was given"
+    reasons = [f"BMD Compute did not generate a reference: {message}"]
+    if reference.error_suggestion:
+        reasons.append(f"BMD Compute suggestion: {reference.error_suggestion}")
+    return tuple(reasons)
 
 
 def compare_incar_settings(
@@ -368,7 +381,7 @@ def compare_incar_settings(
             status = (
                 MATCH
                 if values_match(supplied_value, reference_value)
-                else DIFFERS_FROM_BMD_REFERENCE
+                else DIFFERS_FROM_REFERENCE
             )
         elif supplied_present:
             status = SUPPLIED_EXTRA
@@ -442,7 +455,7 @@ def compare_kpoints(
             reason="KPOINTS mode is not safely comparable in check-input v1.",
         )
 
-    status = MATCH if supplied.comparable == reference.comparable else DIFFERS_FROM_BMD_REFERENCE
+    status = MATCH if supplied.comparable == reference.comparable else DIFFERS_FROM_REFERENCE
     return KpointsComparison(
         status,
         supplied_summary=supplied.summary,
@@ -552,7 +565,7 @@ def _insufficient(
     remote_directory: str,
     stage: str,
     theory: str,
-    resources: Mapping[str, int],
+    modifiers: tuple[str, ...],
     proposed: ProposedInputObservation,
     reason: str,
     *,
@@ -563,7 +576,7 @@ def _insufficient(
         remote_directory=remote_directory,
         stage_type=stage,
         theory=theory,
-        resources=resources,
+        modifiers=modifiers,
         proposed=proposed,
         reference=reference or InputReferenceObservation(status=UNAVAILABLE),
         limitations=(reason,),
@@ -576,6 +589,8 @@ def _reference_observation(response: InputReferenceResponse) -> InputReferenceOb
     source = source if isinstance(source, Mapping) else {}
     workflow = response.workflow
     error = response.error
+    request = response.payload.get("request")
+    request = request if isinstance(request, Mapping) else {}
     return InputReferenceObservation(
         status=response.status,
         schema_version=response.payload.get("schema_version"),
@@ -583,9 +598,11 @@ def _reference_observation(response: InputReferenceResponse) -> InputReferenceOb
         producer_repository=str(producer.get("repository") or ""),
         producer_commit=_optional_str(source.get("commit")),
         producer_dirty=source.get("dirty") if isinstance(source.get("dirty"), bool) else None,
+        potcar_functional=_optional_str(request.get("potcar_functional")),
         workflow_label=_optional_str(workflow.get("label")),
         error_code=_optional_str(error.get("code")),
         error_message=_optional_str(error.get("message")),
+        error_suggestion=_optional_str(error.get("suggestion")),
     )
 
 
@@ -679,21 +696,6 @@ def _kpoints_shift(payload: Mapping[str, Any]) -> tuple[float, float, float]:
             except (TypeError, ValueError):
                 pass
     return (0.0, 0.0, 0.0)
-
-
-def _error_limitations(reference: InputReferenceObservation) -> tuple[str, ...]:
-    message = reference.error_message or reference.error_code
-    return (message,) if message else ()
-
-
-def _positive_int(value: int, label: str) -> int:
-    try:
-        parsed = int(value)
-    except (TypeError, ValueError) as exc:
-        raise ValueError(f"{label} must be a positive integer") from exc
-    if parsed <= 0:
-        raise ValueError(f"{label} must be a positive integer")
-    return parsed
 
 
 def _optional_str(value: object) -> str | None:
