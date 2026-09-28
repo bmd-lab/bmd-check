@@ -1,0 +1,654 @@
+{
+  "schema": "bmd_compute.submission",
+  "schema_version": 1,
+  "status": "pending",
+  "label": "si_hse06_soc",
+  "run_name": "si_hse06_soc-20260928-120000",
+  "created_at": "20260928-120000",
+  "flow_spec": {
+    "workflow_spec": {
+      "stages": [
+        {
+          "stage_type": "relax",
+          "theory": "pbe",
+          "modifiers": [],
+          "label": null,
+          "options": {}
+        },
+        {
+          "stage_type": "static",
+          "theory": "hse06",
+          "modifiers": [
+            "soc"
+          ],
+          "label": null,
+          "options": {}
+        }
+      ],
+      "label": null,
+      "recipe": null
+    },
+    "potcar_functional": "PBE_64",
+    "structure": {
+      "type": "pasted_text",
+      "format": "poscar",
+      "text": "Si\n1.0\n0.0 2.715 2.715\n2.715 0.0 2.715\n2.715 2.715 0.0\nSi\n2\ndirect\n0.0 0.0 0.0\n0.25 0.25 0.25\n"
+    },
+    "workflow": "custom_workflow"
+  },
+  "paths": {
+    "run_dir": "/bmd-db/guest/flows/si_hse06_soc-20260928-120000",
+    "remote_script": "/bmd-db/guest/flows/si_hse06_soc-20260928-120000.sbatch.sh",
+    "logs_dir": "/bmd-db/guest/logs",
+    "flows_dir": "/bmd-db/guest/flows",
+    "potcars_dir": "/bmd-db/potcars",
+    "log_out": "/bmd-db/guest/logs/si_hse06_soc-20260928-120000.out",
+    "log_err": "/bmd-db/guest/logs/si_hse06_soc-20260928-120000.err",
+    "slurm_out": "/bmd-db/guest/logs/si_hse06_soc-20260928-120000.slurm.out",
+    "slurm_err": "/bmd-db/guest/logs/si_hse06_soc-20260928-120000.slurm.err",
+    "stage_dirs": {
+      "stage_01": "/bmd-db/guest/flows/si_hse06_soc-20260928-120000/stage_01",
+      "stage_02": "/bmd-db/guest/flows/si_hse06_soc-20260928-120000/stage_02"
+    },
+    "result_dir": "/bmd-db/guest/flows/si_hse06_soc-20260928-120000/stage_02",
+    "directories_to_prepare": [
+      "/bmd-db/guest/flows",
+      "/bmd-db/guest/logs",
+      "/bmd-db/guest/flows/si_hse06_soc-20260928-120000/stage_01",
+      "/bmd-db/guest/flows/si_hse06_soc-20260928-120000/stage_02",
+      "/bmd-db/guest/logs/submission_attempts"
+    ],
+    "submission_attempts_dir": "/bmd-db/guest/logs/submission_attempts",
+    "submission_attempt_state": "/bmd-db/guest/logs/submission_attempts/00000000-0000-4000-8000-000000000102.json",
+    "submission_attempt_lock": "/bmd-db/guest/logs/submission_attempts/00000000-0000-4000-8000-000000000102.lock"
+  },
+  "cluster": {
+    "ssh_config_host": "powerslurm-bmdguest",
+    "remote_host": "powerslurm-bmdguest",
+    "username": "bmdguest",
+    "key_file": null,
+    "port": 22,
+    "partition": "leeburton-pool",
+    "account": "power-leeburton-users_v2"
+  },
+  "resources": {
+    "nodes": 1,
+    "ntasks": 24,
+    "mem_gb": 128,
+    "walltime": "72:00:00"
+  },
+  "environment": {
+    "VASP_CMD": "mpirun -n $SLURM_NTASKS vasp_std",
+    "JOBFLOW_CONFIG_FILE": "/bmd-db/guest/jobflow_minimal.yaml",
+    "PMG_VASP_PSP_DIR": "/bmd-db/potcars",
+    "CUSTODIAN_NO_GZIP": "1",
+    "ATOMATE2_VASP_ZIP_FILES": "False",
+    "ATOMATE2_REMOTE_ENV": "/bmd/bmdguest/envs/atomate2_remote"
+  },
+  "modules": {
+    "purge_first": true,
+    "load": [
+      "intel/rocky8-oneAPI-2023",
+      "vasp/rocky8-intel-6.4.1"
+    ]
+  },
+  "runner": {
+    "working_directory": "/bmd-db/guest/flows/si_hse06_soc-20260928-120000",
+    "python": "/bmd/bmdguest/envs/atomate2_remote/bin/python",
+    "script_name": "run_job.py",
+    "submission_spec_name": "submission.json",
+    "backend_package_dir": "backend",
+    "backend_init_name": "__init__.py",
+    "execution_module_name": "execution.py",
+    "stdout": "/bmd-db/guest/logs/si_hse06_soc-20260928-120000.out",
+    "stderr": "/bmd-db/guest/logs/si_hse06_soc-20260928-120000.err"
+  },
+  "potcar": {
+    "functional": "PBE_64",
+    "species": [
+      {
+        "species": "Si",
+        "potcar_symbol": "Si"
+      }
+    ],
+    "symbols": [
+      "Si"
+    ],
+    "symbol_source": "pymatgen",
+    "repository": "shared",
+    "target": "/bmd-db/potcars/PBE_64",
+    "symlink_targets": []
+  },
+  "preflight": {
+    "requires_remote_structure_check": false,
+    "mp_api_key_provided": false
+  },
+  "submission": {
+    "method": "sbatch",
+    "ready": true,
+    "submitted": false,
+    "reason": "Specification only; no submission has been performed.",
+    "attempt_id": "00000000-0000-4000-8000-000000000102",
+    "attempt_state": "/bmd-db/guest/logs/submission_attempts/00000000-0000-4000-8000-000000000102.json",
+    "attempt_lock": "/bmd-db/guest/logs/submission_attempts/00000000-0000-4000-8000-000000000102.lock",
+    "attempt_comment": "bmd_attempt:00000000-0000-4000-8000-000000000102",
+    "attempt_fingerprint": "c0cfb57a750eec2fbbd8053bf7f788665f2b5cdba3145a0232311af963b375bd",
+    "identity_token": "eyJhdHRlbXB0X2lkIjoiMDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMTAyIiwicnVuX3RpbWVzdGFtcCI6IjIwMjYwOTI4LTEyMDAwMCIsInZlcnNpb24iOjF9.kU9w-z0ILtxGMBlb2MQFiyQ85zFNyfAI_qEljcm_3IA"
+  },
+  "provenance": {
+    "schema_version": 1,
+    "bmd_compute": {
+      "source": {
+        "status": "available",
+        "git_commit": "b0f946229b55d7551d87eba2740755c80ab5e7c2",
+        "dirty": false,
+        "state": "clean",
+        "dirty_paths_count": 0
+      },
+      "runtime_source": {
+        "status": "available",
+        "scope": "BMD Compute packaged Python runtime source",
+        "package_dir": "backend",
+        "hash_algorithm": "sha256",
+        "files_count": 37,
+        "manifest": {
+          "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "calculations/__init__.py": "389ebaacfb30af70aafe74fccc971b1dcbb9ace674bc43a046c2d2262ce878a4",
+          "calculations/builder.py": "1650560104542a67a42f89f86bf01c4539e9b63c13faac748f7fec0f49c568b3",
+          "calculations/capabilities.py": "c35182d82b8d9f9625079736502bbcf92ed2d21adc18cd2a25d699dd346814c7",
+          "calculations/custodian_policy.py": "36ed47bc0f165c2cdb59bf958f1c1fbf4b1531f347267e31b7328e5dac8381ee",
+          "calculations/default_treatments.py": "023d90d5e67cdca57f31a4e9b45f083f8932378c32081564863f04079141421c",
+          "calculations/dispersion.py": "14a3ffdf03b0485f9a9d4aebb4dde119b1a4c3de62e93437df7cb025752a21e1",
+          "calculations/hse_band_kpoints.py": "9e7bf23d4711df15b09b7f0d26ab72384cbc341cdecb910c15187c455fd39cf5",
+          "calculations/input_reference.py": "013c5d9b358fd748dd2dab9fc41e226c3af1d7d5bd8af3943b18d42148afb3cd",
+          "calculations/method_considerations.py": "1f2a1f58afcb54186ded4365297d95c15f210f579c4b7527677e94cc1b36b2c6",
+          "calculations/models.py": "aeb0cbaf8972ebcf02dfc75967ef3420562fd4345a523c133813f9d23013c7d0",
+          "calculations/registry.py": "40bcc6d4fa7d3300d3a003af0b5ca0681a2b3019a484280ceb11be2b07c37f2d",
+          "calculations/resource_policy.py": "c1020c11dfd07541e782dab3d3b6f91b1c91b06ac91827d24beb310cc593857b",
+          "calculations/resources.py": "3c5f2f18df710987d510498747e61069fcb8dd854e6a9a0e2bd335b96cc6186c",
+          "calculations/theory_policy.py": "eaaa29df0d5046b93a6a36e037c26cfb97a48df9560cf6dc6711971c0dfba827",
+          "calculations/vasp_stage_definitions.py": "764c307f45ed0c2d99775861887b1d182c40c48b13111644e80efdf9e56ee8e5",
+          "config.py": "0c8e9ec1b8cad7949c17512799e68f734390b74adf805feeee8e2e14747e3966",
+          "execution.py": "c605361f45b5fe1727845296a1f2fb64eec8c4c28536bb09e20703190af7d4bc",
+          "generated_inputs.py": "11b72280c6dff7608e99654067d32be4efc57448d48895b20b5e2e0378299a02",
+          "monitoring.py": "00ab482935b5aa740ae667869dbc955f420e40ebc65fbc112a91b728d5fab16c",
+          "paramiko_remote.py": "6d50ecc43803144855a9d14a7769851c0f45785af69016d9543d9da5f453c0cb",
+          "parser.py": "819295c6079672673be4117908f2cfcabb1e0e97541daba50f157776690175e6",
+          "provenance.py": "183d5b1b953a5790d0b251c3d62ea08f75e6f0bb2b9313bbbd84246ebcd65589",
+          "remote.py": "9db014cbf4f9247587fe853102e2fcdda987fe7f6dfbb1b8a122ffb7b9b27651",
+          "remote_preparation.py": "53cf0e5ee91b6cd532217b0b805f0a41e5314037e4cf8db4d080c9ac76bbf2eb",
+          "remote_result_parser.py": "379850d2249925a39bcc6be8ef98777ed83b72349ab9d426351e11406ea588cf",
+          "remote_runtime.py": "fd863be4ce433ba88ad605ea463f8da08cc32356417691ecb5aee82717a292e9",
+          "remote_submission.py": "75b288699ce2862ac6ec78faca46b245fe016b72f0d98353fd8c9962748d9196",
+          "results.py": "f09d56f5849bb87afd655b4c664e0e1a12913dc7534293ca75e27a08a1da1010",
+          "run_records.py": "e4cbc8bf94012982385ab9c369e37ccbc458be663fc81e48fed0118976f6629e",
+          "runtime_package.py": "e2267c8c9d9d2ef7d06e4f6a00ccf846759cb6a54c8ad92f0d01e8fdd8efadf3",
+          "structure_dimensionality.py": "6c43e112e8628a0a4e13979e6917ecf8c52227e315dad85b4cecab380813c265",
+          "submission.py": "3e38efd3c064fc1a10f8f5151eeab10587cc1a996ba23acfb4754a97d60cd3ab",
+          "summary.py": "90ecf1fa0ee668c5d54611c4fcb23535a6fff4a1e80c46fc043f25aba9f8c960",
+          "workflow_results.py": "b0eac8694aba457e6bc053137de080bafa65e818873915bba23a8dccb11f5673",
+          "workflow_summary.py": "cee07aca2712425ab65bdec879903f22aba0238fe90edf0af9d6df00e143de9f",
+          "workflows.py": "8cc8aeca919d9dc77bb4fa5c02fe283f990fa8d436e9dc60c19975afc0285953"
+        }
+      }
+    },
+    "python_environment": {
+      "preparation": {
+        "python_version": "3.12.14",
+        "python_implementation": "CPython",
+        "packages": {
+          "pymatgen": "2026.9.24",
+          "atomate2": "0.1.5",
+          "jobflow": "0.3.1",
+          "custodian": "2025.12.14"
+        }
+      },
+      "remote_execution": {
+        "status": "deferred_until_execution",
+        "python": "/bmd/bmdguest/envs/atomate2_remote/bin/python",
+        "packages": {
+          "pymatgen": "captured by the remote runner at execution time",
+          "atomate2": "captured by the remote runner at execution time",
+          "jobflow": "captured by the remote runner at execution time",
+          "custodian": "captured by the remote runner at execution time"
+        }
+      }
+    },
+    "vasp": {
+      "global_command_template": "mpirun -n $SLURM_NTASKS vasp_std",
+      "stages": [
+        {
+          "index": 1,
+          "stage_type": "relax",
+          "theory": "pbe",
+          "modifiers": [],
+          "options": {},
+          "executable": "vasp_std",
+          "command_template": "mpirun -n '$SLURM_NTASKS' vasp_std",
+          "custodian_vasp_job_kwargs": {}
+        },
+        {
+          "index": 2,
+          "stage_type": "static",
+          "theory": "hse06",
+          "modifiers": [
+            "soc"
+          ],
+          "options": {},
+          "executable": "vasp_ncl",
+          "command_template": "mpirun -n '$SLURM_NTASKS' vasp_ncl",
+          "custodian_vasp_job_kwargs": {
+            "auto_gamma": false
+          }
+        }
+      ],
+      "version": {
+        "status": "deferred_until_execution",
+        "reason": "VASP version/build is only known on the compute node."
+      }
+    },
+    "potcar": {
+      "functional": "PBE_64",
+      "species": [
+        {
+          "species": "Si",
+          "potcar_symbol": "Si"
+        }
+      ],
+      "symbols": [
+        "Si"
+      ],
+      "symbol_source": "pymatgen",
+      "repository": "shared",
+      "hashes": {
+        "status": "not_recorded",
+        "reason": "Actual execution POTCAR files are resolved from the configured remote/shared repository; raw POTCAR contents are not stored."
+      }
+    },
+    "execution": {
+      "workflow_spec": {
+        "stages": [
+          {
+            "stage_type": "relax",
+            "theory": "pbe",
+            "modifiers": [],
+            "label": null,
+            "options": {}
+          },
+          {
+            "stage_type": "static",
+            "theory": "hse06",
+            "modifiers": [
+              "soc"
+            ],
+            "label": null,
+            "options": {}
+          }
+        ],
+        "label": null,
+        "recipe": null
+      },
+      "automatic_treatments": null,
+      "stage_order": [
+        {
+          "index": 1,
+          "stage_type": "relax",
+          "theory": "pbe",
+          "modifiers": [],
+          "options": {}
+        },
+        {
+          "index": 2,
+          "stage_type": "static",
+          "theory": "hse06",
+          "modifiers": [
+            "soc"
+          ],
+          "options": {}
+        }
+      ],
+      "custodian": {
+        "stages": [
+          {
+            "index": 1,
+            "policy_id": "bmd_compute.vasp",
+            "policy_version": 1,
+            "stage": {
+              "stage_type": "relax",
+              "theory": "pbe"
+            },
+            "handlers": [
+              {
+                "class": "custodian.vasp.handlers.VaspErrorHandler",
+                "configuration": {
+                  "output_filename": "vasp.out",
+                  "errors_subset_to_catch": [
+                    "tet",
+                    "ksymm",
+                    "inv_rot_mat",
+                    "brmix",
+                    "subspacematrix",
+                    "tetirr",
+                    "incorrect_shift",
+                    "real_optlay",
+                    "rspher",
+                    "dentet",
+                    "too_few_bands",
+                    "triple_product",
+                    "rot_matrix",
+                    "brions",
+                    "pricel",
+                    "zpotrf",
+                    "amin",
+                    "zbrent",
+                    "pssyevx",
+                    "pdsyevx",
+                    "eddrmm",
+                    "edddav",
+                    "algo_tet",
+                    "grad_not_orth",
+                    "nicht_konv",
+                    "zheev",
+                    "eddiag",
+                    "elf_kpar",
+                    "elf_ncl",
+                    "rhosyg",
+                    "posmap",
+                    "point_group",
+                    "pricelv",
+                    "symprec_noise",
+                    "dfpt_ncore",
+                    "bravais",
+                    "nbands_not_sufficient",
+                    "hnform",
+                    "coef",
+                    "set_core_wf",
+                    "read_error",
+                    "auto_nbands",
+                    "ibzkpt",
+                    "fexcf",
+                    "spin_polarized_harris"
+                  ],
+                  "vtst_fixes": false
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.MeshSymmetryErrorHandler",
+                "configuration": {
+                  "output_filename": "vasp.out",
+                  "output_vasprun": "vasprun.xml"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.UnconvergedErrorHandler",
+                "configuration": {
+                  "output_filename": "vasprun.xml"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.NonConvergingErrorHandler",
+                "configuration": {
+                  "output_filename": "OSZICAR",
+                  "nionic_steps": 10
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.PotimErrorHandler",
+                "configuration": {
+                  "input_filename": "POSCAR",
+                  "output_filename": "OSZICAR",
+                  "dE_threshold": 1
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.PositiveEnergyErrorHandler",
+                "configuration": {
+                  "output_filename": "OSZICAR"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.StdErrHandler",
+                "configuration": {
+                  "output_filename": "std_err.txt"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.LargeSigmaHandler",
+                "configuration": {
+                  "e_entropy_tol": 0.001,
+                  "min_sigma": 0.001,
+                  "output_filename": "OUTCAR"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.IncorrectSmearingHandler",
+                "configuration": {
+                  "output_filename": "vasprun.xml"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.KspacingMetalHandler",
+                "configuration": {
+                  "output_filename": "vasprun.xml"
+                }
+              }
+            ],
+            "explicit_handler_exclusions": [
+              "custodian.vasp.handlers.FrozenJobErrorHandler"
+            ],
+            "vasp_error_exclusions": [],
+            "validators": {
+              "source": "atomate2.vasp.run._DEFAULT_VALIDATORS",
+              "explicit_override": null,
+              "resolved": [
+                {
+                  "class": "custodian.vasp.validators.VasprunXMLValidator",
+                  "configuration": {
+                    "output_file": "vasp.out",
+                    "stderr_file": "std_err.txt"
+                  }
+                },
+                {
+                  "class": "custodian.vasp.validators.VaspFilesValidator",
+                  "configuration": {}
+                }
+              ]
+            },
+            "walltime_authority": "slurm",
+            "walltime_handler": null,
+            "custodian_version": "2025.12.14",
+            "implementation_source": "backend.calculations.custodian_policy.bmd_custodian_handlers",
+            "rationale": "Output-file inactivity alone is not sufficient evidence for BMD to terminate a VASP calculation."
+          },
+          {
+            "index": 2,
+            "policy_id": "bmd_compute.vasp",
+            "policy_version": 1,
+            "stage": {
+              "stage_type": "static",
+              "theory": "hse06"
+            },
+            "handlers": [
+              {
+                "class": "custodian.vasp.handlers.VaspErrorHandler",
+                "configuration": {
+                  "output_filename": "vasp.out",
+                  "errors_subset_to_catch": [
+                    "tet",
+                    "ksymm",
+                    "inv_rot_mat",
+                    "brmix",
+                    "subspacematrix",
+                    "tetirr",
+                    "incorrect_shift",
+                    "real_optlay",
+                    "rspher",
+                    "dentet",
+                    "too_few_bands",
+                    "triple_product",
+                    "rot_matrix",
+                    "brions",
+                    "pricel",
+                    "zpotrf",
+                    "amin",
+                    "zbrent",
+                    "pssyevx",
+                    "pdsyevx",
+                    "eddrmm",
+                    "edddav",
+                    "algo_tet",
+                    "grad_not_orth",
+                    "nicht_konv",
+                    "zheev",
+                    "eddiag",
+                    "elf_kpar",
+                    "elf_ncl",
+                    "rhosyg",
+                    "posmap",
+                    "point_group",
+                    "pricelv",
+                    "symprec_noise",
+                    "dfpt_ncore",
+                    "bravais",
+                    "nbands_not_sufficient",
+                    "hnform",
+                    "coef",
+                    "set_core_wf",
+                    "read_error",
+                    "auto_nbands",
+                    "ibzkpt",
+                    "fexcf",
+                    "spin_polarized_harris"
+                  ],
+                  "vtst_fixes": false
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.MeshSymmetryErrorHandler",
+                "configuration": {
+                  "output_filename": "vasp.out",
+                  "output_vasprun": "vasprun.xml"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.UnconvergedErrorHandler",
+                "configuration": {
+                  "output_filename": "vasprun.xml"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.NonConvergingErrorHandler",
+                "configuration": {
+                  "output_filename": "OSZICAR",
+                  "nionic_steps": 10
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.PotimErrorHandler",
+                "configuration": {
+                  "input_filename": "POSCAR",
+                  "output_filename": "OSZICAR",
+                  "dE_threshold": 1
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.PositiveEnergyErrorHandler",
+                "configuration": {
+                  "output_filename": "OSZICAR"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.StdErrHandler",
+                "configuration": {
+                  "output_filename": "std_err.txt"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.LargeSigmaHandler",
+                "configuration": {
+                  "e_entropy_tol": 0.001,
+                  "min_sigma": 0.001,
+                  "output_filename": "OUTCAR"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.IncorrectSmearingHandler",
+                "configuration": {
+                  "output_filename": "vasprun.xml"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.KspacingMetalHandler",
+                "configuration": {
+                  "output_filename": "vasprun.xml"
+                }
+              }
+            ],
+            "explicit_handler_exclusions": [
+              "custodian.vasp.handlers.FrozenJobErrorHandler"
+            ],
+            "vasp_error_exclusions": [],
+            "validators": {
+              "source": "atomate2.vasp.run._DEFAULT_VALIDATORS",
+              "explicit_override": null,
+              "resolved": [
+                {
+                  "class": "custodian.vasp.validators.VasprunXMLValidator",
+                  "configuration": {
+                    "output_file": "vasp.out",
+                    "stderr_file": "std_err.txt"
+                  }
+                },
+                {
+                  "class": "custodian.vasp.validators.VaspFilesValidator",
+                  "configuration": {}
+                }
+              ]
+            },
+            "walltime_authority": "slurm",
+            "walltime_handler": null,
+            "custodian_version": "2025.12.14",
+            "implementation_source": "backend.calculations.custodian_policy.bmd_custodian_handlers",
+            "rationale": "Output-file inactivity alone is not sufficient evidence for BMD to terminate a VASP calculation."
+          }
+        ]
+      },
+      "resources": {
+        "nodes": 1,
+        "ntasks": 24,
+        "mem_gb": 128,
+        "walltime": "72:00:00"
+      },
+      "cluster": {
+        "partition": "leeburton-pool",
+        "account": "power-leeburton-users_v2"
+      },
+      "modules": {
+        "purge_first": true,
+        "load": [
+          "intel/rocky8-oneAPI-2023",
+          "vasp/rocky8-intel-6.4.1"
+        ],
+        "loaded_module_information": {
+          "status": "deferred_until_execution",
+          "reason": "The active module list is emitted by the remote job."
+        }
+      },
+      "environment_policy": {
+        "VASP_CMD": "mpirun -n $SLURM_NTASKS vasp_std",
+        "JOBFLOW_CONFIG_FILE": "/bmd-db/guest/jobflow_minimal.yaml",
+        "PMG_VASP_PSP_DIR": "/bmd-db/potcars",
+        "CUSTODIAN_NO_GZIP": "1",
+        "ATOMATE2_VASP_ZIP_FILES": "False"
+      },
+      "submission_script": {
+        "path": "/bmd-db/guest/flows/si_hse06_soc-20260928-120000.sbatch.sh",
+        "builder": "backend.submission.build_sbatch_script",
+        "encoding": "utf-8",
+        "hash_algorithm": "sha256",
+        "sha256": "41fc865543079845cba790378590be19a67f69a1be588c10842ba411b49ae1f3",
+        "size_bytes": 12481
+      }
+    }
+  }
+}

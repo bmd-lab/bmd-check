@@ -14,6 +14,12 @@ from typing import Any
 
 from bmd_agent.config import SlurmClusterResource
 from bmd_agent.resources.compute import ComputePolicyObservation
+from bmd_agent.resources.compute_records import (
+    UNSUPPORTED_LEGACY,
+    UNSUPPORTED_VERSION,
+    ComputeRecordError,
+    parse_submission_record,
+)
 from bmd_agent.deployment import DeploymentContext
 from bmd_agent.profiling import profile_phase
 from bmd_agent.resources.custodian import (
@@ -148,6 +154,19 @@ _OUTCAR_FORCE_SEPARATOR_RE = re.compile(r"^\s*-{3,}\s*$")
 
 class RunInspectionError(RuntimeError):
     """Raised when run inspection cannot safely continue."""
+
+
+class UnsupportedComputeRecordError(RunInspectionError):
+    """A BMD Compute record uses a contract version or legacy shape Agent does not read."""
+
+
+@dataclass(frozen=True)
+class SubmissionRecordObservation:
+    """Which BMD Compute submission contract a run's submission.json was read under."""
+
+    contract: str
+    limitations: tuple[str, ...] = ()
+    evidence_type: str = "producer_provenance"
 
 
 @dataclass(frozen=True)
@@ -320,6 +339,7 @@ class RunInspection:
     # Current BMD Compute policy used for input-effect checks; None when the
     # caller did not consult BMD Compute at all.
     compute_policy: ComputePolicyObservation | None = None
+    submission_record: SubmissionRecordObservation | None = None
 
 
 @dataclass(frozen=True)
@@ -822,6 +842,7 @@ def inspect_remote_run(
         input_expectations=input_expectations,
         oom=oom,
         custodian_policy=producer["custodian_policy"],
+        submission_record=producer["submission_record"],
         custodian_evidence=custodian_evidence,
         execution_diagnostics=execution_diagnostics,
         compute_policy=compute_policy,
@@ -3832,35 +3853,54 @@ def _parse_submission(
     *,
     allowed_roots: Iterable[PurePosixPath | str],
 ) -> dict[str, Any]:
-    flow_spec = _required_mapping(submission, "flow_spec")
-    workflow_spec = _required_mapping(flow_spec, "workflow_spec")
-    paths = _required_mapping(submission, "paths")
-    workflow_stages = _parse_workflow_stages(workflow_spec)
-    provenance = _optional_mapping(submission, "provenance")
+    try:
+        record = parse_submission_record(submission)
+    except ComputeRecordError as exc:
+        if exc.kind in {UNSUPPORTED_VERSION, UNSUPPORTED_LEGACY}:
+            raise UnsupportedComputeRecordError(str(exc)) from exc
+        raise RunInspectionError(str(exc)) from exc
 
+    workflow_stages = _parse_workflow_stages({"stages": list(record.workflow_stages)})
+    # Stage directories are keyed by Compute stage identifiers and rebuilt here
+    # in canonical workflow order; JSON key order is never used.
+    stage_dirs = {
+        label: _authorize_path_value(
+            path,
+            f"paths.stage_dirs.{label}",
+            allowed_roots=allowed_roots,
+        )
+        for _index, label, path in record.stage_dirs
+    }
     return {
         "workflow_stages": workflow_stages,
-        "initial_structure": _initial_structure_observation(flow_spec),
-        "stage_dirs": _parse_stage_dirs(
-            paths,
-            stage_count=len(workflow_stages),
+        "initial_structure": _initial_structure_observation({"structure": record.structure}),
+        "stage_dirs": stage_dirs,
+        "result_dir": _authorize_path_value(
+            record.result_dir,
+            "paths.result_dir",
             allowed_roots=allowed_roots,
         ),
-        "result_dir": _required_authorized_path(
-            paths,
-            "result_dir",
-            allowed_roots=allowed_roots,
-        ),
-        "log_paths": _parse_log_paths(paths, allowed_roots=allowed_roots),
-        "producer_git": _producer_git_provenance(provenance),
-        "cluster_request": dict(_optional_mapping(submission, "cluster")),
-        "resources_request": dict(_optional_mapping(submission, "resources")),
-        "environment_policy": dict(_optional_mapping(submission, "environment")),
+        "log_paths": {
+            key: _authorize_path_value(value, f"paths.{key}", allowed_roots=allowed_roots)
+            for key, value in record.log_paths.items()
+        },
+        "producer_git": _producer_git_provenance(record.provenance),
+        "cluster_request": dict(record.cluster),
+        "resources_request": dict(record.resources),
+        "environment_policy": dict(record.environment),
         "custodian_policy": parse_custodian_policy_provenance(submission),
-        "attempt_state_path": _attempt_state_path(
-            submission,
-            paths,
-            allowed_roots=allowed_roots,
+        "attempt_state_path": (
+            _authorize_path_value(
+                record.attempt_state,
+                "submission.attempt_state",
+                allowed_roots=allowed_roots,
+            )
+            if record.attempt_state is not None
+            else None
+        ),
+        "submission_record": SubmissionRecordObservation(
+            contract=record.label,
+            limitations=record.limitations,
         ),
     }
 
@@ -3897,67 +3937,6 @@ def _parse_workflow_stages(workflow_spec: Mapping[str, Any]) -> tuple[WorkflowSt
         )
 
     return tuple(parsed)
-
-
-def _parse_stage_dirs(
-    paths: Mapping[str, Any],
-    *,
-    stage_count: int,
-    allowed_roots: Iterable[PurePosixPath | str],
-) -> dict[str, PurePosixPath]:
-    value = paths.get("stage_dirs")
-    if value is None:
-        if stage_count == 1:
-            return {}
-        raise RunInspectionError("submission paths.stage_dirs is required for multi-stage runs")
-    if not isinstance(value, Mapping):
-        raise RunInspectionError("submission paths.stage_dirs must be a JSON object")
-
-    parsed: dict[str, PurePosixPath] = {}
-    for label, path in value.items():
-        if not isinstance(label, str) or not label:
-            raise RunInspectionError("stage directory labels must be non-empty strings")
-        parsed[label] = _authorize_path_value(
-            path,
-            f"paths.stage_dirs.{label}",
-            allowed_roots=allowed_roots,
-        )
-    return parsed
-
-
-def _parse_log_paths(
-    paths: Mapping[str, Any],
-    *,
-    allowed_roots: Iterable[PurePosixPath | str],
-) -> dict[str, PurePosixPath]:
-    parsed: dict[str, PurePosixPath] = {}
-    for key in ("log_out", "log_err", "slurm_out", "slurm_err"):
-        value = paths.get(key)
-        if value is None:
-            continue
-        parsed[key] = _authorize_path_value(
-            value,
-            f"paths.{key}",
-            allowed_roots=allowed_roots,
-        )
-    return parsed
-
-
-def _attempt_state_path(
-    submission: Mapping[str, Any],
-    paths: Mapping[str, Any],
-    *,
-    allowed_roots: Iterable[PurePosixPath | str],
-) -> PurePosixPath | None:
-    submission_block = _optional_mapping(submission, "submission")
-    value = submission_block.get("attempt_state") or paths.get("submission_attempt_state")
-    if value is None:
-        return None
-    return _authorize_path_value(
-        value,
-        "submission.attempt_state",
-        allowed_roots=allowed_roots,
-    )
 
 
 def _read_attempt_state(
@@ -4273,10 +4252,9 @@ def _find_job_id(
     submission: Mapping[str, Any],
     attempt_payload: Mapping[str, Any] | None,
 ) -> str | None:
-    candidates = [
-        submission.get("job_id"),
-        _optional_mapping(submission, "submission").get("job_id"),
-    ]
+    # BMD Compute never writes a job ID into submission.json (it is written
+    # before sbatch); the submission-attempt state record carries it.
+    candidates: list[Any] = []
     if attempt_payload is not None:
         candidates.extend([
             attempt_payload.get("job_id"),
@@ -5290,15 +5268,9 @@ def _matrix_rows(matrix: Any) -> list[Any]:
 
 
 def _producer_result_payload(payload: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
-    if payload is None:
-        return None
-    for key in ("result", "results", "results_summary", "completed_result"):
-        value = payload.get(key)
-        if isinstance(value, Mapping):
-            return value
-    job_record = _optional_mapping(payload, "job_record")
-    submission_result = job_record.get("result")
-    return submission_result if isinstance(submission_result, Mapping) else None
+    # BMD Compute's run records do not carry a durable result payload, so
+    # there is nothing producer-side to compare against.
+    return None
 
 
 def _nested_result_value(result: Mapping[str, Any], key: str) -> Any:

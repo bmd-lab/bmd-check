@@ -517,13 +517,13 @@ def power_deployment(resource: SlurmClusterResource | None = None) -> Deployment
 
 def submission_payload(*, outside_path: bool = False) -> dict:
     stage_dirs = {
-        "producer-alpha": f"{FLOW_ROOT}/producer-alpha",
-        "producer-beta": f"{FLOW_ROOT}/producer-beta",
-        "producer-gamma": f"{FLOW_ROOT}/producer-gamma",
-        "producer-delta": RESULT_DIR,
+        "stage_01": f"{FLOW_ROOT}/producer-alpha",
+        "stage_02": f"{FLOW_ROOT}/producer-beta",
+        "stage_03": f"{FLOW_ROOT}/producer-gamma",
+        "stage_04": RESULT_DIR,
     }
     if outside_path:
-        stage_dirs["producer-beta"] = "/etc/not-authorized"
+        stage_dirs["stage_02"] = "/etc/not-authorized"
 
     workflow_spec = {
         "stages": [
@@ -1896,10 +1896,10 @@ def test_inspect_run_uses_submission_stage_dirs_and_preserves_sources() -> None:
     assert inspection.initial_structure.status == "available"
     assert inspection.initial_structure.representation_hash is not None
     assert [item.label for item in inspection.stage_directories] == [
-        "producer-alpha",
-        "producer-beta",
-        "producer-gamma",
-        "producer-delta",
+        "stage_01",
+        "stage_02",
+        "stage_03",
+        "stage_04",
     ]
     assert all("stage_01" not in " ".join(command) for command in remote.commands)
     assert inspection.producer_git["git_commit"] == "abcdef0123456789"
@@ -1917,11 +1917,11 @@ def test_inspect_run_uses_submission_stage_dirs_and_preserves_sources() -> None:
     assert inspection.scientific.final_formula == "Example2"
     assert all(item.evidence_type == ARTIFACT_OBSERVATION for item in inspection.final_artifacts)
     incar_inputs = {item.label: item for item in inspection.executed_inputs}
-    assert incar_inputs["producer-alpha"].evidence_type == EXECUTED_INPUT
-    assert incar_inputs["producer-alpha"].stage_index == 1
-    assert incar_inputs["producer-alpha"].values["IVDW"] == 11
-    assert incar_inputs["producer-delta"].stage_index == 4
-    assert incar_inputs["producer-beta"].present is False
+    assert incar_inputs["stage_01"].evidence_type == EXECUTED_INPUT
+    assert incar_inputs["stage_01"].stage_index == 1
+    assert incar_inputs["stage_01"].values["IVDW"] == 11
+    assert incar_inputs["stage_04"].stage_index == 4
+    assert incar_inputs["stage_02"].present is False
     assert "result_dir" not in incar_inputs
     assert all(item.stage_index is not None for item in inspection.executed_inputs)
     assert inspection.input_expectations[0].status == "supported"
@@ -2174,10 +2174,10 @@ def test_diagnose_run_uses_producer_stage_dirs_for_oszicar_evidence() -> None:
     assert diagnosis.termination.scheduler_timelimit == "72:00:00"
     assert diagnosis.termination.scheduler_reports_timeout is False
     assert [trajectory.stage_label for trajectory in diagnosis.trajectories] == [
-        "producer-alpha",
-        "producer-beta",
-        "producer-gamma",
-        "producer-delta",
+        "stage_01",
+        "stage_02",
+        "stage_03",
+        "stage_04",
     ]
     assert "result_dir" not in [trajectory.stage_label for trajectory in diagnosis.trajectories]
 
@@ -3422,7 +3422,7 @@ def test_diagnose_rejects_producer_paths_outside_allowed_roots() -> None:
     }
     remote = RemoteFixture(files=files, directories={FLOW_ROOT})
 
-    with pytest.raises(RemotePathError, match="paths.stage_dirs.producer-beta"):
+    with pytest.raises(RemotePathError, match="paths.stage_dirs.stage_02"):
         diagnose_remote_run(
             cluster(),
             FLOW_ROOT,
@@ -3439,7 +3439,7 @@ def test_producer_supplied_paths_outside_allowed_roots_are_rejected() -> None:
     }
     remote = RemoteFixture(files=files, directories={FLOW_ROOT})
 
-    with pytest.raises(RemotePathError, match="paths.stage_dirs.producer-beta"):
+    with pytest.raises(RemotePathError, match="paths.stage_dirs.stage_02"):
         inspect_remote_run(
             cluster(),
             FLOW_ROOT,
@@ -3777,7 +3777,7 @@ def test_requested_options_are_compared_to_executed_input_by_policy() -> None:
     )
     executed = (
         IncarObservation(
-            "producer-alpha",
+            "stage_01",
             f"{FLOW_ROOT}/producer-alpha/INCAR",
             True,
             1,
@@ -3793,7 +3793,7 @@ def test_requested_options_are_compared_to_executed_input_by_policy() -> None:
 
     assert observations == (
         InputExpectationObservation(
-            stage_label="producer-alpha",
+            stage_label="stage_01",
             stage_index=1,
             option_path="dispersion.method",
             requested_value="dftd3",
@@ -3801,7 +3801,7 @@ def test_requested_options_are_compared_to_executed_input_by_policy() -> None:
             expected_value=11,
             observed_value=12,
             status="discrepancy",
-            source_values={"retained_incar:producer-alpha": 12},
+            source_values={"retained_incar:stage_01": 12},
             reason="executed value differs from producer-requested option effect",
         ),
     )
@@ -4219,7 +4219,7 @@ def test_cli_inspect_run_summary_is_evidence_oriented(
             WorkflowStage(2, "static", "r2scan", (), None),
         ),
         stage_directories=(
-            PathObservation("producer-alpha", f"{FLOW_ROOT}/producer-alpha", "directory", True, ARTIFACT_OBSERVATION),
+            PathObservation("stage_01", f"{FLOW_ROOT}/producer-alpha", "directory", True, ARTIFACT_OBSERVATION),
         ),
         result_directory=PathObservation("result_dir", RESULT_DIR, "directory", True, ARTIFACT_OBSERVATION),
         log_paths=(
