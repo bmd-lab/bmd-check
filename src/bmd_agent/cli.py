@@ -487,6 +487,8 @@ def _print_bmdex_contextual_enrichment(
         matched = record.match.get("matched_fields", ())
         if isinstance(matched, list) and matched:
             print(f"    matched fields: {', '.join(str(item) for item in matched)}")
+        if record.matched_observed_patterns:
+            print(f"    matched observed patterns: {', '.join(record.matched_observed_patterns)}")
         print(f"    source provenance: {_compact_reference_sources(record.sources)}")
         print(f"    producer-supplied limitations retained: {len(record.limitations)}")
     print()

@@ -23,6 +23,11 @@ DOMAIN_CONTEXT_EVIDENCE_TYPE = "contextual_reference_evidence"
 DOMAIN_CONTEXT_SCHEMA = "bmdex.contextual_reference.v1"
 DOMAIN_CONTEXT_PRODUCER_MODULE = "tools.domain_context.query"
 BMDEX_DOMAIN_CONTEXT = "bmdex_domain_context"
+# Observation identifier defined by BMDex's observed-pattern vocabulary
+# (vasp/contextual_reference/observed_patterns.json). BMDex owns the identifier
+# and its definition; Agent only reports it when its own trajectory evidence
+# meets that definition, and never translates other strings into it.
+BMDEX_PATTERN_FIRST_CYCLE_ONLY_DAV = "first_electronic_cycle_incomplete_after_only_dav_iterations"
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 
@@ -121,6 +126,19 @@ class BmdexContextualReferenceRecord:
     @property
     def record_provenance(self) -> Mapping[str, Any]:
         return self.record["record_provenance"]
+
+    @property
+    def matched_fields(self) -> tuple[str, ...]:
+        return tuple(str(item) for item in self.match.get("matched_fields", ()))
+
+    @property
+    def matched_observed_patterns(self) -> tuple[str, ...]:
+        """Record patterns BMDex reports as matched; empty if none or not reported."""
+
+        value = self.match.get("matched_observed_patterns")
+        if not isinstance(value, list):
+            return ()
+        return tuple(str(item) for item in value)
 
 
 @dataclass(frozen=True)
@@ -400,18 +418,8 @@ def _hybrid_domain_query(
     if isinstance(algorithm, str) and algorithm.strip():
         query["electronic_algorithm"] = algorithm.strip()
 
-    observed_algorithms = {
-        str(item.algorithm).upper()
-        for item in trajectory.recent_incomplete_electronic_iterations
-        if item.algorithm
-    }
-    observed_patterns = ["incomplete_first_electronic_cycle"]
-    if "DAV" in observed_algorithms:
-        observed_patterns.append("initial_DAV_iterations_observed")
-        observed_patterns.append(
-            f"{trajectory.incomplete_electronic_iteration_count}_initial_DAV_iterations_observed"
-        )
-    query["observed_patterns"] = observed_patterns
+    if _first_cycle_only_dav_iterations_observed(trajectory):
+        query["observed_patterns"] = [BMDEX_PATTERN_FIRST_CYCLE_ONLY_DAV]
 
     input_tags = {
         key: input_settings[key]
@@ -440,6 +448,25 @@ def _job_executed_settings(inputs: tuple[Any, ...], stage_index: int | None) -> 
         for key, values in values_by_key.items()
         if values and all(value == values[0] for value in values[1:])
     }
+
+
+def _first_cycle_only_dav_iterations_observed(
+    trajectory: StageTrajectoryObservation,
+) -> bool:
+    """Whether the BMDex first-cycle/only-DAV observation definition is met.
+
+    Requires that no ionic step completed, the first electronic cycle is
+    incomplete, every iteration written for it was observed, and each of those
+    iterations is DAV-labelled. A partial view does not qualify.
+    """
+
+    count = trajectory.incomplete_electronic_iteration_count
+    iterations = trajectory.recent_incomplete_electronic_iterations
+    if trajectory.completed_ionic_steps != 0 or not count or count <= 0:
+        return False
+    if len(iterations) != count:
+        return False
+    return all(str(item.algorithm or "").strip().upper() == "DAV" for item in iterations)
 
 
 def inspect_bmdex_domain_context(
@@ -698,6 +725,20 @@ def _validate_domain_context_match(item: Any) -> None:
             "BMDex contextual-reference match.matched_fields is malformed.",
             kind="malformed_payload",
         )
+    matched_patterns = match.get("matched_observed_patterns")
+    if matched_patterns is not None:
+        if not isinstance(matched_patterns, list) or not all(
+            isinstance(pattern, str) and pattern for pattern in matched_patterns
+        ):
+            raise BmdexDomainContextError(
+                "BMDex contextual-reference match.matched_observed_patterns is malformed.",
+                kind="malformed_payload",
+            )
+        if bool(matched_patterns) != ("observed_patterns" in matched_fields):
+            raise BmdexDomainContextError(
+                "BMDex contextual-reference match reports observed patterns inconsistently.",
+                kind="malformed_payload",
+            )
     if not isinstance(match.get("match_type"), str) or not match["match_type"]:
         raise BmdexDomainContextError(
             "BMDex contextual-reference match.match_type is malformed.",
@@ -799,13 +840,9 @@ def _contextual_assessment(
 ) -> BmdexContextualAssessment | None:
     if not evidence.records:
         return None
-    basis = [
-        (
-            "Observed VASP input and electronic-trajectory context are consistent with the "
-            f"applicability of cited BMDex reference {record.record_id}: {record.title}."
-        )
-        for record in evidence.records
-    ]
+    basis: list[str] = []
+    for record in evidence.records:
+        basis.extend(_record_match_basis(record, evidence.query))
     if custodian_supported:
         basis.append(
             "Independently observed Custodian intervention and termination evidence supports "
@@ -831,6 +868,48 @@ def _contextual_assessment(
         limitations=tuple(limitations),
         source_record_ids=tuple(record.record_id for record in evidence.records),
     )
+
+
+def _record_match_basis(
+    record: BmdexContextualReferenceRecord,
+    query: Mapping[str, Any],
+) -> tuple[str, ...]:
+    """Describe a match only as far as BMDex's reported match establishes it."""
+
+    fields = [
+        field
+        for field in record.matched_fields
+        if field not in {"code", "observed_patterns"}
+    ]
+    lines = []
+    if fields:
+        lines.append(
+            f"BMDex matched cited reference {record.record_id} ({record.title}) "
+            f"on query fields: {', '.join(fields)}."
+        )
+    else:
+        lines.append(f"BMDex returned cited reference {record.record_id} ({record.title}).")
+
+    matched_patterns = record.matched_observed_patterns
+    sent = query.get("observed_patterns") if isinstance(query, Mapping) else None
+    sent_patterns = [sent] if isinstance(sent, str) else list(sent or [])
+    if "observed_patterns" in record.matched_fields:
+        reported = ", ".join(matched_patterns) if matched_patterns else "unreported pattern identifiers"
+        lines.append(
+            f"BMDex also matched the observed electronic-trajectory pattern {reported}, "
+            "which this reference lists as relevant; this is an observation, not a cause."
+        )
+    elif sent_patterns:
+        lines.append(
+            f"The observed electronic-trajectory pattern {', '.join(sent_patterns)} did not "
+            "match this reference, so trajectory evidence did not contribute to the match."
+        )
+    else:
+        lines.append(
+            "No BMDex-defined electronic-trajectory pattern was observed for this run, "
+            "so trajectory evidence did not contribute to the match."
+        )
+    return tuple(lines)
 
 
 def _analysis_mentions_sigterm(analysis: LifecycleAnalysis) -> bool:
