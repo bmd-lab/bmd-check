@@ -478,3 +478,21 @@ def test_local_unread_submission_is_reported_not_silently_ignored(tmp_path, muta
 
     assert analysis.bmd_workflow is None
     assert any("submission.json was not used" in item and expected in item for item in analysis.limitations)
+
+
+# --- vendored snapshot identity -------------------------------------------------------------
+
+
+def test_vendored_snapshot_matches_its_checksum_manifest():
+    import hashlib
+
+    manifest = (FIXTURES / "SHA256SUMS").read_text(encoding="utf-8").splitlines()
+    listed = {}
+    for line in manifest:
+        digest, relative = line.split("  ", 1)
+        listed[relative] = digest
+
+    vendored = {path.relative_to(FIXTURES).as_posix(): path for path in FIXTURES.glob("*/*.json")}
+    assert set(listed) == set(vendored)
+    for relative, path in vendored.items():
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == listed[relative], relative
