@@ -8,9 +8,13 @@ from typing import Any, Callable, Mapping
 from bmd_agent.config import GitRepositoryResource
 
 
+# Compatibility with BMD Compute's input-reference producer is established only
+# from machine-readable fields: ``schema_version``, ``producer.repository`` and
+# ``reference_phase``. The producer's ``scope`` text is human-readable and is
+# never compared as a contract.
 SCHEMA_VERSION = 1
 PRODUCER_MODULE = "backend.calculations.input_reference"
-SCOPE = "BMD Compute generated pre-execution VASP input reference"
+PRODUCER_REPOSITORY_ID = "bmd_compute"
 REFERENCE_PHASE = "generated_pre_execution"
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
@@ -199,10 +203,11 @@ def _validate_payload(payload: Mapping[str, Any]) -> None:
             kind="unsupported_schema",
         )
 
-    if payload.get("scope") != SCOPE:
+    scope = payload.get("scope")
+    if scope is not None and not isinstance(scope, str):
         raise InputReferenceError(
-            "BMD Compute input-reference payload has an unexpected scope.",
-            kind="unexpected_scope",
+            "BMD Compute input-reference scope must be text when present.",
+            kind="malformed_payload",
         )
 
     status = payload.get("status")
@@ -231,7 +236,12 @@ def _validate_payload(payload: Mapping[str, Any]) -> None:
 
 
 def _validate_producer(producer: Mapping[str, Any]) -> None:
-    _required_str(producer, "repository")
+    repository = _required_str(producer, "repository")
+    if repository != PRODUCER_REPOSITORY_ID:
+        raise InputReferenceError(
+            f"Input-reference payload is not from BMD Compute: producer.repository={repository!r}",
+            kind="unexpected_producer",
+        )
     source = producer.get("source")
     if source is None:
         return

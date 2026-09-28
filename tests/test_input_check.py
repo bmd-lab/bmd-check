@@ -30,6 +30,7 @@ from bmd_agent.resources.input_reference import (
     PRODUCER_MODULE,
     InputReferenceError,
     generate_input_reference,
+    parse_input_reference_payload,
 )
 from bmd_agent.resources.vasp import RemotePathError
 
@@ -640,3 +641,44 @@ def test_raw_traceback_from_failed_producer_is_not_exposed(tmp_path: Path) -> No
         )
 
     assert "Traceback" not in str(exc_info.value)
+
+
+@pytest.mark.parametrize(
+    "scope",
+    (
+        "BMD Compute generated pre-execution VASP input reference",
+        "Any reworded human description",
+        None,
+    ),
+)
+def test_input_reference_scope_prose_is_not_a_compatibility_contract(scope: str | None) -> None:
+    payload = producer_payload()
+    if scope is None:
+        del payload["scope"]
+    else:
+        payload["scope"] = scope
+
+    response = parse_input_reference_payload(json.dumps(payload))
+
+    assert response.status == "ok"
+    assert response.reference_phase == "generated_pre_execution"
+
+
+@pytest.mark.parametrize(
+    ("mutate", "kind"),
+    (
+        (lambda payload: payload.update(schema_version=2), "unsupported_schema"),
+        (lambda payload: payload.pop("schema_version"), "unsupported_schema"),
+        (lambda payload: payload.update(reference_phase="post_execution"), "unexpected_reference_phase"),
+        (lambda payload: payload["producer"].update(repository="bmdex"), "unexpected_producer"),
+        (lambda payload: payload.update(scope=["not", "text"]), "malformed_payload"),
+    ),
+)
+def test_input_reference_compatibility_uses_machine_readable_fields(mutate, kind: str) -> None:
+    payload = producer_payload()
+    mutate(payload)
+
+    with pytest.raises(InputReferenceError) as exc_info:
+        parse_input_reference_payload(json.dumps(payload))
+
+    assert exc_info.value.kind == kind
