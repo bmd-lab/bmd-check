@@ -644,7 +644,7 @@ def test_relocated_failed_hybrid_snapshot_builds_factual_domain_context_query(
         "ALGO": "Damped",
         "LSORBIT": True,
     }
-    assert "4_initial_DAV_iterations_observed" in query["observed_patterns"]
+    assert query["observed_patterns"] == ["first_electronic_cycle_incomplete_after_only_dav_iterations"]
 
 
 def test_relocated_snapshot_uses_local_cgroup_marker_without_scheduler_state(

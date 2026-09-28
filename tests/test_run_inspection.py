@@ -1557,7 +1557,7 @@ def test_historical_failed_bmd_fixture_resolves_trajectory_and_custodian_evidenc
     assert contextual_query is not None
     assert contextual_query["calculation_family"] == "hybrid_functional"
     assert contextual_query["functional"] == "hse06"
-    assert "incomplete_first_electronic_cycle" in contextual_query["observed_patterns"]
+    assert contextual_query["observed_patterns"] == ["first_electronic_cycle_incomplete_after_only_dav_iterations"]
     remote_commands = [command[2] for command in profiled_remote.commands]
     assert len(profiled_remote.commands) == 5
     assert any(

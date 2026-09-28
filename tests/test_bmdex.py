@@ -29,6 +29,7 @@ from bmd_agent.resources.bmdex import (
     inspect_bmdex_composition_context,
     parse_bmdex_domain_context_payload,
     parse_bmdex_composition_payload,
+    _contextual_assessment,
 )
 from bmd_agent.resources.context import (
     EvidenceGap,
@@ -804,9 +805,7 @@ def test_domain_query_uses_only_observed_hybrid_input_and_trajectory_context() -
         "electronic_algorithm": "Damped",
         "topic": "electronic_iteration_behavior",
         "observed_patterns": [
-            "incomplete_first_electronic_cycle",
-            "initial_DAV_iterations_observed",
-            "4_initial_DAV_iterations_observed",
+            "first_electronic_cycle_incomplete_after_only_dav_iterations",
         ],
         "input_tags": {
             "LHFCALC": True,
@@ -833,9 +832,7 @@ def test_job_domain_query_reuses_remote_executed_input_and_trajectory_evidence()
         "topic": "electronic_iteration_behavior",
         "electronic_algorithm": "Damped",
         "observed_patterns": [
-            "incomplete_first_electronic_cycle",
-            "initial_DAV_iterations_observed",
-            "4_initial_DAV_iterations_observed",
+            "first_electronic_cycle_incomplete_after_only_dav_iterations",
         ],
         "input_tags": {
             "LHFCALC": True,
@@ -991,7 +988,10 @@ def test_domain_context_assessment_is_qualified_and_source_linked(tmp_path: Path
         (*enriched.assessment.basis, *enriched.assessment.limitations)
     ).lower()
     assert enriched.assessment.source_record_ids == ("vasp.test.context",)
-    assert "consistent with the applicability" in assessment_text
+    assert "consistent with the applicability" not in assessment_text
+    assert "on query fields: calculation_family, functional, electronic_algorithm, input_tags" in assessment_text
+    assert "did not match this reference" in assessment_text
+    assert "trajectory evidence did not contribute to the match" in assessment_text
     assert "does not establish" in assessment_text
     assert "does not establish why sigterm was issued" in assessment_text
     assert "definitely" not in assessment_text
@@ -1091,3 +1091,158 @@ def test_agent_does_not_copy_the_bmdex_record_or_add_action_paths() -> None:
     assert "sbatch" not in source
     assert "scancel" not in source
     assert "scontrol" not in source
+
+
+LIVE_JOB_22351669_MATCHED_FIELDS = [
+    "code",
+    "calculation_family",
+    "functional",
+    "electronic_algorithm",
+    "topic",
+    "input_tags",
+]
+LEGACY_AGENT_PATTERNS = [
+    "incomplete_first_electronic_cycle",
+    "initial_DAV_iterations_observed",
+    "4_initial_DAV_iterations_observed",
+]
+
+
+def payload_with_match(query: dict, *, matched_fields: list, matched_patterns=None) -> dict:
+    payload = domain_payload(query)
+    match = payload["records"][0]["match"]
+    match["matched_fields"] = list(matched_fields)
+    if matched_patterns is not None:
+        match["matched_observed_patterns"] = list(matched_patterns)
+    return payload
+
+
+def assessment_for(payload: dict) -> str:
+    evidence = parse_bmdex_domain_context_payload(json.dumps(payload))
+    assessment = _contextual_assessment(evidence, custodian_supported=False, mentions_sigterm=False)
+    assert assessment is not None
+    return " ".join(assessment.basis)
+
+
+def test_live_job_22351669_match_without_pattern_does_not_claim_trajectory_support() -> None:
+    # The live job's producer query carried Agent's pre-vocabulary pattern
+    # strings; BMDex matched only on calculation and input fields.
+    query = {
+        "code": "VASP",
+        "calculation_family": "hybrid_functional",
+        "functional": "hse06",
+        "electronic_algorithm": "Damped",
+        "topic": "electronic_iteration_behavior",
+        "observed_patterns": LEGACY_AGENT_PATTERNS,
+        "input_tags": {"LHFCALC": True, "ALGO": "Damped"},
+    }
+    text = assessment_for(payload_with_match(query, matched_fields=LIVE_JOB_22351669_MATCHED_FIELDS))
+
+    assert "consistent with the applicability" not in text
+    assert "electronic-trajectory context are consistent" not in text
+    assert "did not match this reference" in text
+    assert "trajectory evidence did not contribute to the match" in text
+    assert "also matched the observed electronic-trajectory pattern" not in text
+
+
+def test_trajectory_support_is_claimed_only_when_bmdex_reports_the_pattern_match() -> None:
+    query = dict(build_bmdex_domain_query(domain_analysis()) or {})
+    matched = [*LIVE_JOB_22351669_MATCHED_FIELDS[:-1], "observed_patterns", "input_tags"]
+    text = assessment_for(
+        payload_with_match(query, matched_fields=matched, matched_patterns=["first_electronic_cycle_incomplete_after_only_dav_iterations"])
+    )
+
+    assert "also matched the observed electronic-trajectory pattern first_electronic_cycle_incomplete_after_only_dav_iterations" in text
+    assert "observation, not a cause" in text
+    assert "did not contribute" not in text
+
+
+def test_no_observed_pattern_is_stated_as_no_trajectory_contribution() -> None:
+    query = dict(build_bmdex_domain_query(domain_analysis()) or {})
+    query.pop("observed_patterns")
+    text = assessment_for(payload_with_match(query, matched_fields=["code", "topic"]))
+
+    assert "No BMDex-defined electronic-trajectory pattern was observed" in text
+    assert "trajectory evidence did not contribute to the match" in text
+
+
+@pytest.mark.parametrize(
+    "match_patch",
+    (
+        {"matched_fields": ["code", "observed_patterns"], "matched_observed_patterns": []},
+        {"matched_fields": ["code", "topic"], "matched_observed_patterns": ["first_electronic_cycle_incomplete_after_only_dav_iterations"]},
+        {"matched_fields": ["code", "observed_patterns"], "matched_observed_patterns": "first_electronic_cycle_incomplete_after_only_dav_iterations"},
+        {"matched_fields": ["code", "observed_patterns"], "matched_observed_patterns": [""]},
+    ),
+)
+def test_inconsistent_or_malformed_pattern_match_reports_are_rejected(match_patch: dict) -> None:
+    payload = domain_payload(dict(build_bmdex_domain_query(domain_analysis()) or {}))
+    payload["records"][0]["match"].update(match_patch)
+
+    with pytest.raises(BmdexDomainContextError) as exc_info:
+        parse_bmdex_domain_context_payload(json.dumps(payload))
+    assert exc_info.value.kind == "malformed_payload"
+
+
+def _trajectory(algorithms, *, count=None, completed_ionic_steps=0):
+    return StageTrajectoryObservation(
+        stage_index=1,
+        stage_label="result_dir",
+        stage_type="static",
+        theory="hse06",
+        directory="/relocated/calculation",
+        completed_ionic_steps=completed_ionic_steps,
+        incomplete_electronic_iteration_count=len(algorithms) if count is None else count,
+        recent_incomplete_electronic_iterations=tuple(
+            ElectronicIterationObservation(iteration=index, algorithm=algorithm)
+            for index, algorithm in enumerate(algorithms, start=1)
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("trajectory", "expected"),
+    (
+        (_trajectory(["DAV"] * 4), True),
+        (_trajectory(["DAV"]), True),
+        # Transition out of the initial DAV iterations already written.
+        (_trajectory(["DAV"] * 4 + ["DMP"]), False),
+        # Only a recent window of a longer cycle was observed.
+        (_trajectory(["DAV"] * 5, count=9), False),
+        (_trajectory([None] * 4), False),
+        (_trajectory(["RMM"] * 4), False),
+    ),
+)
+def test_pattern_is_reported_only_when_its_bmdex_definition_is_met(trajectory, expected: bool) -> None:
+    analysis = domain_analysis()
+    analysis = replace(
+        analysis,
+        diagnostics=replace(analysis.diagnostics, trajectories=(trajectory,)),
+    )
+    query = build_bmdex_domain_query(analysis)
+
+    assert query is not None
+    assert ("observed_patterns" in query) is expected
+    if expected:
+        assert query["observed_patterns"] == ["first_electronic_cycle_incomplete_after_only_dav_iterations"]
+    for legacy in LEGACY_AGENT_PATTERNS:
+        assert legacy not in json.dumps(query)
+
+
+def test_cli_lists_bmdex_reported_matched_observed_patterns(tmp_path: Path, capsys) -> None:
+    analysis = domain_analysis()
+    query = dict(build_bmdex_domain_query(analysis) or {})
+    matched = ["code", "calculation_family", "observed_patterns"]
+    enriched = enrich_lifecycle_with_bmdex_domain_context(
+        analysis,
+        repository(tmp_path),
+        runner=lambda *_args, **_kwargs: completed(
+            payload_with_match(query, matched_fields=matched, matched_patterns=["first_electronic_cycle_incomplete_after_only_dav_iterations"])
+        ),
+    )
+
+    cli.print_lifecycle_analysis(analysis, contextual_enrichment=enriched)
+
+    output = capsys.readouterr().out
+    assert "matched observed patterns: first_electronic_cycle_incomplete_after_only_dav_iterations" in output
+    assert "also matched the observed electronic-trajectory pattern" in output
