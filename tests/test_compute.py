@@ -15,6 +15,13 @@ from bmd_agent import cli
 
 
 def schema_v1_payload(*, dirty: bool = False) -> dict:
+    """A historical, pre-v1.0.0 schema-v1 capability payload.
+
+    It predates HSE06 DOS and the additive ``stage_modifier_support`` field.
+    The current Compute v1 payload is the generated fixture
+    ``fixtures/compute_v1/capabilities.json`` (see test_compute_v1_contracts).
+    """
+
     return {
         "schema_version": 1,
         "scope": "BMD Compute executable implementation, not a methodology authority",
@@ -112,6 +119,7 @@ def test_all_advertised_capabilities_are_preserved() -> None:
 
 
 def test_unsupported_combinations_are_not_invented() -> None:
+    # This historical producer did not declare HSE06 DOS, so Agent must not add it.
     capabilities = parse_capability_payload(json.dumps(schema_v1_payload()))
 
     assert ("dos", "hse06") not in supported_capability_pairs(capabilities)

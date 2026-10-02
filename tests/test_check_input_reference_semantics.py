@@ -33,7 +33,10 @@ import test_input_check as base
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "check_input"
 FIXTURE = FIXTURE_DIR / "compute_generated_cases.json"
 DATA = json.loads(FIXTURE.read_text(encoding="utf-8"))
-COMPUTE_COMMIT = "47546ad5c8d9f16f5dc789c3740f09f77429fdba"
+# BMD Compute v1.0.0; generation provenance recorded in each payload.
+COMPUTE_COMMIT = "a746155b487f903a167eca6b3c92e860aaf8c7f5"
+HISTORICAL_FIXTURE = FIXTURE_DIR / "historical_47546ad" / "compute_generated_cases.json"
+HISTORICAL_DATA = json.loads(HISTORICAL_FIXTURE.read_text(encoding="utf-8"))
 RETIRED_CLASSIFICATIONS = ("COMPLIANT", "NONSTANDARD", "SUPPORTED BUT", "UNSUPPORTED")
 
 
@@ -84,13 +87,21 @@ def differing(observation) -> dict[str, str]:
 def test_fixture_identity_matches_source_record():
     source = (FIXTURE_DIR / "SOURCE.md").read_text(encoding="utf-8")
     assert hashlib.sha256(FIXTURE.read_bytes()).hexdigest() in source
+    assert hashlib.sha256(HISTORICAL_FIXTURE.read_bytes()).hexdigest() in source
+
+
+def test_current_fixture_was_generated_by_compute_v1():
+    commits = {item["payload"]["producer"]["source"]["commit"] for item in DATA["references"]}
+    assert commits == {COMPUTE_COMMIT}
+    assert {item["payload"]["producer"]["source"]["dirty"] for item in DATA["references"]} == {False}
 
 
 def test_fixture_cases_are_real_compute_desired_output_inputs():
     cases = DATA["cases"]
     assert cases["graphite_auto_d3"]["applied_treatments"] == ["dispersion"]
     assert cases["pbte_auto_soc"]["applied_treatments"] == ["soc"]
-    assert cases["nio_auto_spin"]["applied_treatments"] == ["spin_polarized"]
+    # Compute v1 applies automatic DFT+U to NiO (O anion, Ni with an MP U value).
+    assert cases["nio_auto_spin"]["applied_treatments"] == ["spin_polarized", "dft_u"]
     assert cases["si_pbe_static"]["applied_treatments"] == []
 
 
@@ -139,11 +150,39 @@ def test_pbte_with_explicit_soc_modifier_matches_this_reference(tmp_path):
     assert "requested modifiers: soc" in observation.reference_description
 
 
-def test_nio_automatic_spin_input_differs_from_modifier_free_reference(tmp_path):
+def test_nio_automatic_spin_and_dft_u_input_differs_from_modifier_free_reference(tmp_path):
     observation = replay(tmp_path, "nio_auto_spin", stage="static", theory="pbe")
 
     assert observation.overall_status == DIFFERS_FROM_THIS_REFERENCE
-    assert differing(observation) == {"ISPIN": "differs_from_reference", "MAGMOM": "supplied_extra"}
+    assert differing(observation) == {
+        "ISPIN": "differs_from_reference",
+        "MAGMOM": "supplied_extra",
+        "LDAU": "supplied_extra",
+        "LDAUJ": "supplied_extra",
+        "LDAUL": "supplied_extra",
+        "LDAUPRINT": "supplied_extra",
+        "LDAUTYPE": "supplied_extra",
+        "LDAUU": "supplied_extra",
+        "LMAXMIX": "supplied_extra",
+    }
+    # LDAU in the supplied INCAR is reported as a difference only. Agent does
+    # not conclude that Compute applied automatic DFT+U from INCAR tags; the
+    # standalone reference itself had no automatic-treatment resolution.
+    assert "Desired Output automatic-treatment resolution: not applied" in observation.reference_description
+    assert not any("dft+u" in item.lower() or "dft_u" in item.lower() for item in observation.limitations)
+    assert not any("automatic dft+u" in item.lower() for item in observation.reference_description)
+
+
+def test_historical_47546ad_reference_payloads_still_parse(tmp_path):
+    # Deployed Compute checkouts may predate v1; their schema-v1 payloads stay readable.
+    from bmd_agent.resources.input_reference import parse_input_reference_payload
+
+    statuses = {
+        parse_input_reference_payload(json.dumps(item["payload"])).status
+        for item in HISTORICAL_DATA["references"]
+    }
+    assert statuses == {"ok", "unsupported", "error"}
+    assert HISTORICAL_DATA["cases"]["nio_auto_spin"]["applied_treatments"] == ["spin_polarized"]
 
 
 @pytest.mark.parametrize(

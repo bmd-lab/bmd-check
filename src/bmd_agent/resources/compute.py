@@ -48,6 +48,17 @@ class ComputeCapabilities:
     def base_stage_definitions(self) -> tuple[Mapping[str, Any], ...]:
         return tuple(self.payload["base_stage_definitions"])
 
+    @property
+    def stage_modifier_support(self) -> tuple[Mapping[str, Any], ...] | None:
+        """Compute's additive stage-local modifier support, or None if not declared.
+
+        Historical schema-v1 payloads predate this field; None means "not
+        declared by this producer", never "no modifiers supported".
+        """
+
+        support = self.payload.get("stage_modifier_support")
+        return None if support is None else tuple(support)
+
 
 def inspect_compute_capabilities(
     repository: GitRepositoryResource,
@@ -126,6 +137,31 @@ def supported_capability_pairs(capabilities: ComputeCapabilities) -> tuple[tuple
     )
 
 
+def supported_modifier_combinations(
+    capabilities: ComputeCapabilities,
+    stage_type: str,
+    theory: str,
+) -> tuple[frozenset[str], ...] | None:
+    """Return Compute's declared modifier sets for one stage/theory pair.
+
+    Returns None when the producer does not declare stage-local modifier
+    support (historical payloads) or does not list the pair. Agent never
+    derives modifier support from any other part of the payload, such as the
+    automatic-treatment policy text.
+    """
+
+    support = capabilities.stage_modifier_support
+    if support is None:
+        return None
+    for record in support:
+        if record["stage_type"] == stage_type and record["theory"] == theory:
+            return tuple(
+                frozenset(combination)
+                for combination in record["supported_modifier_combinations"]
+            )
+    return None
+
+
 def _validate_payload(payload: Mapping[str, Any]) -> None:
     schema_version = payload.get("schema_version")
 
@@ -142,6 +178,14 @@ def _validate_payload(payload: Mapping[str, Any]) -> None:
     _validate_contract(_required_mapping(payload, "contract"))
     _validate_stage_definitions(_required_list(payload, "base_stage_definitions"))
     _validate_capabilities(_required_list(payload, "capabilities"))
+    if payload.get("stage_modifier_support") is not None:
+        _validate_stage_modifier_support(
+            _required_list(payload, "stage_modifier_support"),
+            {
+                (record["stage_type"], record["theory"])
+                for record in payload["capabilities"]
+            },
+        )
 
 
 def _validate_source(source: Mapping[str, Any]) -> None:
@@ -210,6 +254,36 @@ def _validate_capabilities(capabilities: list[Any]) -> None:
             )
 
         seen.add(key)
+
+
+def _validate_stage_modifier_support(
+    support: list[Any],
+    capability_pairs: set[tuple[str, str]],
+) -> None:
+    seen: set[tuple[str, str]] = set()
+    for index, record in enumerate(support):
+        mapping = _as_mapping(record, f"stage_modifier_support[{index}]")
+        key = (_required_str(mapping, "stage_type"), _required_str(mapping, "theory"))
+        if key in seen:
+            raise ComputeCapabilityError(
+                f"Duplicate BMD Compute stage_modifier_support record: {key[0]!r}/{key[1]!r}"
+            )
+        if key not in capability_pairs:
+            raise ComputeCapabilityError(
+                "BMD Compute stage_modifier_support names a stage/theory pair that is not "
+                f"a declared capability: {key[0]!r}/{key[1]!r}"
+            )
+        seen.add(key)
+        combinations = mapping.get("supported_modifier_combinations")
+        if not isinstance(combinations, list) or not all(
+            isinstance(combination, list)
+            and all(isinstance(item, str) and item for item in combination)
+            for combination in combinations
+        ):
+            raise ComputeCapabilityError(
+                f"BMD Compute stage_modifier_support[{index}].supported_modifier_combinations "
+                "must be a list of lists of modifier names."
+            )
 
 
 def _required_mapping(payload: Mapping[str, Any], key: str) -> Mapping[str, Any]:

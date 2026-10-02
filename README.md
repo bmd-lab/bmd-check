@@ -195,6 +195,29 @@ allowed roots, operational timeouts, and access policy. The current VM-to-POWER
 SSH route is a supported deployment, not a promise about the final production
 architecture.
 
+## BMD Compute v1 records
+
+Agent reads BMD Compute's versioned records; it does not recompute them.
+
+- `runtime_environment.json` (`bmd_compute.runtime_environment` v1), when a
+  run's `submission.json` declares one: detailed output reports Compute's own
+  verdict (`Runtime parity: PASSED` or `FAILED` with Compute's reasons), the
+  prepared and runtime versions of the parity-critical packages, supporting
+  packages and the effective atomate2 settings. Runs prepared before this
+  record existed show `Runtime parity: not recorded` and keep the runner-log
+  evidence. A declared record that cannot be read is reported as unavailable,
+  never as a pass.
+- `provenance.execution.automatic_treatments`: for BMD-managed Desired Output
+  workflows, which automatic treatments Compute applied (including the frozen
+  automatic DFT+U record). Agent never infers automatic treatments from stage
+  modifiers; Compute does not separately record Custom workflows.
+- The capability payload's `stage_modifier_support` is shown by
+  `bmd-agent compute` exactly as Compute declares it.
+
+Unsupported major versions of these records (and of the submission
+`provenance` block) are reported as unsupported rather than read under v1
+assumptions.
+
 ## Scientific and ecosystem boundaries
 
 BMD Agent preserves the responsibilities of independently version-controlled

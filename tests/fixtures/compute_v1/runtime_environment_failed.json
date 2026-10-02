@@ -1,0 +1,73 @@
+{
+  "atomate2_settings": {
+    "BANDGAP_TOL": 0.0001,
+    "CONFIG_FILE": "/home/bmdguest/.atomate2.yaml",
+    "CUSTODIAN_SCRATCH_DIR": null,
+    "SYMPREC": 0.1,
+    "VASP_CUSTODIAN_MAX_ERRORS": 5,
+    "VASP_GAMMA_CMD": "vasp_gam",
+    "VASP_HANDLE_UNSUCCESSFUL": "error",
+    "VASP_INCAR_UPDATES": {
+      "ENCUT": 600
+    },
+    "VASP_INHERIT_INCAR": false,
+    "VASP_NCL_CMD": "vasp_ncl",
+    "VASP_ZIP_FILES": "atomate"
+  },
+  "attempt_id": "00000000-0000-4000-8000-000000000201",
+  "host": "power-node-fixture",
+  "parity_policy": {
+    "critical_packages": [
+      "atomate2",
+      "pymatgen",
+      "pymatgen-core",
+      "custodian",
+      "emmet-core",
+      "jobflow",
+      "spglib"
+    ],
+    "policy_id": "bmd_compute.runtime_parity",
+    "policy_version": 1
+  },
+  "prepared_packages": {
+    "atomate2": "0.1.5",
+    "custodian": "2025.12.14",
+    "emmet-core": "0.87.1",
+    "jobflow": "0.1.19",
+    "pymatgen": "2026.5.4",
+    "pymatgen-core": "2026.7.16",
+    "spglib": "2.7.0"
+  },
+  "problems": [
+    "pymatgen-core: prepared 2026.7.16, runtime 2026.6.1.",
+    "atomate2 VASP_INCAR_UPDATES is set ({'ENCUT': 600}); it would change BMD's INCARs at write time."
+  ],
+  "python": {
+    "implementation": "CPython",
+    "version": "3.12.3"
+  },
+  "recorded_at": "2026-10-01T09:00:00+00:00",
+  "run_name": "vasp_run_custom_workflow-20261001-090000",
+  "runtime_packages": {
+    "atomate2": "0.1.5",
+    "custodian": "2025.12.14",
+    "emmet-core": "0.87.1",
+    "jobflow": "0.1.19",
+    "pymatgen": "2026.5.4",
+    "pymatgen-core": "2026.6.1",
+    "spglib": "2.7.0"
+  },
+  "schema": "bmd_compute.runtime_environment",
+  "schema_version": 1,
+  "slurm_job_id": "10000201",
+  "status": "failed",
+  "supporting_packages": {
+    "maggma": "0.74.0",
+    "monty": "2026.7.16",
+    "numpy": "2.5.1",
+    "pydantic": "2.13.4",
+    "pydantic-settings": "2.14.2",
+    "ruamel.yaml": "0.19.1",
+    "scipy": "1.18.0"
+  }
+}

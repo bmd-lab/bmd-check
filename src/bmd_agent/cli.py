@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import textwrap
 from typing import Any
 
 from bmd_agent.config import (
@@ -43,6 +44,7 @@ from bmd_agent.resources.compute import (
     compute_policy_not_configured,
     inspect_compute_capabilities,
     observe_compute_policies,
+    supported_modifier_combinations,
 )
 from bmd_agent.resources.git import GitInspection, inspect_repository
 from bmd_agent.resources.input_check import (
@@ -345,6 +347,10 @@ def print_lifecycle_analysis(
         if workflow.job_id:
             print(f"  job id: {workflow.job_id}")
         print()
+        if _print_automatic_treatments(workflow.automatic_treatments):
+            print()
+        if _print_runtime_environment(workflow.runtime_environment):
+            print()
         if analysis.diagnostics is not None:
             _print_custodian_policy_context(workflow.custodian_policy)
             print()
@@ -563,6 +569,24 @@ def print_compute_capabilities(capabilities: ComputeCapabilities) -> None:
         theory = _display_theory(capability["theory"])
         stage = _display_stage(capability["stage_type"])
         print(f"  {theory:<6} {stage}")
+        combinations = supported_modifier_combinations(
+            capabilities,
+            capability["stage_type"],
+            capability["theory"],
+        )
+        if combinations is not None:
+            sets = ", ".join(
+                "+".join(sorted(combination)) if combination else "no modifiers"
+                for combination in combinations
+            )
+            for index, line in enumerate(
+                textwrap.wrap(f"accepted modifier sets: {sets}", width=70) or [""]
+            ):
+                print(f"         {line}" if index == 0 else f"           {line}")
+    if capabilities.stage_modifier_support is None:
+        print()
+        print("Stage-local modifier support:")
+        print("  not declared by this BMD Compute producer")
 
 
 def show_structure(directory: str, registry: ResourceRegistry | None = None) -> int:
@@ -1254,6 +1278,9 @@ def print_run_inspection(inspection: RunInspection) -> None:
             print(f"     options: {options}")
     print()
 
+    if _print_automatic_treatments(inspection.automatic_treatments):
+        print()
+
     print("Requested execution (producer_provenance):")
     _print_mapping_values(
         inspection.cluster_request,
@@ -1285,6 +1312,9 @@ def print_run_inspection(inspection: RunInspection) -> None:
 
     _print_oom_evidence(inspection.oom)
     print()
+
+    if _print_runtime_environment(inspection.runtime_environment):
+        print()
 
     print("Logs (log_observation):")
     if inspection.runtime.sources:
@@ -1351,6 +1381,132 @@ def print_run_inspection(inspection: RunInspection) -> None:
         print(f"  mismatches: {', '.join(inspection.comparison.mismatches)}")
 
 
+_RUNTIME_RECORD_STATUS_TEXT = {
+    "not_recorded": "not recorded",
+    "unavailable": "unavailable",
+    "invalid": "unreadable (invalid record)",
+    "unsupported_version": "unreadable (unsupported record version)",
+}
+
+
+def _print_runtime_environment(observation: object) -> bool:
+    """Print BMD Compute's runtime record; return False when not inspected."""
+
+    if observation is None:
+        return False
+    print(f"Runtime environment ({getattr(observation, 'evidence_type', 'producer_runtime_record')}):")
+    record = getattr(observation, "record", None)
+    if record is None:
+        status = getattr(observation, "status", "unavailable")
+        print(f"  Runtime parity: {_RUNTIME_RECORD_STATUS_TEXT.get(status, status)}")
+        if getattr(observation, "reason", None):
+            print(f"  reason: {observation.reason}")
+        if getattr(observation, "path", None):
+            print(f"  record: {observation.path}")
+        if status == "not_recorded":
+            print("  the runner-log lines under Logs are this run's only runtime evidence")
+        return True
+    print(f"  Runtime parity: {record.status.upper()}")
+    for problem in record.problems:
+        print(f"    problem: {problem}")
+    if record.status == "failed":
+        print("  BMD Compute stopped this run before building the workflow or starting VASP.")
+    print(f"  record: {observation.path} ({record.label})")
+    for label, value in (
+        ("recorded at", record.recorded_at),
+        ("attempt", record.attempt_id),
+        ("SLURM job", record.slurm_job_id),
+        ("host", record.host),
+    ):
+        if value:
+            print(f"  {label}: {value}")
+    python = record.python
+    if python:
+        print(f"  python: {python.get('version', 'unknown')} ({python.get('implementation', 'unknown')})")
+    policy = record.parity_policy
+    if policy:
+        print(f"  parity policy: {policy.get('policy_id', 'unknown')} v{policy.get('policy_version', '?')}")
+    names = sorted(set(record.runtime_packages) | set(record.prepared_packages or {}))
+    if names:
+        print("  parity-critical packages (prepared -> runtime):")
+        for name in names:
+            prepared = (record.prepared_packages or {}).get(name) if record.prepared_packages is not None else None
+            runtime = record.runtime_packages.get(name)
+            print(
+                f"    {name}: {prepared or 'not recorded'} -> {runtime or 'not installed'}"
+            )
+    if record.supporting_packages:
+        print("  supporting packages (recorded, not parity-checked):")
+        for name, version in sorted(record.supporting_packages.items()):
+            print(f"    {name}: {version or 'not installed'}")
+    if record.atomate2_settings:
+        print("  atomate2 settings at execution:")
+        for name, value in sorted(record.atomate2_settings.items()):
+            print(f"    {name}: {'not set' if value is None else _display_value(value)}")
+    if record.additional_fields:
+        print(f"  additional record fields: {', '.join(sorted(record.additional_fields))}")
+    for limitation in getattr(observation, "limitations", ()):
+        print(f"  limitation: {limitation}")
+    return True
+
+
+def _print_automatic_treatments(observation: object) -> bool:
+    """Print Compute's automatic-treatment record; return False when not inspected."""
+
+    if observation is None:
+        return False
+    print("Automatic treatments (producer_provenance):")
+    status = getattr(observation, "status", "unavailable")
+    if status != "recorded":
+        label = {
+            "none_recorded": "none recorded",
+            "not_recorded": "not recorded",
+        }.get(status, status)
+        print(f"  status: {label}")
+        if getattr(observation, "reason", None):
+            print(f"  reason: {observation.reason}")
+        print(
+            "  workflow origin: not established (BMD Compute does not record Custom "
+            "workflow separately)"
+        )
+        return True
+    if observation.desired_output_managed:
+        origin = "BMD-managed Desired Output"
+        if observation.desired_output:
+            origin += f" ({observation.desired_output})"
+    else:
+        origin = f"recorded mode {observation.mode or 'unknown'}"
+    print(f"  workflow origin: {origin}")
+    if observation.applied:
+        for treatment in observation.applied:
+            stages = ", ".join(str(index) for index in treatment.stage_indices) or "none"
+            print(f"  applied: {treatment.display_name or treatment.modifier} (stages {stages})")
+    else:
+        print("  applied: none")
+    for item in observation.not_applicable:
+        print(
+            f"  not applied: {item.get('modifier', item.get('consideration_id', 'unknown'))}"
+            f" - {item.get('reason') or 'no reason recorded'}"
+        )
+    dft_u = observation.dft_u
+    if dft_u is not None:
+        policy = f"{dft_u.get('policy_id', 'unknown')} v{dft_u.get('policy_version', '?')}"
+        print(f"  automatic DFT+U: decision {dft_u.get('decision', 'unknown')} ({policy})")
+        parameters = dft_u.get("parameters")
+        species = parameters.get("species") if isinstance(parameters, Mapping) else None
+        if isinstance(species, Mapping):
+            frozen = ", ".join(
+                f"{element} U={values.get('U')}"
+                for element, values in sorted(species.items())
+                if isinstance(values, Mapping) and values.get("U")
+            )
+            if frozen:
+                print(f"    frozen parameters: {frozen} (LDAUTYPE {parameters.get('LDAUTYPE')})")
+        if dft_u.get("gate_reason"):
+            print(f"    gate: {dft_u.get('gate_reason')}")
+    return True
+
+
 def print_run_diagnosis(diagnosis: RunDiagnosis) -> None:
     """Print descriptive termination and trajectory evidence."""
 
@@ -1372,6 +1528,9 @@ def print_run_diagnosis(diagnosis: RunDiagnosis) -> None:
         if options:
             print(f"     options: {options}")
     print()
+
+    if _print_automatic_treatments(inspection.automatic_treatments):
+        print()
 
     if (
         _has_relevant_custodian_evidence(inspection.custodian_evidence)
@@ -1404,6 +1563,9 @@ def print_run_diagnosis(diagnosis: RunDiagnosis) -> None:
 
     _print_oom_evidence(inspection.oom)
     print()
+
+    if _print_runtime_environment(inspection.runtime_environment):
+        print()
 
     if not _print_trajectory_observations(diagnosis.trajectories):
         return

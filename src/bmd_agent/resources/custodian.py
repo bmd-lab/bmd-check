@@ -243,6 +243,20 @@ def parse_custodian_payload(
     )
 
 
+def custodian_policy_from_submission_record(record: Any) -> CustodianPolicyEvidence:
+    """Read Custodian policy only from provenance the submission reader accepted."""
+
+    if getattr(record, "provenance_contract", None) == "unsupported":
+        return CustodianPolicyEvidence(
+            available=False,
+            reason=(
+                "submission provenance version is not supported; persisted Custodian "
+                "execution policy was not interpreted"
+            ),
+        )
+    return parse_custodian_policy_provenance({"provenance": dict(record.provenance)})
+
+
 def parse_custodian_policy_provenance(
     submission: Mapping[str, Any],
 ) -> CustodianPolicyEvidence:

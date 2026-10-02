@@ -23,16 +23,23 @@ from bmd_agent.resources.custodian import (
     TerminationEvidenceAssessment,
     assess_termination_evidence,
     parse_custodian_json,
-    parse_custodian_policy_provenance,
+    custodian_policy_from_submission_record,
 )
 from bmd_agent.resources.diagnostics import (
     BoundedLogDiagnostic as LocalLogDiagnostic,
     diagnostic_log_messages,
 )
 from bmd_agent.resources.compute_records import (
+    RUNTIME_RECORD_INVALID,
+    AutomaticTreatmentsObservation,
     ComputeRecordError,
+    RuntimeEnvironmentObservation,
     SubmissionRecord,
+    observe_runtime_environment,
     parse_submission_record,
+    read_automatic_treatments,
+    runtime_environment_not_declared,
+    runtime_environment_unavailable,
 )
 from bmd_agent.resources.oom import OomDiagnosticEvidence, assess_oom_evidence
 from bmd_agent.resources.run import (
@@ -113,6 +120,8 @@ class BmdWorkflowDiscovery:
             reason="submission has no persisted Custodian execution-policy provenance",
         )
     )
+    runtime_environment: RuntimeEnvironmentObservation | None = None
+    automatic_treatments: AutomaticTreatmentsObservation | None = None
 
 
 @dataclass(frozen=True)
@@ -611,8 +620,50 @@ def _workflow_from_submission(
         attempt_state=attempt_state,
         record_contract=record.label,
         record_limitations=record.limitations,
-        custodian_policy=parse_custodian_policy_provenance(submission),
+        custodian_policy=custodian_policy_from_submission_record(record),
+        runtime_environment=_observe_local_runtime_environment(root, record, relocated=relocated),
+        automatic_treatments=read_automatic_treatments(record),
     )
+
+
+def _observe_local_runtime_environment(
+    root: Path,
+    record: SubmissionRecord,
+    *,
+    relocated: bool,
+) -> RuntimeEnvironmentObservation:
+    """Read the runtime record the submission declares, from this local copy."""
+
+    declared = record.runtime_environment_path
+    if declared is None:
+        return runtime_environment_not_declared()
+    declared_path = PurePosixPath(declared)
+    if record.run_dir and declared_path.parent == PurePosixPath(record.run_dir):
+        # Declared beside submission.json in the run directory: read it from
+        # the same local copy, whether or not the snapshot was relocated.
+        local = root / declared_path.name
+    elif not relocated:
+        local = Path(declared)
+    else:
+        return runtime_environment_unavailable(
+            declared,
+            "declared runtime record is outside the run directory and cannot be located in this local copy",
+        )
+    if not local.is_file():
+        return runtime_environment_unavailable(
+            str(local),
+            "runtime record declared by the submission was not found (the BMD Compute runner "
+            "may not have started, or it was not copied); runtime parity is not established",
+        )
+    try:
+        payload = json.loads(_read_file_prefix(local, limit=_LOCAL_CUSTODIAN_MAX_BYTES).decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return RuntimeEnvironmentObservation(
+            status=RUNTIME_RECORD_INVALID,
+            path=str(local),
+            reason="runtime record is not valid JSON",
+        )
+    return observe_runtime_environment(payload, path=str(local), submission=record)
 
 
 def _stage_bindings(

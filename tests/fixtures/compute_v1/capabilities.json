@@ -1,0 +1,1286 @@
+{
+  "automatic_default_treatments": {
+    "advisory_only": [],
+    "applies_to": {
+      "custom_workflow": "preserved_without_automatic_changes",
+      "workflow_mode": "bmd_managed_desired_output"
+    },
+    "failure_policy": {
+      "dimensionality_analysis": {
+        "action": "reject_before_preview_preparation_or_submission",
+        "diagnostic_code": "automatic_dispersion_dimensionality_analysis_failed",
+        "status": "analysis_failed"
+      }
+    },
+    "scope": "BMD Compute executable methodology for BMD-managed Desired Output workflows: the automatic treatments BMD Compute applies",
+    "source": "backend.calculations.default_treatments",
+    "treatments": [
+      {
+        "application": "all stages in the selected BMD-managed Desired Output workflow",
+        "consideration_id": "spin.composition_screen",
+        "display_name": "Spin Polarised",
+        "modifier": "spin_polarized",
+        "support_guard": "backend.calculations.registry.validate_stage_spec",
+        "trigger_source": "backend.calculations.method_considerations"
+      },
+      {
+        "application": [
+          {
+            "stage_type": "relax",
+            "theory": "pbe"
+          },
+          {
+            "stage_type": "static",
+            "theory": "pbe"
+          }
+        ],
+        "consideration_id": "dispersion.two_dimensional_connectivity",
+        "display_name": "van der Waals correction",
+        "incar_effect": {
+          "IVDW": 12
+        },
+        "method": "dftd3-bj",
+        "modifier": "dispersion",
+        "support_guard": "backend.calculations.registry.validate_stage_spec",
+        "trigger_source": "backend.calculations.method_considerations"
+      },
+      {
+        "application": "every non-relaxation stage in the selected BMD-managed Desired Output workflow",
+        "consideration_id": "soc.heavy_elements",
+        "display_name": "Spin-Orbit Coupling (SOC)",
+        "excluded_stage_types": [
+          "relax"
+        ],
+        "executable": "vasp_ncl",
+        "initial_magnetic_moments": "zero vector MAGMOM unless the structure contains an element in the spin method-consideration screen or the stage is Spin Polarised",
+        "modifier": "soc",
+        "support_guard": "backend.calculations.registry.validate_stage_spec",
+        "trigger_source": "backend.calculations.method_considerations"
+      },
+      {
+        "application": [
+          {
+            "stage_type": "relax",
+            "theory": "pbe"
+          },
+          {
+            "stage_type": "static",
+            "theory": "pbe"
+          }
+        ],
+        "consideration_id": "dftu.mp_oxide_fluoride",
+        "d0_gate": "suppress only when every charge-balanced pymatgen oxidation-state guess places every triggering element at d0; no guess keeps the Materials Project rule",
+        "display_name": "DFT+U",
+        "excluded_theories": [
+          "hse06"
+        ],
+        "frozen_parameters": "stage option 'dft_u', verified against the generated INCAR at run time",
+        "modifier": "dft_u",
+        "parameters": "pymatgen.io.vasp.sets.MPRelaxSet (MPRelaxSet.yaml INCAR LDAU*), unchanged",
+        "policy_id": "bmd_compute.dft_u",
+        "policy_version": 1,
+        "support_guard": "backend.calculations.registry.validate_stage_spec",
+        "trigger": "pymatgen/Materials Project GGA+U rule: O or F is the most electronegative element and an element with a non-zero MP U value is present",
+        "trigger_source": "backend.calculations.dft_u_policy"
+      }
+    ]
+  },
+  "base_stage_definitions": [
+    {
+      "applicable_theory_amendments": {},
+      "base_bmd_incar_amendments": {},
+      "implementation_source": {
+        "resource_policy": "backend.calculations.resource_policy",
+        "stage_definition": "backend.calculations.vasp_stage_definitions",
+        "theory_policy": "backend.calculations.theory_policy",
+        "workflow_builder": "backend.workflows"
+      },
+      "kpoints_policy": {
+        "default_parameters": {
+          "line_density": 40
+        },
+        "description": "Uses line-mode high-symmetry k-points.",
+        "mode": "line"
+      },
+      "resource_policy": {
+        "automatic_ncore_eligible": false,
+        "source": "backend.calculations.resource_policy.stage_allows_automatic_ncore"
+      },
+      "restart_policy": {
+        "description": "PBE Band Structure stages consume the preceding Static Energy stage and restart from its converged charge density.",
+        "incar_amendments": {
+          "ICHARG": 11
+        },
+        "requires_previous_stage": true
+      },
+      "scope": "BMD Compute executable calculation methodology: the stages, theories, settings and treatments this BMD Compute checkout implements and can execute",
+      "selected_atomate2": {
+        "extra_parameters": {},
+        "generator_mode": "line",
+        "input_set_generator": "atomate2.vasp.sets.core.NonSCFSetGenerator",
+        "maker": "atomate2.vasp.jobs.core.NonSCFMaker"
+      },
+      "stage_type": "band_structure",
+      "theory": null,
+      "theory_stage_bmd_incar_amendments": {},
+      "theory_supported_for_stage": null
+    },
+    {
+      "applicable_theory_amendments": {},
+      "base_bmd_incar_amendments": {},
+      "implementation_source": {
+        "resource_policy": "backend.calculations.resource_policy",
+        "stage_definition": "backend.calculations.vasp_stage_definitions",
+        "theory_policy": "backend.calculations.theory_policy",
+        "workflow_builder": "backend.workflows"
+      },
+      "kpoints_policy": {
+        "default_parameters": {},
+        "description": "Uses atomate2 NonSCFSetGenerator uniform mode with any selected BMD k-point override.",
+        "mode": "uniform"
+      },
+      "resource_policy": {
+        "automatic_ncore_eligible": true,
+        "source": "backend.calculations.resource_policy.stage_allows_automatic_ncore"
+      },
+      "restart_policy": {
+        "description": "DOS stages consume the preceding Static Energy stage and restart from its converged charge density.",
+        "incar_amendments": {
+          "ICHARG": 11
+        },
+        "requires_previous_stage": true
+      },
+      "scope": "BMD Compute executable calculation methodology: the stages, theories, settings and treatments this BMD Compute checkout implements and can execute",
+      "selected_atomate2": {
+        "extra_parameters": {},
+        "generator_mode": "uniform",
+        "input_set_generator": "atomate2.vasp.sets.core.NonSCFSetGenerator",
+        "maker": "atomate2.vasp.jobs.core.NonSCFMaker"
+      },
+      "stage_type": "dos",
+      "theory": null,
+      "theory_stage_bmd_incar_amendments": {},
+      "theory_supported_for_stage": null
+    },
+    {
+      "applicable_theory_amendments": {},
+      "base_bmd_incar_amendments": {
+        "executable_defaults": {
+          "ADDGRID": true,
+          "ALGO": "Fast",
+          "EDIFF": 1e-06,
+          "EDIFFG": -0.01,
+          "ENAUG": null,
+          "ENCUT": 580,
+          "GGA": null,
+          "LMIXTAU": null
+        },
+        "explicit_user_preserved_defaults": {
+          "LAECHG": null,
+          "LCHARG": false,
+          "LELF": null,
+          "LORBIT": null,
+          "LVHAR": null,
+          "LVTOT": null,
+          "LWAVE": false
+        }
+      },
+      "implementation_source": {
+        "resource_policy": "backend.calculations.resource_policy",
+        "stage_definition": "backend.calculations.vasp_stage_definitions",
+        "theory_policy": "backend.calculations.theory_policy",
+        "workflow_builder": "backend.workflows"
+      },
+      "kpoints_policy": {
+        "default_parameters": {},
+        "description": "Uses the selected pymatgen/atomate2 relax KPOINTS policy unless BMD stage options request gamma or mesh settings.",
+        "mode": "pymatgen/atomate2 default"
+      },
+      "resource_policy": {
+        "automatic_ncore_eligible": true,
+        "source": "backend.calculations.resource_policy.stage_allows_automatic_ncore"
+      },
+      "restart_policy": {
+        "description": "Relax stages start from the submitted or previous structure.",
+        "incar_amendments": {},
+        "requires_previous_stage": false
+      },
+      "scope": "BMD Compute executable calculation methodology: the stages, theories, settings and treatments this BMD Compute checkout implements and can execute",
+      "selected_atomate2": {
+        "extra_parameters": {},
+        "generator_mode": null,
+        "input_set_generator": "atomate2.vasp.sets.core.RelaxSetGenerator",
+        "maker": "atomate2.vasp.jobs.core.RelaxMaker"
+      },
+      "stage_type": "relax",
+      "theory": null,
+      "theory_stage_bmd_incar_amendments": {},
+      "theory_supported_for_stage": null
+    },
+    {
+      "applicable_theory_amendments": {},
+      "base_bmd_incar_amendments": {
+        "final_defaults": {
+          "ADDGRID": true,
+          "ALGO": "Normal",
+          "EDIFF": 1e-06,
+          "ENAUG": null,
+          "GGA": null,
+          "ISMEAR": -5,
+          "LAECHG": true,
+          "LCHARG": true,
+          "LELF": true,
+          "LMIXTAU": null,
+          "LORBIT": 11,
+          "LREAL": false,
+          "LVTOT": true,
+          "LWAVE": false,
+          "NEDOS": 4001,
+          "PREC": "Accurate",
+          "SIGMA": 0.05
+        },
+        "final_encut_floor": 620,
+        "prep_defaults": {
+          "ALGO": "Normal",
+          "EDIFF": 1e-06,
+          "ENAUG": null,
+          "GGA": null,
+          "ISMEAR": -5,
+          "LAECHG": false,
+          "LCHARG": true,
+          "LELF": false,
+          "LMIXTAU": null,
+          "LORBIT": 11,
+          "LVHAR": false,
+          "LVTOT": false,
+          "LWAVE": true,
+          "NEDOS": 3001
+        },
+        "prep_encut_floor": 520
+      },
+      "implementation_source": {
+        "resource_policy": "backend.calculations.resource_policy",
+        "stage_definition": "backend.calculations.vasp_stage_definitions",
+        "theory_policy": "backend.calculations.theory_policy",
+        "workflow_builder": "backend.workflows"
+      },
+      "kpoints_policy": {
+        "default_parameters": {},
+        "description": "Uses the selected pymatgen/atomate2 static KPOINTS policy unless BMD stage options request gamma or mesh settings.",
+        "mode": "pymatgen/atomate2 default"
+      },
+      "resource_policy": {
+        "automatic_ncore_eligible": true,
+        "source": "backend.calculations.resource_policy.stage_allows_automatic_ncore"
+      },
+      "restart_policy": {
+        "description": "Static stages may consume the previous stage structure and directory when part of a workflow.",
+        "incar_amendments": {},
+        "requires_previous_stage": false
+      },
+      "scope": "BMD Compute executable calculation methodology: the stages, theories, settings and treatments this BMD Compute checkout implements and can execute",
+      "selected_atomate2": {
+        "extra_parameters": {},
+        "generator_mode": null,
+        "input_set_generator": "atomate2.vasp.sets.core.StaticSetGenerator",
+        "maker": "atomate2.vasp.jobs.core.StaticMaker"
+      },
+      "stage_type": "static",
+      "theory": null,
+      "theory_stage_bmd_incar_amendments": {},
+      "theory_supported_for_stage": null
+    }
+  ],
+  "capabilities": [
+    {
+      "applicable_theory_amendments": {},
+      "base_bmd_incar_amendments": {},
+      "implementation_source": {
+        "resource_policy": "backend.calculations.resource_policy",
+        "stage_definition": "backend.calculations.vasp_stage_definitions",
+        "theory_policy": "backend.calculations.theory_policy",
+        "workflow_builder": "backend.workflows"
+      },
+      "kpoints_policy": {
+        "default_parameters": {
+          "line_density": 40
+        },
+        "description": "Uses line-mode high-symmetry k-points.",
+        "mode": "line"
+      },
+      "resource_policy": {
+        "automatic_ncore_eligible": false,
+        "source": "backend.calculations.resource_policy.stage_allows_automatic_ncore"
+      },
+      "restart_policy": {
+        "description": "PBE Band Structure stages consume the preceding Static Energy stage and restart from its converged charge density.",
+        "incar_amendments": {
+          "ICHARG": 11
+        },
+        "requires_previous_stage": true
+      },
+      "scope": "BMD Compute executable calculation methodology: the stages, theories, settings and treatments this BMD Compute checkout implements and can execute",
+      "selected_atomate2": {
+        "extra_parameters": {},
+        "generator_mode": "line",
+        "input_set_generator": "atomate2.vasp.sets.core.NonSCFSetGenerator",
+        "maker": "atomate2.vasp.jobs.core.NonSCFMaker"
+      },
+      "stage_type": "band_structure",
+      "theory": "pbe",
+      "theory_stage_bmd_incar_amendments": {},
+      "theory_supported_for_stage": true
+    },
+    {
+      "applicable_theory_amendments": {
+        "AEXX": 0.25,
+        "ALGO": "Normal",
+        "GGA": "PE",
+        "HFSCREEN": 0.2,
+        "ISMEAR": 0,
+        "LHFCALC": true,
+        "PRECFOCK": "Fast",
+        "SIGMA": 0.01,
+        "TIME": 0.4
+      },
+      "base_bmd_incar_amendments": {},
+      "implementation_source": {
+        "resource_policy": "backend.calculations.resource_policy",
+        "stage_definition": "backend.calculations.vasp_stage_definitions",
+        "theory_policy": "backend.calculations.theory_policy",
+        "workflow_builder": "backend.workflows"
+      },
+      "kpoints_policy": {
+        "default_parameters": {
+          "line_density": 40,
+          "reciprocal_density": 64
+        },
+        "description": "Uses line-mode high-symmetry k-points.",
+        "mode": "line"
+      },
+      "resource_policy": {
+        "automatic_ncore_eligible": false,
+        "source": "backend.calculations.resource_policy.stage_allows_automatic_ncore"
+      },
+      "restart_policy": {
+        "description": "HSE06 Band Structure stages run a self-consistent hybrid calculation with a weighted uniform mesh plus zero-weight high-symmetry line path. The preceding HSE06 Static Energy stage supplies the structure and previous vasprun.xml context used to size NBANDS. Atomate2 may copy CHGCAR when prev_dir is supplied, but the generated INCAR does not request a fixed-charge-density or WAVECAR restart (no ICHARG or ISTART).",
+        "incar_amendments": {},
+        "requires_previous_stage": true
+      },
+      "scope": "BMD Compute executable calculation methodology: the stages, theories, settings and treatments this BMD Compute checkout implements and can execute",
+      "selected_atomate2": {
+        "extra_parameters": {
+          "custodian_policy": "backend.calculations.custodian_policy.hse_band_structure_run_vasp_kwargs",
+          "reciprocal_density": 64
+        },
+        "generator_mode": "line",
+        "input_set_generator": "atomate2.vasp.sets.core.HSEBSSetGenerator",
+        "maker": "atomate2.vasp.jobs.core.HSEBSMaker"
+      },
+      "stage_type": "band_structure",
+      "theory": "hse06",
+      "theory_stage_bmd_incar_amendments": {
+        "defaults": {
+          "ADDGRID": true,
+          "EDIFF": 1e-06,
+          "ENAUG": null,
+          "LMIXTAU": null,
+          "LORBIT": 11,
+          "LREAL": false,
+          "PREC": "Accurate"
+        },
+        "encut_floor": 620,
+        "source": "backend.calculations.vasp_stage_definitions.apply_hse_band_structure_base_incar_settings"
+      },
+      "theory_supported_for_stage": true
+    },
+    {
+      "applicable_theory_amendments": {},
+      "base_bmd_incar_amendments": {},
+      "implementation_source": {
+        "resource_policy": "backend.calculations.resource_policy",
+        "stage_definition": "backend.calculations.vasp_stage_definitions",
+        "theory_policy": "backend.calculations.theory_policy",
+        "workflow_builder": "backend.workflows"
+      },
+      "kpoints_policy": {
+        "default_parameters": {},
+        "description": "Uses atomate2 NonSCFSetGenerator uniform mode with any selected BMD k-point override.",
+        "mode": "uniform"
+      },
+      "resource_policy": {
+        "automatic_ncore_eligible": true,
+        "source": "backend.calculations.resource_policy.stage_allows_automatic_ncore"
+      },
+      "restart_policy": {
+        "description": "DOS stages consume the preceding Static Energy stage and restart from its converged charge density.",
+        "incar_amendments": {
+          "ICHARG": 11
+        },
+        "requires_previous_stage": true
+      },
+      "scope": "BMD Compute executable calculation methodology: the stages, theories, settings and treatments this BMD Compute checkout implements and can execute",
+      "selected_atomate2": {
+        "extra_parameters": {},
+        "generator_mode": "uniform",
+        "input_set_generator": "atomate2.vasp.sets.core.NonSCFSetGenerator",
+        "maker": "atomate2.vasp.jobs.core.NonSCFMaker"
+      },
+      "stage_type": "dos",
+      "theory": "pbe",
+      "theory_stage_bmd_incar_amendments": {},
+      "theory_supported_for_stage": true
+    },
+    {
+      "applicable_theory_amendments": {
+        "AEXX": 0.25,
+        "ALGO": "Normal",
+        "GGA": "PE",
+        "HFSCREEN": 0.2,
+        "ISMEAR": -5,
+        "LHFCALC": true,
+        "PRECFOCK": "Fast",
+        "TIME": 0.4
+      },
+      "base_bmd_incar_amendments": {},
+      "implementation_source": {
+        "resource_policy": "backend.calculations.resource_policy",
+        "stage_definition": "backend.calculations.vasp_stage_definitions",
+        "theory_policy": "backend.calculations.theory_policy",
+        "workflow_builder": "backend.workflows"
+      },
+      "kpoints_policy": {
+        "default_parameters": {
+          "reciprocal_density": 100
+        },
+        "description": "Uses atomate2 NonSCFSetGenerator uniform mode with any selected BMD k-point override.",
+        "mode": "uniform"
+      },
+      "resource_policy": {
+        "automatic_ncore_eligible": true,
+        "source": "backend.calculations.resource_policy.stage_allows_automatic_ncore"
+      },
+      "restart_policy": {
+        "description": "HSE06 DOS stages run a self-consistent hybrid calculation on a uniform weighted k-point mesh. The preceding Static Energy stage supplies the structure and previous vasprun.xml context used to size NBANDS. Atomate2 may copy CHGCAR when prev_dir is supplied, but the generated INCAR does not request a fixed-charge-density or WAVECAR restart (no ICHARG or ISTART).",
+        "incar_amendments": {},
+        "requires_previous_stage": true
+      },
+      "scope": "BMD Compute executable calculation methodology: the stages, theories, settings and treatments this BMD Compute checkout implements and can execute",
+      "selected_atomate2": {
+        "extra_parameters": {
+          "custodian_policy": "backend.calculations.custodian_policy.hse_band_structure_run_vasp_kwargs",
+          "reciprocal_density": 100
+        },
+        "generator_mode": "uniform",
+        "input_set_generator": "atomate2.vasp.sets.core.HSEBSSetGenerator",
+        "maker": "atomate2.vasp.jobs.core.HSEBSMaker"
+      },
+      "stage_type": "dos",
+      "theory": "hse06",
+      "theory_stage_bmd_incar_amendments": {
+        "defaults": {
+          "ADDGRID": true,
+          "EDIFF": 1e-06,
+          "ENAUG": null,
+          "LMIXTAU": null,
+          "LORBIT": 11,
+          "LREAL": false,
+          "NEDOS": 4001,
+          "PREC": "Accurate"
+        },
+        "encut_floor": 620,
+        "source": "backend.calculations.vasp_stage_definitions.apply_hse_dos_base_incar_settings"
+      },
+      "theory_supported_for_stage": true
+    },
+    {
+      "applicable_theory_amendments": {},
+      "base_bmd_incar_amendments": {
+        "executable_defaults": {
+          "ADDGRID": true,
+          "ALGO": "Fast",
+          "EDIFF": 1e-06,
+          "EDIFFG": -0.01,
+          "ENAUG": null,
+          "ENCUT": 580,
+          "GGA": null,
+          "LMIXTAU": null
+        },
+        "explicit_user_preserved_defaults": {
+          "LAECHG": null,
+          "LCHARG": false,
+          "LELF": null,
+          "LORBIT": null,
+          "LVHAR": null,
+          "LVTOT": null,
+          "LWAVE": false
+        }
+      },
+      "implementation_source": {
+        "resource_policy": "backend.calculations.resource_policy",
+        "stage_definition": "backend.calculations.vasp_stage_definitions",
+        "theory_policy": "backend.calculations.theory_policy",
+        "workflow_builder": "backend.workflows"
+      },
+      "kpoints_policy": {
+        "default_parameters": {},
+        "description": "Uses the selected pymatgen/atomate2 relax KPOINTS policy unless BMD stage options request gamma or mesh settings.",
+        "mode": "pymatgen/atomate2 default"
+      },
+      "resource_policy": {
+        "automatic_ncore_eligible": true,
+        "source": "backend.calculations.resource_policy.stage_allows_automatic_ncore"
+      },
+      "restart_policy": {
+        "description": "Relax stages start from the submitted or previous structure.",
+        "incar_amendments": {},
+        "requires_previous_stage": false
+      },
+      "scope": "BMD Compute executable calculation methodology: the stages, theories, settings and treatments this BMD Compute checkout implements and can execute",
+      "selected_atomate2": {
+        "extra_parameters": {},
+        "generator_mode": null,
+        "input_set_generator": "atomate2.vasp.sets.core.RelaxSetGenerator",
+        "maker": "atomate2.vasp.jobs.core.RelaxMaker"
+      },
+      "stage_type": "relax",
+      "theory": "pbe",
+      "theory_stage_bmd_incar_amendments": {},
+      "theory_supported_for_stage": true
+    },
+    {
+      "applicable_theory_amendments": {
+        "AEXX": 0.25,
+        "ALGO": "Damped",
+        "GGA": "PE",
+        "HFSCREEN": 0.2,
+        "LHFCALC": true,
+        "PRECFOCK": "Fast",
+        "TIME": 0.4
+      },
+      "base_bmd_incar_amendments": {
+        "executable_defaults": {
+          "ADDGRID": true,
+          "ALGO": "Fast",
+          "EDIFF": 1e-06,
+          "EDIFFG": -0.01,
+          "ENAUG": null,
+          "ENCUT": 580,
+          "GGA": null,
+          "LMIXTAU": null
+        },
+        "explicit_user_preserved_defaults": {
+          "LAECHG": null,
+          "LCHARG": false,
+          "LELF": null,
+          "LORBIT": null,
+          "LVHAR": null,
+          "LVTOT": null,
+          "LWAVE": false
+        }
+      },
+      "implementation_source": {
+        "resource_policy": "backend.calculations.resource_policy",
+        "stage_definition": "backend.calculations.vasp_stage_definitions",
+        "theory_policy": "backend.calculations.theory_policy",
+        "workflow_builder": "backend.workflows"
+      },
+      "kpoints_policy": {
+        "default_parameters": {},
+        "description": "Uses the selected pymatgen/atomate2 relax KPOINTS policy unless BMD stage options request gamma or mesh settings.",
+        "mode": "pymatgen/atomate2 default"
+      },
+      "resource_policy": {
+        "automatic_ncore_eligible": true,
+        "source": "backend.calculations.resource_policy.stage_allows_automatic_ncore"
+      },
+      "restart_policy": {
+        "description": "Relax stages start from the submitted or previous structure.",
+        "incar_amendments": {},
+        "requires_previous_stage": false
+      },
+      "scope": "BMD Compute executable calculation methodology: the stages, theories, settings and treatments this BMD Compute checkout implements and can execute",
+      "selected_atomate2": {
+        "extra_parameters": {},
+        "generator_mode": null,
+        "input_set_generator": "atomate2.vasp.sets.core.RelaxSetGenerator",
+        "maker": "atomate2.vasp.jobs.core.RelaxMaker"
+      },
+      "stage_type": "relax",
+      "theory": "hse06",
+      "theory_stage_bmd_incar_amendments": {},
+      "theory_supported_for_stage": true
+    },
+    {
+      "applicable_theory_amendments": {},
+      "base_bmd_incar_amendments": {
+        "final_defaults": {
+          "ADDGRID": true,
+          "ALGO": "Normal",
+          "EDIFF": 1e-06,
+          "ENAUG": null,
+          "GGA": null,
+          "ISMEAR": -5,
+          "LAECHG": true,
+          "LCHARG": true,
+          "LELF": true,
+          "LMIXTAU": null,
+          "LORBIT": 11,
+          "LREAL": false,
+          "LVTOT": true,
+          "LWAVE": false,
+          "NEDOS": 4001,
+          "PREC": "Accurate",
+          "SIGMA": 0.05
+        },
+        "final_encut_floor": 620,
+        "prep_defaults": {
+          "ALGO": "Normal",
+          "EDIFF": 1e-06,
+          "ENAUG": null,
+          "GGA": null,
+          "ISMEAR": -5,
+          "LAECHG": false,
+          "LCHARG": true,
+          "LELF": false,
+          "LMIXTAU": null,
+          "LORBIT": 11,
+          "LVHAR": false,
+          "LVTOT": false,
+          "LWAVE": true,
+          "NEDOS": 3001
+        },
+        "prep_encut_floor": 520
+      },
+      "implementation_source": {
+        "resource_policy": "backend.calculations.resource_policy",
+        "stage_definition": "backend.calculations.vasp_stage_definitions",
+        "theory_policy": "backend.calculations.theory_policy",
+        "workflow_builder": "backend.workflows"
+      },
+      "kpoints_policy": {
+        "default_parameters": {},
+        "description": "Uses the selected pymatgen/atomate2 static KPOINTS policy unless BMD stage options request gamma or mesh settings.",
+        "mode": "pymatgen/atomate2 default"
+      },
+      "resource_policy": {
+        "automatic_ncore_eligible": true,
+        "source": "backend.calculations.resource_policy.stage_allows_automatic_ncore"
+      },
+      "restart_policy": {
+        "description": "Static stages may consume the previous stage structure and directory when part of a workflow.",
+        "incar_amendments": {},
+        "requires_previous_stage": false
+      },
+      "scope": "BMD Compute executable calculation methodology: the stages, theories, settings and treatments this BMD Compute checkout implements and can execute",
+      "selected_atomate2": {
+        "extra_parameters": {},
+        "generator_mode": null,
+        "input_set_generator": "atomate2.vasp.sets.core.StaticSetGenerator",
+        "maker": "atomate2.vasp.jobs.core.StaticMaker"
+      },
+      "stage_type": "static",
+      "theory": "pbe",
+      "theory_stage_bmd_incar_amendments": {},
+      "theory_supported_for_stage": true
+    },
+    {
+      "applicable_theory_amendments": {
+        "AEXX": 0.25,
+        "ALGO": "Damped",
+        "GGA": "PE",
+        "HFSCREEN": 0.2,
+        "ISMEAR": 0,
+        "LHFCALC": true,
+        "PRECFOCK": "Accurate",
+        "TIME": 0.4
+      },
+      "base_bmd_incar_amendments": {
+        "final_defaults": {
+          "ADDGRID": true,
+          "ALGO": "Normal",
+          "EDIFF": 1e-06,
+          "ENAUG": null,
+          "GGA": null,
+          "ISMEAR": -5,
+          "LAECHG": true,
+          "LCHARG": true,
+          "LELF": true,
+          "LMIXTAU": null,
+          "LORBIT": 11,
+          "LREAL": false,
+          "LVTOT": true,
+          "LWAVE": false,
+          "NEDOS": 4001,
+          "PREC": "Accurate",
+          "SIGMA": 0.05
+        },
+        "final_encut_floor": 620,
+        "prep_defaults": {
+          "ALGO": "Normal",
+          "EDIFF": 1e-06,
+          "ENAUG": null,
+          "GGA": null,
+          "ISMEAR": -5,
+          "LAECHG": false,
+          "LCHARG": true,
+          "LELF": false,
+          "LMIXTAU": null,
+          "LORBIT": 11,
+          "LVHAR": false,
+          "LVTOT": false,
+          "LWAVE": true,
+          "NEDOS": 3001
+        },
+        "prep_encut_floor": 520
+      },
+      "implementation_source": {
+        "resource_policy": "backend.calculations.resource_policy",
+        "stage_definition": "backend.calculations.vasp_stage_definitions",
+        "theory_policy": "backend.calculations.theory_policy",
+        "workflow_builder": "backend.workflows"
+      },
+      "kpoints_policy": {
+        "default_parameters": {},
+        "description": "Uses the selected pymatgen/atomate2 static KPOINTS policy unless BMD stage options request gamma or mesh settings.",
+        "mode": "pymatgen/atomate2 default"
+      },
+      "resource_policy": {
+        "automatic_ncore_eligible": true,
+        "source": "backend.calculations.resource_policy.stage_allows_automatic_ncore"
+      },
+      "restart_policy": {
+        "description": "Static stages may consume the previous stage structure and directory when part of a workflow.",
+        "incar_amendments": {},
+        "requires_previous_stage": false
+      },
+      "scope": "BMD Compute executable calculation methodology: the stages, theories, settings and treatments this BMD Compute checkout implements and can execute",
+      "selected_atomate2": {
+        "extra_parameters": {},
+        "generator_mode": null,
+        "input_set_generator": "atomate2.vasp.sets.core.StaticSetGenerator",
+        "maker": "atomate2.vasp.jobs.core.StaticMaker"
+      },
+      "stage_type": "static",
+      "theory": "hse06",
+      "theory_stage_bmd_incar_amendments": {},
+      "theory_supported_for_stage": true
+    }
+  ],
+  "contract": {
+    "automatic_default_treatments": "Read-only policy describing BMD-managed Desired Output treatment resolution.",
+    "base_stage_definitions": "Theory-neutral stage definitions from list_stage_definitions().",
+    "capabilities": "Supported stage/theory descriptions from describe_stage(); unsupported combinations are not invented.",
+    "modifier_policies": "Stage-local executable modifiers with controlled options; unsupported pairings are not invented.",
+    "stage_modifier_support": "Complete stage-local explicit modifier sets accepted by the BMD Compute registry for each supported stage/theory pair."
+  },
+  "modifier_policies": [
+    {
+      "default_method": "dftd3-bj",
+      "label": "Dispersion correction",
+      "method_key": "method",
+      "methods": [
+        {
+          "incar_effect": {
+            "IVDW": 11
+          },
+          "label": "DFT-D3",
+          "value": "dftd3"
+        },
+        {
+          "incar_effect": {
+            "IVDW": 12
+          },
+          "label": "DFT-D3(BJ)",
+          "value": "dftd3-bj"
+        }
+      ],
+      "modifier": "dispersion",
+      "option_key": "dispersion",
+      "phase_1_support": {
+        "blocked_terminal_stage_types": [
+          "dos",
+          "band_structure"
+        ],
+        "blocked_with_modifiers": [],
+        "stage_types": [
+          "relax",
+          "static"
+        ],
+        "theories": [
+          "pbe"
+        ]
+      },
+      "upstream_interface": {
+        "atomate2_pymatgen_generator_keyword": "vdw"
+      }
+    }
+  ],
+  "schema_version": 1,
+  "scope": "BMD Compute executable calculation methodology: the stages, theories, settings and treatments this BMD Compute checkout implements and can execute",
+  "source": {
+    "commit": "a746155b487f903a167eca6b3c92e860aaf8c7f5",
+    "dirty": false,
+    "provenance_available": true,
+    "repository": "bmd_compute",
+    "unavailable_reason": null
+  },
+  "stage_modifier_support": [
+    {
+      "source": "backend.calculations.registry.supported_stage_modifier_combinations",
+      "stage_type": "band_structure",
+      "supported_modifier_combinations": [
+        [],
+        [
+          "dft_u"
+        ],
+        [
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "spin_polarized"
+        ]
+      ],
+      "theory": "pbe"
+    },
+    {
+      "source": "backend.calculations.registry.supported_stage_modifier_combinations",
+      "stage_type": "band_structure",
+      "supported_modifier_combinations": [
+        [],
+        [
+          "soc"
+        ],
+        [
+          "spin_polarized"
+        ],
+        [
+          "soc",
+          "spin_polarized"
+        ]
+      ],
+      "theory": "hse06"
+    },
+    {
+      "source": "backend.calculations.registry.supported_stage_modifier_combinations",
+      "stage_type": "dos",
+      "supported_modifier_combinations": [
+        [],
+        [
+          "dft_u"
+        ],
+        [
+          "gamma_only"
+        ],
+        [
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "gamma_only"
+        ],
+        [
+          "dft_u",
+          "spin_polarized"
+        ],
+        [
+          "gamma_only",
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "gamma_only",
+          "spin_polarized"
+        ]
+      ],
+      "theory": "pbe"
+    },
+    {
+      "source": "backend.calculations.registry.supported_stage_modifier_combinations",
+      "stage_type": "dos",
+      "supported_modifier_combinations": [
+        [],
+        [
+          "gamma_only"
+        ],
+        [
+          "soc"
+        ],
+        [
+          "spin_polarized"
+        ],
+        [
+          "gamma_only",
+          "soc"
+        ],
+        [
+          "gamma_only",
+          "spin_polarized"
+        ],
+        [
+          "soc",
+          "spin_polarized"
+        ],
+        [
+          "gamma_only",
+          "soc",
+          "spin_polarized"
+        ]
+      ],
+      "theory": "hse06"
+    },
+    {
+      "source": "backend.calculations.registry.supported_stage_modifier_combinations",
+      "stage_type": "relax",
+      "supported_modifier_combinations": [
+        [],
+        [
+          "dft_u"
+        ],
+        [
+          "dispersion"
+        ],
+        [
+          "gamma_only"
+        ],
+        [
+          "ions_only"
+        ],
+        [
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "dispersion"
+        ],
+        [
+          "dft_u",
+          "gamma_only"
+        ],
+        [
+          "dft_u",
+          "ions_only"
+        ],
+        [
+          "dft_u",
+          "spin_polarized"
+        ],
+        [
+          "dispersion",
+          "gamma_only"
+        ],
+        [
+          "dispersion",
+          "ions_only"
+        ],
+        [
+          "dispersion",
+          "spin_polarized"
+        ],
+        [
+          "gamma_only",
+          "ions_only"
+        ],
+        [
+          "gamma_only",
+          "spin_polarized"
+        ],
+        [
+          "ions_only",
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "dispersion",
+          "gamma_only"
+        ],
+        [
+          "dft_u",
+          "dispersion",
+          "ions_only"
+        ],
+        [
+          "dft_u",
+          "dispersion",
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "gamma_only",
+          "ions_only"
+        ],
+        [
+          "dft_u",
+          "gamma_only",
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "ions_only",
+          "spin_polarized"
+        ],
+        [
+          "dispersion",
+          "gamma_only",
+          "ions_only"
+        ],
+        [
+          "dispersion",
+          "gamma_only",
+          "spin_polarized"
+        ],
+        [
+          "dispersion",
+          "ions_only",
+          "spin_polarized"
+        ],
+        [
+          "gamma_only",
+          "ions_only",
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "dispersion",
+          "gamma_only",
+          "ions_only"
+        ],
+        [
+          "dft_u",
+          "dispersion",
+          "gamma_only",
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "dispersion",
+          "ions_only",
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "gamma_only",
+          "ions_only",
+          "spin_polarized"
+        ],
+        [
+          "dispersion",
+          "gamma_only",
+          "ions_only",
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "dispersion",
+          "gamma_only",
+          "ions_only",
+          "spin_polarized"
+        ]
+      ],
+      "theory": "pbe"
+    },
+    {
+      "source": "backend.calculations.registry.supported_stage_modifier_combinations",
+      "stage_type": "relax",
+      "supported_modifier_combinations": [
+        [],
+        [
+          "gamma_only"
+        ],
+        [
+          "spin_polarized"
+        ],
+        [
+          "gamma_only",
+          "spin_polarized"
+        ]
+      ],
+      "theory": "hse06"
+    },
+    {
+      "source": "backend.calculations.registry.supported_stage_modifier_combinations",
+      "stage_type": "static",
+      "supported_modifier_combinations": [
+        [],
+        [
+          "dft_u"
+        ],
+        [
+          "dispersion"
+        ],
+        [
+          "gamma_only"
+        ],
+        [
+          "soc"
+        ],
+        [
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "dispersion"
+        ],
+        [
+          "dft_u",
+          "gamma_only"
+        ],
+        [
+          "dft_u",
+          "soc"
+        ],
+        [
+          "dft_u",
+          "spin_polarized"
+        ],
+        [
+          "dispersion",
+          "gamma_only"
+        ],
+        [
+          "dispersion",
+          "soc"
+        ],
+        [
+          "dispersion",
+          "spin_polarized"
+        ],
+        [
+          "gamma_only",
+          "soc"
+        ],
+        [
+          "gamma_only",
+          "spin_polarized"
+        ],
+        [
+          "soc",
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "dispersion",
+          "gamma_only"
+        ],
+        [
+          "dft_u",
+          "dispersion",
+          "soc"
+        ],
+        [
+          "dft_u",
+          "dispersion",
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "gamma_only",
+          "soc"
+        ],
+        [
+          "dft_u",
+          "gamma_only",
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "soc",
+          "spin_polarized"
+        ],
+        [
+          "dispersion",
+          "gamma_only",
+          "soc"
+        ],
+        [
+          "dispersion",
+          "gamma_only",
+          "spin_polarized"
+        ],
+        [
+          "dispersion",
+          "soc",
+          "spin_polarized"
+        ],
+        [
+          "gamma_only",
+          "soc",
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "dispersion",
+          "gamma_only",
+          "soc"
+        ],
+        [
+          "dft_u",
+          "dispersion",
+          "gamma_only",
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "dispersion",
+          "soc",
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "gamma_only",
+          "soc",
+          "spin_polarized"
+        ],
+        [
+          "dispersion",
+          "gamma_only",
+          "soc",
+          "spin_polarized"
+        ],
+        [
+          "dft_u",
+          "dispersion",
+          "gamma_only",
+          "soc",
+          "spin_polarized"
+        ]
+      ],
+      "theory": "pbe"
+    },
+    {
+      "source": "backend.calculations.registry.supported_stage_modifier_combinations",
+      "stage_type": "static",
+      "supported_modifier_combinations": [
+        [],
+        [
+          "gamma_only"
+        ],
+        [
+          "soc"
+        ],
+        [
+          "spin_polarized"
+        ],
+        [
+          "gamma_only",
+          "soc"
+        ],
+        [
+          "gamma_only",
+          "spin_polarized"
+        ],
+        [
+          "soc",
+          "spin_polarized"
+        ],
+        [
+          "gamma_only",
+          "soc",
+          "spin_polarized"
+        ]
+      ],
+      "theory": "hse06"
+    }
+  ]
+}
