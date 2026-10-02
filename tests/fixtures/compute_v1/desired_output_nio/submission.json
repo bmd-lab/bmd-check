@@ -1,0 +1,1050 @@
+{
+  "schema": "bmd_compute.submission",
+  "schema_version": 1,
+  "status": "pending",
+  "label": "vasp_run_custom_workflow",
+  "run_name": "vasp_run_custom_workflow-20261001-090000",
+  "created_at": "20261001-090000",
+  "flow_spec": {
+    "workflow_spec": {
+      "stages": [
+        {
+          "stage_type": "static",
+          "theory": "pbe",
+          "modifiers": [
+            "dft_u",
+            "spin_polarized"
+          ],
+          "label": null,
+          "options": {
+            "dft_u": {
+              "LDAUTYPE": 2,
+              "deciding_anion": "O",
+              "parameter_source": "pymatgen.io.vasp.sets.MPRelaxSet (MPRelaxSet.yaml INCAR LDAU*)",
+              "policy_id": "bmd_compute.dft_u",
+              "policy_version": 1,
+              "species": {
+                "Ni": {
+                  "J": 0,
+                  "L": 2,
+                  "U": 6.2
+                },
+                "O": {
+                  "J": 0,
+                  "L": 0,
+                  "U": 0
+                }
+              }
+            }
+          }
+        }
+      ],
+      "label": null,
+      "recipe": "energy_only"
+    },
+    "workflow": "custom_workflow",
+    "potcar_functional": "PBE_64",
+    "kpoints": null,
+    "incar": {},
+    "execution_resources": {
+      "nodes": 1,
+      "ntasks": 24,
+      "mem_gb": 128,
+      "walltime": "72:00:00",
+      "partition": "leeburton-pool",
+      "account": "power-leeburton-users_v2"
+    },
+    "structure": {
+      "type": "pasted_text",
+      "format": "poscar",
+      "text": "NiO\n1.0\n4.17 0.0 0.0\n0.0 4.17 0.0\n0.0 0.0 4.17\nNi O\n4 4\ndirect\n0.0 0.0 0.0\n0.5 0.5 0.0\n0.5 0.0 0.5\n0.0 0.5 0.5\n0.5 0.5 0.5\n0.0 0.0 0.5\n0.0 0.5 0.0\n0.5 0.0 0.0\n"
+    },
+    "automatic_treatments": {
+      "mode": "bmd_managed_desired_output",
+      "desired_output": "energy_only",
+      "base_workflow": {
+        "stages": [
+          {
+            "stage_type": "static",
+            "theory": "pbe",
+            "modifiers": [],
+            "label": null,
+            "options": {}
+          }
+        ],
+        "label": null,
+        "recipe": "energy_only"
+      },
+      "resolved_workflow": {
+        "stages": [
+          {
+            "stage_type": "static",
+            "theory": "pbe",
+            "modifiers": [
+              "dft_u",
+              "spin_polarized"
+            ],
+            "label": null,
+            "options": {
+              "dft_u": {
+                "LDAUTYPE": 2,
+                "deciding_anion": "O",
+                "parameter_source": "pymatgen.io.vasp.sets.MPRelaxSet (MPRelaxSet.yaml INCAR LDAU*)",
+                "policy_id": "bmd_compute.dft_u",
+                "policy_version": 1,
+                "species": {
+                  "Ni": {
+                    "J": 0,
+                    "L": 2,
+                    "U": 6.2
+                  },
+                  "O": {
+                    "J": 0,
+                    "L": 0,
+                    "U": 0
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "label": null,
+        "recipe": "energy_only"
+      },
+      "applied_treatments": [
+        {
+          "consideration_id": "spin.composition_screen",
+          "modifier": "spin_polarized",
+          "display_name": "Spin Polarised",
+          "application_state": "applied",
+          "stage_indices": [
+            1
+          ],
+          "stage_applications": [
+            {
+              "stage_index": 1,
+              "stage_type": "static",
+              "stage_type_label": "Static Energy",
+              "theory": "pbe",
+              "theory_label": "PBE"
+            }
+          ],
+          "source": "backend.calculations.default_treatments"
+        },
+        {
+          "consideration_id": "dftu.mp_oxide_fluoride",
+          "modifier": "dft_u",
+          "display_name": "DFT+U",
+          "application_state": "applied",
+          "stage_indices": [
+            1
+          ],
+          "stage_applications": [
+            {
+              "stage_index": 1,
+              "stage_type": "static",
+              "stage_type_label": "Static Energy",
+              "theory": "pbe",
+              "theory_label": "PBE"
+            }
+          ],
+          "source": "backend.calculations.default_treatments"
+        }
+      ],
+      "advisory_consideration_ids": [],
+      "not_applicable_considerations": [],
+      "dft_u": {
+        "consideration_id": "dftu.mp_oxide_fluoride",
+        "d_counts": [
+          {
+            "Ni": 8.0
+          }
+        ],
+        "deciding_anion": "O",
+        "decision": "apply",
+        "elements": [
+          "Ni",
+          "O"
+        ],
+        "gate": "d_electrons_present",
+        "gate_reason": "At least one charge-balanced oxidation-state assignment leaves a triggering element with d electrons.",
+        "most_electronegative_element": "O",
+        "mp_anion_basis": [
+          "F",
+          "O"
+        ],
+        "mp_rule_triggered": true,
+        "oxidation_state_guesses": [
+          {
+            "Ni": 2.0,
+            "O": -2.0
+          }
+        ],
+        "parameters": {
+          "LDAUTYPE": 2,
+          "deciding_anion": "O",
+          "parameter_source": "pymatgen.io.vasp.sets.MPRelaxSet (MPRelaxSet.yaml INCAR LDAU*)",
+          "policy_id": "bmd_compute.dft_u",
+          "policy_version": 1,
+          "species": {
+            "Ni": {
+              "J": 0,
+              "L": 2,
+              "U": 6.2
+            },
+            "O": {
+              "J": 0,
+              "L": 0,
+              "U": 0
+            }
+          }
+        },
+        "policy_id": "bmd_compute.dft_u",
+        "policy_version": 1,
+        "rule_id": "pymatgen.MPRelaxSet.most_electronegative_oxide_fluoride",
+        "triggering_elements": [
+          "Ni"
+        ],
+        "parameter_source_record": {
+          "parameter_source": "pymatgen.io.vasp.sets.MPRelaxSet (MPRelaxSet.yaml INCAR LDAU*)",
+          "mprelaxset_yaml": "pymatgen/io/vasp/MPRelaxSet.yaml",
+          "mprelaxset_yaml_sha256": "c9b0a519588fb3709509a9f9964632692584905e2961a0fe2e5f657561913083",
+          "generator_config": "atomate2.vasp.sets.base._BASE_VASP_SET",
+          "atomate2_table_matches_mprelaxset": true,
+          "packages": {
+            "atomate2": "0.1.5",
+            "pymatgen": "2026.5.4",
+            "pymatgen-core": "2026.7.16"
+          }
+        },
+        "generated_stages": [
+          {
+            "stage_index": 1,
+            "stage_type": "static",
+            "theory": "pbe",
+            "poscar_symbols": [
+              "Ni",
+              "O"
+            ],
+            "potcar_symbols": [
+              "Ni",
+              "O"
+            ],
+            "LDAU": true,
+            "LDAUTYPE": 2,
+            "LDAUL": [
+              2,
+              0
+            ],
+            "LDAUU": [
+              6.2,
+              0
+            ],
+            "LDAUJ": [
+              0,
+              0
+            ],
+            "LMAXMIX": 4
+          }
+        ]
+      },
+      "source": "backend.calculations.default_treatments"
+    }
+  },
+  "paths": {
+    "run_dir": "/bmd-db/guest/flows/vasp_run_custom_workflow-20261001-090000",
+    "remote_script": "/bmd-db/guest/flows/vasp_run_custom_workflow-20261001-090000.sbatch.sh",
+    "logs_dir": "/bmd-db/guest/logs",
+    "flows_dir": "/bmd-db/guest/flows",
+    "potcars_dir": "/bmd-db/potcars",
+    "log_out": "/bmd-db/guest/logs/vasp_run_custom_workflow-20261001-090000.out",
+    "log_err": "/bmd-db/guest/logs/vasp_run_custom_workflow-20261001-090000.err",
+    "slurm_out": "/bmd-db/guest/logs/vasp_run_custom_workflow-20261001-090000.slurm.out",
+    "slurm_err": "/bmd-db/guest/logs/vasp_run_custom_workflow-20261001-090000.slurm.err",
+    "stage_dirs": {},
+    "result_dir": "/bmd-db/guest/flows/vasp_run_custom_workflow-20261001-090000",
+    "directories_to_prepare": [
+      "/bmd-db/guest/flows",
+      "/bmd-db/guest/logs",
+      "/bmd-db/guest/logs/submission_attempts"
+    ],
+    "runtime_environment": "/bmd-db/guest/flows/vasp_run_custom_workflow-20261001-090000/runtime_environment.json",
+    "submission_attempts_dir": "/bmd-db/guest/logs/submission_attempts",
+    "submission_attempt_state": "/bmd-db/guest/logs/submission_attempts/00000000-0000-4000-8000-000000000201.json",
+    "submission_attempt_lock": "/bmd-db/guest/logs/submission_attempts/00000000-0000-4000-8000-000000000201.lock"
+  },
+  "cluster": {
+    "ssh_config_host": "powerslurm-bmdguest",
+    "remote_host": "powerslurm-bmdguest",
+    "username": "bmdguest",
+    "key_file": null,
+    "port": 22,
+    "partition": "leeburton-pool",
+    "account": "power-leeburton-users_v2"
+  },
+  "resources": {
+    "nodes": 1,
+    "ntasks": 24,
+    "mem_gb": 128,
+    "walltime": "72:00:00"
+  },
+  "environment": {
+    "VASP_CMD": "mpirun -n $SLURM_NTASKS vasp_std",
+    "JOBFLOW_CONFIG_FILE": "/bmd-db/guest/jobflow_minimal.yaml",
+    "PMG_VASP_PSP_DIR": "/bmd-db/potcars",
+    "CUSTODIAN_NO_GZIP": "1",
+    "ATOMATE2_VASP_ZIP_FILES": "False",
+    "ATOMATE2_REMOTE_ENV": "/bmd/bmdguest/envs/atomate2_remote"
+  },
+  "modules": {
+    "purge_first": true,
+    "load": [
+      "intel/rocky8-oneAPI-2023",
+      "vasp/rocky8-intel-6.4.1"
+    ]
+  },
+  "runner": {
+    "working_directory": "/bmd-db/guest/flows/vasp_run_custom_workflow-20261001-090000",
+    "python": "/bmd/bmdguest/envs/atomate2_remote/bin/python",
+    "script_name": "run_job.py",
+    "submission_spec_name": "submission.json",
+    "backend_package_dir": "backend",
+    "backend_init_name": "__init__.py",
+    "execution_module_name": "execution.py",
+    "stdout": "/bmd-db/guest/logs/vasp_run_custom_workflow-20261001-090000.out",
+    "stderr": "/bmd-db/guest/logs/vasp_run_custom_workflow-20261001-090000.err"
+  },
+  "potcar": {
+    "functional": "PBE_64",
+    "status": "resolved",
+    "symbol_source": "bmd_compute.executable_stage_generators",
+    "consistent_across_stages": true,
+    "species": [
+      {
+        "species": "Ni",
+        "potcar_symbol": "Ni"
+      },
+      {
+        "species": "O",
+        "potcar_symbol": "O"
+      }
+    ],
+    "symbols": [
+      "Ni",
+      "O"
+    ],
+    "stages": [
+      {
+        "stage_index": 1,
+        "stage_type": "static",
+        "theory": "pbe",
+        "species": [
+          {
+            "species": "Ni",
+            "potcar_symbol": "Ni"
+          },
+          {
+            "species": "O",
+            "potcar_symbol": "O"
+          }
+        ],
+        "symbols": [
+          "Ni",
+          "O"
+        ]
+      }
+    ],
+    "repository": "shared",
+    "target": "/bmd-db/potcars/PBE_64",
+    "symlink_targets": []
+  },
+  "runtime_parity": {
+    "policy_id": "bmd_compute.runtime_parity",
+    "policy_version": 1,
+    "packages": {
+      "atomate2": "0.1.5",
+      "pymatgen": "2026.5.4",
+      "pymatgen-core": "2026.7.16",
+      "custodian": "2025.12.14",
+      "emmet-core": "0.87.1",
+      "jobflow": "0.1.19",
+      "spglib": "2.7.0"
+    }
+  },
+  "preflight": {
+    "requires_remote_structure_check": false,
+    "mp_api_key_provided": false
+  },
+  "submission": {
+    "method": "sbatch",
+    "ready": true,
+    "submitted": false,
+    "reason": "Specification only; no submission has been performed.",
+    "attempt_id": "00000000-0000-4000-8000-000000000201",
+    "attempt_state": "/bmd-db/guest/logs/submission_attempts/00000000-0000-4000-8000-000000000201.json",
+    "attempt_lock": "/bmd-db/guest/logs/submission_attempts/00000000-0000-4000-8000-000000000201.lock",
+    "attempt_comment": "bmd_attempt:00000000-0000-4000-8000-000000000201",
+    "attempt_fingerprint": "9a445e6aec0c6725d298c67becec06ca91ec945e3ca1182235673bbadb043a75",
+    "identity_token": "eyJhdHRlbXB0X2lkIjoiMDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMjAxIiwicnVuX3RpbWVzdGFtcCI6IjIwMjYxMDAxLTA5MDAwMCIsInZlcnNpb24iOjF9.HLilrfDD5HWQmx6FsZthO53kwn06c0Ii7QYDLMPKvt4"
+  },
+  "provenance": {
+    "schema_version": 1,
+    "bmd_compute": {
+      "source": {
+        "status": "available",
+        "git_commit": "a746155b487f903a167eca6b3c92e860aaf8c7f5",
+        "dirty": false,
+        "state": "clean",
+        "dirty_paths_count": 0
+      },
+      "runtime_source": {
+        "status": "available",
+        "scope": "BMD Compute packaged Python runtime source",
+        "package_dir": "backend",
+        "hash_algorithm": "sha256",
+        "files_count": 40,
+        "manifest": {
+          "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "calculations/__init__.py": "389ebaacfb30af70aafe74fccc971b1dcbb9ace674bc43a046c2d2262ce878a4",
+          "calculations/builder.py": "6b44cac8c24a45c4aae1a0e7124ab0d459eb5fcf8ba0d9ce666cc8d15893ba90",
+          "calculations/capabilities.py": "611a8c338f5de587ac0459cc68fb22dc688ed60799afd373f515f4311a6617b2",
+          "calculations/custodian_policy.py": "07bba1733258b1aa26c8b755d2fa8ca17b326e55a269ae7d9a74955d9ab0002d",
+          "calculations/default_treatments.py": "1b66802556dd6f6052e0d81de721fe529a00d1624b9d115a8e9391148ad1a387",
+          "calculations/dft_u_policy.py": "ea5ffa12fb859f6babf5cb2fdaf60bf8592715cbcc1627731e0e481d7a7c6ce8",
+          "calculations/dispersion.py": "14a3ffdf03b0485f9a9d4aebb4dde119b1a4c3de62e93437df7cb025752a21e1",
+          "calculations/hse_band_kpoints.py": "9e7bf23d4711df15b09b7f0d26ab72384cbc341cdecb910c15187c455fd39cf5",
+          "calculations/input_reference.py": "013c5d9b358fd748dd2dab9fc41e226c3af1d7d5bd8af3943b18d42148afb3cd",
+          "calculations/method_considerations.py": "5d57ebc089c78e288b9e73d80bf2e7a8b8f04723adf5910f27144a9077f4bcbb",
+          "calculations/models.py": "aeb0cbaf8972ebcf02dfc75967ef3420562fd4345a523c133813f9d23013c7d0",
+          "calculations/potcar_record.py": "fb9452ac3e06962040f64a778fd7af81ff47f3f3e85f382f2778a22340da7cf7",
+          "calculations/registry.py": "785dcf712d313f86fbb9b107ae9d4180f962bf98015f9256f214b824642599c2",
+          "calculations/resource_policy.py": "c1020c11dfd07541e782dab3d3b6f91b1c91b06ac91827d24beb310cc593857b",
+          "calculations/resources.py": "3c5f2f18df710987d510498747e61069fcb8dd854e6a9a0e2bd335b96cc6186c",
+          "calculations/theory_policy.py": "eaaa29df0d5046b93a6a36e037c26cfb97a48df9560cf6dc6711971c0dfba827",
+          "calculations/vasp_stage_definitions.py": "1c612b938b033118f827579d821faa04d9d1811c4c8bc6d4387e42ef8dcb9bcf",
+          "config.py": "643388f55d7b7445fcaf0565751f308a179d0351fc3ddae589b19bd4e7587c9c",
+          "execution.py": "4d2c0810bc52006a9d4ebe37e6faea54da0c25115aba22983e4686b5e34d79dd",
+          "generated_inputs.py": "d98ee622a7fe815cd04c781d5bc8bbaac09a69bd0f3e6c6a1f1666c4687de47f",
+          "monitoring.py": "00ab482935b5aa740ae667869dbc955f420e40ebc65fbc112a91b728d5fab16c",
+          "paramiko_remote.py": "70d8ac8ffcd55f15383560aee192f89148fb8f307ce6b77339cb8d444daec6f1",
+          "parser.py": "9eebee9d842f05682d13acb4949152396d0a07eb1ad9abbab35c4540ea46c6e4",
+          "provenance.py": "73ddcdc2dbeed78edb20ac74034968a7ccb06b3115cb68e6921c147c2c614277",
+          "remote.py": "22d7f9296f77e10c1f3be1e2d6d74a0d2915ff53b6cb61badbba878b9f2efc9e",
+          "remote_preparation.py": "44255dcde4cf04581335b8db2890946f647c6daa68c81557cf449ba4e24f702e",
+          "remote_result_parser.py": "379850d2249925a39bcc6be8ef98777ed83b72349ab9d426351e11406ea588cf",
+          "remote_runtime.py": "fd863be4ce433ba88ad605ea463f8da08cc32356417691ecb5aee82717a292e9",
+          "remote_submission.py": "75b288699ce2862ac6ec78faca46b245fe016b72f0d98353fd8c9962748d9196",
+          "results.py": "f09d56f5849bb87afd655b4c664e0e1a12913dc7534293ca75e27a08a1da1010",
+          "run_records.py": "398aa58b13eb5bfebc705eac664d4a1a97c439f7af851e82f5250a5be813a82a",
+          "runtime_environment.py": "cf56f47617d2b450bfdf1de07414ae5b82b94c49bfd58a640ff9907b282f7d89",
+          "runtime_package.py": "e2267c8c9d9d2ef7d06e4f6a00ccf846759cb6a54c8ad92f0d01e8fdd8efadf3",
+          "structure_dimensionality.py": "6c43e112e8628a0a4e13979e6917ecf8c52227e315dad85b4cecab380813c265",
+          "submission.py": "2de62fc4247de5269b57a749ec8bf7dd819a1b778bddc2d8aa2c245f8392f3e0",
+          "summary.py": "90ecf1fa0ee668c5d54611c4fcb23535a6fff4a1e80c46fc043f25aba9f8c960",
+          "workflow_results.py": "b0eac8694aba457e6bc053137de080bafa65e818873915bba23a8dccb11f5673",
+          "workflow_summary.py": "cee07aca2712425ab65bdec879903f22aba0238fe90edf0af9d6df00e143de9f",
+          "workflows.py": "6a87ba4ffdca3a200593ab66d41790720d265c433c47e79c803b07229e5bea5e"
+        }
+      }
+    },
+    "python_environment": {
+      "preparation": {
+        "python_version": "3.12.3",
+        "python_implementation": "CPython",
+        "packages": {
+          "pymatgen": "2026.5.4",
+          "pymatgen-core": "2026.7.16",
+          "atomate2": "0.1.5",
+          "jobflow": "0.1.19",
+          "custodian": "2025.12.14",
+          "emmet-core": "0.87.1",
+          "spglib": "2.7.0",
+          "monty": "2026.7.16",
+          "numpy": "2.5.1",
+          "scipy": "1.18.0",
+          "pydantic": "2.13.4",
+          "pydantic-settings": "2.14.2",
+          "maggma": "0.74.0",
+          "ruamel.yaml": "0.19.1"
+        }
+      },
+      "remote_execution": {
+        "status": "deferred_until_execution",
+        "python": "/bmd/bmdguest/envs/atomate2_remote/bin/python",
+        "packages": {
+          "pymatgen": "captured by the remote runner at execution time",
+          "pymatgen-core": "captured by the remote runner at execution time",
+          "atomate2": "captured by the remote runner at execution time",
+          "jobflow": "captured by the remote runner at execution time",
+          "custodian": "captured by the remote runner at execution time",
+          "emmet-core": "captured by the remote runner at execution time",
+          "spglib": "captured by the remote runner at execution time",
+          "monty": "captured by the remote runner at execution time",
+          "numpy": "captured by the remote runner at execution time",
+          "scipy": "captured by the remote runner at execution time",
+          "pydantic": "captured by the remote runner at execution time",
+          "pydantic-settings": "captured by the remote runner at execution time",
+          "maggma": "captured by the remote runner at execution time",
+          "ruamel.yaml": "captured by the remote runner at execution time"
+        },
+        "record": "/bmd-db/guest/flows/vasp_run_custom_workflow-20261001-090000/runtime_environment.json",
+        "record_schema": "bmd_compute.runtime_environment",
+        "parity_critical_packages": [
+          "atomate2",
+          "pymatgen",
+          "pymatgen-core",
+          "custodian",
+          "emmet-core",
+          "jobflow",
+          "spglib"
+        ]
+      }
+    },
+    "vasp": {
+      "global_command_template": "mpirun -n $SLURM_NTASKS vasp_std",
+      "stages": [
+        {
+          "index": 1,
+          "stage_type": "static",
+          "theory": "pbe",
+          "modifiers": [
+            "dft_u",
+            "spin_polarized"
+          ],
+          "options": {
+            "dft_u": {
+              "LDAUTYPE": 2,
+              "deciding_anion": "O",
+              "parameter_source": "pymatgen.io.vasp.sets.MPRelaxSet (MPRelaxSet.yaml INCAR LDAU*)",
+              "policy_id": "bmd_compute.dft_u",
+              "policy_version": 1,
+              "species": {
+                "Ni": {
+                  "J": 0,
+                  "L": 2,
+                  "U": 6.2
+                },
+                "O": {
+                  "J": 0,
+                  "L": 0,
+                  "U": 0
+                }
+              }
+            }
+          },
+          "executable": "vasp_std",
+          "command_template": "mpirun -n '$SLURM_NTASKS' vasp_std",
+          "custodian_vasp_job_kwargs": {}
+        }
+      ],
+      "version": {
+        "status": "deferred_until_execution",
+        "reason": "VASP version/build is only known on the compute node."
+      }
+    },
+    "potcar": {
+      "functional": "PBE_64",
+      "status": "resolved",
+      "species": [
+        {
+          "species": "Ni",
+          "potcar_symbol": "Ni"
+        },
+        {
+          "species": "O",
+          "potcar_symbol": "O"
+        }
+      ],
+      "symbols": [
+        "Ni",
+        "O"
+      ],
+      "symbol_source": "bmd_compute.executable_stage_generators",
+      "consistent_across_stages": true,
+      "stages": [
+        {
+          "stage_index": 1,
+          "stage_type": "static",
+          "theory": "pbe",
+          "species": [
+            {
+              "species": "Ni",
+              "potcar_symbol": "Ni"
+            },
+            {
+              "species": "O",
+              "potcar_symbol": "O"
+            }
+          ],
+          "symbols": [
+            "Ni",
+            "O"
+          ]
+        }
+      ],
+      "repository": "shared",
+      "hashes": {
+        "status": "not_recorded",
+        "reason": "Actual execution POTCAR files are resolved from the configured remote/shared repository; raw POTCAR contents are not stored."
+      }
+    },
+    "execution": {
+      "workflow_spec": {
+        "stages": [
+          {
+            "stage_type": "static",
+            "theory": "pbe",
+            "modifiers": [
+              "dft_u",
+              "spin_polarized"
+            ],
+            "label": null,
+            "options": {
+              "dft_u": {
+                "LDAUTYPE": 2,
+                "deciding_anion": "O",
+                "parameter_source": "pymatgen.io.vasp.sets.MPRelaxSet (MPRelaxSet.yaml INCAR LDAU*)",
+                "policy_id": "bmd_compute.dft_u",
+                "policy_version": 1,
+                "species": {
+                  "Ni": {
+                    "J": 0,
+                    "L": 2,
+                    "U": 6.2
+                  },
+                  "O": {
+                    "J": 0,
+                    "L": 0,
+                    "U": 0
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "label": null,
+        "recipe": "energy_only"
+      },
+      "automatic_treatments": {
+        "mode": "bmd_managed_desired_output",
+        "desired_output": "energy_only",
+        "base_workflow": {
+          "stages": [
+            {
+              "stage_type": "static",
+              "theory": "pbe",
+              "modifiers": [],
+              "label": null,
+              "options": {}
+            }
+          ],
+          "label": null,
+          "recipe": "energy_only"
+        },
+        "resolved_workflow": {
+          "stages": [
+            {
+              "stage_type": "static",
+              "theory": "pbe",
+              "modifiers": [
+                "dft_u",
+                "spin_polarized"
+              ],
+              "label": null,
+              "options": {
+                "dft_u": {
+                  "LDAUTYPE": 2,
+                  "deciding_anion": "O",
+                  "parameter_source": "pymatgen.io.vasp.sets.MPRelaxSet (MPRelaxSet.yaml INCAR LDAU*)",
+                  "policy_id": "bmd_compute.dft_u",
+                  "policy_version": 1,
+                  "species": {
+                    "Ni": {
+                      "J": 0,
+                      "L": 2,
+                      "U": 6.2
+                    },
+                    "O": {
+                      "J": 0,
+                      "L": 0,
+                      "U": 0
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "label": null,
+          "recipe": "energy_only"
+        },
+        "applied_treatments": [
+          {
+            "consideration_id": "spin.composition_screen",
+            "modifier": "spin_polarized",
+            "display_name": "Spin Polarised",
+            "application_state": "applied",
+            "stage_indices": [
+              1
+            ],
+            "stage_applications": [
+              {
+                "stage_index": 1,
+                "stage_type": "static",
+                "stage_type_label": "Static Energy",
+                "theory": "pbe",
+                "theory_label": "PBE"
+              }
+            ],
+            "source": "backend.calculations.default_treatments"
+          },
+          {
+            "consideration_id": "dftu.mp_oxide_fluoride",
+            "modifier": "dft_u",
+            "display_name": "DFT+U",
+            "application_state": "applied",
+            "stage_indices": [
+              1
+            ],
+            "stage_applications": [
+              {
+                "stage_index": 1,
+                "stage_type": "static",
+                "stage_type_label": "Static Energy",
+                "theory": "pbe",
+                "theory_label": "PBE"
+              }
+            ],
+            "source": "backend.calculations.default_treatments"
+          }
+        ],
+        "advisory_consideration_ids": [],
+        "not_applicable_considerations": [],
+        "dft_u": {
+          "consideration_id": "dftu.mp_oxide_fluoride",
+          "d_counts": [
+            {
+              "Ni": 8.0
+            }
+          ],
+          "deciding_anion": "O",
+          "decision": "apply",
+          "elements": [
+            "Ni",
+            "O"
+          ],
+          "gate": "d_electrons_present",
+          "gate_reason": "At least one charge-balanced oxidation-state assignment leaves a triggering element with d electrons.",
+          "most_electronegative_element": "O",
+          "mp_anion_basis": [
+            "F",
+            "O"
+          ],
+          "mp_rule_triggered": true,
+          "oxidation_state_guesses": [
+            {
+              "Ni": 2.0,
+              "O": -2.0
+            }
+          ],
+          "parameters": {
+            "LDAUTYPE": 2,
+            "deciding_anion": "O",
+            "parameter_source": "pymatgen.io.vasp.sets.MPRelaxSet (MPRelaxSet.yaml INCAR LDAU*)",
+            "policy_id": "bmd_compute.dft_u",
+            "policy_version": 1,
+            "species": {
+              "Ni": {
+                "J": 0,
+                "L": 2,
+                "U": 6.2
+              },
+              "O": {
+                "J": 0,
+                "L": 0,
+                "U": 0
+              }
+            }
+          },
+          "policy_id": "bmd_compute.dft_u",
+          "policy_version": 1,
+          "rule_id": "pymatgen.MPRelaxSet.most_electronegative_oxide_fluoride",
+          "triggering_elements": [
+            "Ni"
+          ],
+          "parameter_source_record": {
+            "parameter_source": "pymatgen.io.vasp.sets.MPRelaxSet (MPRelaxSet.yaml INCAR LDAU*)",
+            "mprelaxset_yaml": "pymatgen/io/vasp/MPRelaxSet.yaml",
+            "mprelaxset_yaml_sha256": "c9b0a519588fb3709509a9f9964632692584905e2961a0fe2e5f657561913083",
+            "generator_config": "atomate2.vasp.sets.base._BASE_VASP_SET",
+            "atomate2_table_matches_mprelaxset": true,
+            "packages": {
+              "atomate2": "0.1.5",
+              "pymatgen": "2026.5.4",
+              "pymatgen-core": "2026.7.16"
+            }
+          },
+          "generated_stages": [
+            {
+              "stage_index": 1,
+              "stage_type": "static",
+              "theory": "pbe",
+              "poscar_symbols": [
+                "Ni",
+                "O"
+              ],
+              "potcar_symbols": [
+                "Ni",
+                "O"
+              ],
+              "LDAU": true,
+              "LDAUTYPE": 2,
+              "LDAUL": [
+                2,
+                0
+              ],
+              "LDAUU": [
+                6.2,
+                0
+              ],
+              "LDAUJ": [
+                0,
+                0
+              ],
+              "LMAXMIX": 4
+            }
+          ]
+        },
+        "source": "backend.calculations.default_treatments"
+      },
+      "stage_order": [
+        {
+          "index": 1,
+          "stage_type": "static",
+          "theory": "pbe",
+          "modifiers": [
+            "dft_u",
+            "spin_polarized"
+          ],
+          "options": {
+            "dft_u": {
+              "LDAUTYPE": 2,
+              "deciding_anion": "O",
+              "parameter_source": "pymatgen.io.vasp.sets.MPRelaxSet (MPRelaxSet.yaml INCAR LDAU*)",
+              "policy_id": "bmd_compute.dft_u",
+              "policy_version": 1,
+              "species": {
+                "Ni": {
+                  "J": 0,
+                  "L": 2,
+                  "U": 6.2
+                },
+                "O": {
+                  "J": 0,
+                  "L": 0,
+                  "U": 0
+                }
+              }
+            }
+          }
+        }
+      ],
+      "custodian": {
+        "stages": [
+          {
+            "index": 1,
+            "policy_id": "bmd_compute.vasp",
+            "policy_version": 1,
+            "stage": {
+              "stage_type": "static",
+              "theory": "pbe"
+            },
+            "handlers": [
+              {
+                "class": "custodian.vasp.handlers.VaspErrorHandler",
+                "configuration": {
+                  "output_filename": "vasp.out",
+                  "errors_subset_to_catch": [
+                    "tet",
+                    "ksymm",
+                    "inv_rot_mat",
+                    "brmix",
+                    "subspacematrix",
+                    "tetirr",
+                    "incorrect_shift",
+                    "real_optlay",
+                    "rspher",
+                    "dentet",
+                    "too_few_bands",
+                    "triple_product",
+                    "rot_matrix",
+                    "brions",
+                    "pricel",
+                    "zpotrf",
+                    "amin",
+                    "zbrent",
+                    "pssyevx",
+                    "pdsyevx",
+                    "eddrmm",
+                    "edddav",
+                    "algo_tet",
+                    "grad_not_orth",
+                    "nicht_konv",
+                    "zheev",
+                    "eddiag",
+                    "elf_kpar",
+                    "elf_ncl",
+                    "rhosyg",
+                    "posmap",
+                    "point_group",
+                    "pricelv",
+                    "symprec_noise",
+                    "dfpt_ncore",
+                    "bravais",
+                    "nbands_not_sufficient",
+                    "hnform",
+                    "coef",
+                    "set_core_wf",
+                    "read_error",
+                    "auto_nbands",
+                    "ibzkpt",
+                    "fexcf",
+                    "spin_polarized_harris"
+                  ],
+                  "vtst_fixes": false
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.MeshSymmetryErrorHandler",
+                "configuration": {
+                  "output_filename": "vasp.out",
+                  "output_vasprun": "vasprun.xml"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.UnconvergedErrorHandler",
+                "configuration": {
+                  "output_filename": "vasprun.xml"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.NonConvergingErrorHandler",
+                "configuration": {
+                  "output_filename": "OSZICAR",
+                  "nionic_steps": 10
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.PotimErrorHandler",
+                "configuration": {
+                  "input_filename": "POSCAR",
+                  "output_filename": "OSZICAR",
+                  "dE_threshold": 1
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.PositiveEnergyErrorHandler",
+                "configuration": {
+                  "output_filename": "OSZICAR"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.StdErrHandler",
+                "configuration": {
+                  "output_filename": "std_err.txt"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.LargeSigmaHandler",
+                "configuration": {
+                  "e_entropy_tol": 0.001,
+                  "min_sigma": 0.001,
+                  "output_filename": "OUTCAR"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.IncorrectSmearingHandler",
+                "configuration": {
+                  "output_filename": "vasprun.xml"
+                }
+              },
+              {
+                "class": "custodian.vasp.handlers.KspacingMetalHandler",
+                "configuration": {
+                  "output_filename": "vasprun.xml"
+                }
+              }
+            ],
+            "explicit_handler_exclusions": [
+              "custodian.vasp.handlers.FrozenJobErrorHandler"
+            ],
+            "vasp_error_exclusions": [],
+            "validators": {
+              "source": "atomate2.vasp.run._DEFAULT_VALIDATORS",
+              "explicit_override": null,
+              "resolved": [
+                {
+                  "class": "custodian.vasp.validators.VasprunXMLValidator",
+                  "configuration": {
+                    "output_file": "vasp.out",
+                    "stderr_file": "std_err.txt"
+                  }
+                },
+                {
+                  "class": "custodian.vasp.validators.VaspFilesValidator",
+                  "configuration": {}
+                }
+              ]
+            },
+            "unsuccessful_stage": {
+              "stop_children_kwargs": {
+                "handle_unsuccessful": "error"
+              },
+              "source": "backend.calculations.custodian_policy.unsuccessful_stage_stop_children_kwargs"
+            },
+            "walltime_authority": "slurm",
+            "walltime_handler": null,
+            "custodian_version": "2025.12.14",
+            "implementation_source": "backend.calculations.custodian_policy.bmd_custodian_handlers",
+            "rationale": "Output-file inactivity alone is not sufficient evidence for BMD to terminate a VASP calculation."
+          }
+        ]
+      },
+      "resources": {
+        "nodes": 1,
+        "ntasks": 24,
+        "mem_gb": 128,
+        "walltime": "72:00:00"
+      },
+      "cluster": {
+        "partition": "leeburton-pool",
+        "account": "power-leeburton-users_v2"
+      },
+      "modules": {
+        "purge_first": true,
+        "load": [
+          "intel/rocky8-oneAPI-2023",
+          "vasp/rocky8-intel-6.4.1"
+        ],
+        "loaded_module_information": {
+          "status": "deferred_until_execution",
+          "reason": "The active module list is emitted by the remote job."
+        }
+      },
+      "environment_policy": {
+        "VASP_CMD": "mpirun -n $SLURM_NTASKS vasp_std",
+        "JOBFLOW_CONFIG_FILE": "/bmd-db/guest/jobflow_minimal.yaml",
+        "PMG_VASP_PSP_DIR": "/bmd-db/potcars",
+        "CUSTODIAN_NO_GZIP": "1",
+        "ATOMATE2_VASP_ZIP_FILES": "False"
+      },
+      "submission_script": {
+        "path": "/bmd-db/guest/flows/vasp_run_custom_workflow-20261001-090000.sbatch.sh",
+        "builder": "backend.submission.build_sbatch_script",
+        "encoding": "utf-8",
+        "hash_algorithm": "sha256",
+        "sha256": "1594959c2b28c37915ba5a112a1f87e6f5b540dd31acc3a84c175559ce309fd3",
+        "size_bytes": 14416
+      }
+    }
+  }
+}

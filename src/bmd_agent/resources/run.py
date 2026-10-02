@@ -17,8 +17,15 @@ from bmd_agent.resources.compute import ComputePolicyObservation
 from bmd_agent.resources.compute_records import (
     UNSUPPORTED_LEGACY,
     UNSUPPORTED_VERSION,
+    RUNTIME_RECORD_INVALID,
+    AutomaticTreatmentsObservation,
     ComputeRecordError,
+    RuntimeEnvironmentObservation,
+    observe_runtime_environment,
     parse_submission_record,
+    read_automatic_treatments,
+    runtime_environment_not_declared,
+    runtime_environment_unavailable,
 )
 from bmd_agent.deployment import DeploymentContext
 from bmd_agent.profiling import profile_phase
@@ -27,8 +34,8 @@ from bmd_agent.resources.custodian import (
     CustodianPolicyEvidence,
     TerminationEvidenceAssessment,
     assess_termination_evidence,
+    custodian_policy_from_submission_record,
     parse_custodian_json,
-    parse_custodian_policy_provenance,
 )
 from bmd_agent.resources.diagnostics import BoundedLogDiagnostic, diagnostic_log_messages
 from bmd_agent.resources.oom import (
@@ -340,6 +347,11 @@ class RunInspection:
     # caller did not consult BMD Compute at all.
     compute_policy: ComputePolicyObservation | None = None
     submission_record: SubmissionRecordObservation | None = None
+    # BMD Compute's structured runtime record (runtime parity verdict). None
+    # only when the caller did not look for it.
+    runtime_environment: RuntimeEnvironmentObservation | None = None
+    # BMD Compute's automatic-treatment record (Desired Output resolution).
+    automatic_treatments: AutomaticTreatmentsObservation | None = None
 
 
 @dataclass(frozen=True)
@@ -652,6 +664,10 @@ def inspect_remote_run(
             submission,
             allowed_roots=cluster.allowed_remote_roots,
         )
+        runtime_record_path, runtime_record_error = _runtime_record_path(
+            producer["record"],
+            allowed_roots=cluster.allowed_remote_roots,
+        )
 
     _prime_bmd_run_acquisition(
         cluster.ssh_host,
@@ -664,6 +680,7 @@ def inspect_remote_run(
         allowed_roots=cluster.allowed_remote_roots,
         runner=remote_runner,
         timeout=timeout,
+        extra_file_paths=(runtime_record_path,) if runtime_record_path is not None else (),
     )
 
     stage_directories = tuple(
@@ -755,6 +772,16 @@ def inspect_remote_run(
                 "resolved scheduler job ID conflicts with submission provenance"
             )
     job_id = producer_job_id or expected_job_id
+    with profile_phase("producer_submission_provenance"):
+        runtime_environment = _observe_remote_runtime_environment(
+            cluster.ssh_host,
+            producer["record"],
+            runtime_record_path,
+            runtime_record_error,
+            expected_job_id=job_id,
+            runner=remote_runner,
+            timeout=timeout,
+        )
     if scheduler_observation is None:
         scheduler, scheduler_error = _inspect_scheduler(
             cluster.ssh_host,
@@ -846,6 +873,8 @@ def inspect_remote_run(
         custodian_evidence=custodian_evidence,
         execution_diagnostics=execution_diagnostics,
         compute_policy=compute_policy,
+        runtime_environment=runtime_environment,
+        automatic_treatments=read_automatic_treatments(producer["record"]),
     )
 
 
@@ -3888,7 +3917,7 @@ def _parse_submission(
         "cluster_request": dict(record.cluster),
         "resources_request": dict(record.resources),
         "environment_policy": dict(record.environment),
-        "custodian_policy": parse_custodian_policy_provenance(submission),
+        "custodian_policy": custodian_policy_from_submission_record(record),
         "attempt_state_path": (
             _authorize_path_value(
                 record.attempt_state,
@@ -3902,7 +3931,68 @@ def _parse_submission(
             contract=record.label,
             limitations=record.limitations,
         ),
+        "record": record,
     }
+
+
+def _runtime_record_path(
+    record: Any,
+    *,
+    allowed_roots: Iterable[PurePosixPath | str],
+) -> tuple[PurePosixPath | None, str | None]:
+    """Resolve the runtime record the submission declares, if any."""
+
+    declared = getattr(record, "runtime_environment_path", None)
+    if declared is None:
+        return None, None
+    try:
+        return authorize_remote_path(declared, allowed_roots=allowed_roots), None
+    except RemotePathError as exc:
+        return None, f"declared runtime record path is not authorized: {exc}"
+
+
+def _observe_remote_runtime_environment(
+    ssh_host: str,
+    record: Any,
+    path: PurePosixPath | None,
+    path_error: str | None,
+    *,
+    expected_job_id: str | None,
+    runner: RemoteRunner,
+    timeout: float,
+) -> RuntimeEnvironmentObservation:
+    declared = getattr(record, "runtime_environment_path", None)
+    if declared is None:
+        return runtime_environment_not_declared()
+    if path is None:
+        return runtime_environment_unavailable(declared, path_error or "runtime record path unavailable")
+    try:
+        present = remote_file_exists(ssh_host, path, runner=runner, timeout=timeout)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        return runtime_environment_unavailable(str(path), f"runtime record could not be checked: {exc}")
+    if not present:
+        return runtime_environment_unavailable(
+            str(path),
+            "runtime record declared by the submission was not found (the BMD Compute runner "
+            "may not have started); runtime parity is not established",
+        )
+    try:
+        contents = retrieve_remote_file(ssh_host, path, runner=runner, timeout=timeout)
+        payload = json.loads(contents.decode("utf-8"))
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        return runtime_environment_unavailable(str(path), f"runtime record could not be read: {exc}")
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return RuntimeEnvironmentObservation(
+            status=RUNTIME_RECORD_INVALID,
+            path=str(path),
+            reason="runtime record is not valid JSON",
+        )
+    return observe_runtime_environment(
+        payload,
+        path=str(path),
+        submission=record,
+        expected_job_id=expected_job_id,
+    )
 
 
 def _parse_workflow_stages(workflow_spec: Mapping[str, Any]) -> tuple[WorkflowStage, ...]:
@@ -4319,6 +4409,7 @@ def _prime_bmd_run_acquisition(
     allowed_roots: Iterable[PurePosixPath | str],
     runner: RemoteRunner,
     timeout: float,
+    extra_file_paths: Sequence[PurePosixPath] = (),
 ) -> None:
     bindings = _bound_stage_directories(stage_dirs, result_dir, workflow_stages)
     stage_directories = {binding.directory for binding in bindings}
@@ -4347,7 +4438,7 @@ def _prime_bmd_run_acquisition(
 
     requests.extend(
         RemoteAcquisitionRequest(path, read_limit=_REMOTE_BATCH_FILE_MAX_BYTES)
-        for path in log_paths.values()
+        for path in (*log_paths.values(), *extra_file_paths)
     )
     requests.extend(
         _scheduler_log_acquisition_requests(

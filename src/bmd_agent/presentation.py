@@ -121,6 +121,7 @@ def build_job_concise_summary(
                     "so successful execution is not established.",
                 )
             ),
+            runtime_lines=_runtime_parity_failure_lines(_job_runtime_environment(inspection)),
         )
         sections.extend(section for section in unsuccessful if section.title != "Assessment")
     else:
@@ -290,7 +291,10 @@ def _unsuccessful_job_sections(
     sections = [
         ConciseSection(
             "What happened",
-            _termination_lines(_scheduler_state(inspection), termination, custodian),
+            (
+                *_runtime_parity_failure_lines(_job_runtime_environment(inspection)),
+                *_termination_lines(_scheduler_state(inspection), termination, custodian),
+            ),
         )
     ]
 
@@ -336,6 +340,11 @@ def _unsuccessful_lifecycle_sections(
             execution_succeeded=_lifecycle_scheduler_success(analysis),
         )
     lines = gap_lines or _lifecycle_termination_lines(analysis, termination, custodian)
+    workflow = analysis.bmd_workflow
+    lines = (
+        *_runtime_parity_failure_lines(workflow.runtime_environment if workflow is not None else None),
+        *lines,
+    )
     sections = [ConciseSection("What happened", lines)]
 
     context_lines = _context_lines(enrichment)
@@ -953,14 +962,40 @@ def _completion_gap_sections(
     status: str,
     execution_succeeded: bool,
     preface: Sequence[str] = (),
+    runtime_lines: Sequence[str] = (),
 ) -> list[ConciseSection]:
-    lines = (*preface, *completion_gap_lines(stages, execution_succeeded=execution_succeeded))
+    lines = (
+        *runtime_lines,
+        *preface,
+        *completion_gap_lines(stages, execution_succeeded=execution_succeeded),
+    )
     if not stages:
         lines = (*lines, "No calculation evidence was available to establish completion.")
     return [
         ConciseSection("What happened", tuple(lines)),
         ConciseSection("Assessment", _completion_assessment_lines(status)),
     ]
+
+
+def _job_runtime_environment(inspection: JobInspection):
+    if inspection.bmd_compute is None:
+        return None
+    return inspection.bmd_compute.inspection.runtime_environment
+
+
+def _runtime_parity_failure_lines(observation) -> tuple[str, ...]:
+    """Report BMD Compute's own failed runtime check; never infer one."""
+
+    record = getattr(observation, "record", None)
+    if record is None or record.status != "failed":
+        return ()
+    lines = [
+        "BMD Compute stopped the run before VASP started: its runtime environment check failed."
+    ]
+    lines.extend(f"BMD Compute reported: {problem}" for problem in record.problems[:3])
+    if len(record.problems) > 3:
+        lines.append(f"BMD Compute reported {len(record.problems) - 3} further problem(s).")
+    return tuple(lines)
 
 
 def _completion_assessment_lines(status: str) -> tuple[str, ...]:

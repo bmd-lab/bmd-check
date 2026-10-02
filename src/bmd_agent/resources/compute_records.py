@@ -5,7 +5,13 @@ BMD Compute writes two records that Agent uses to locate and describe a run:
 * ``<run_dir>/submission.json`` -- ``bmd_compute.submission``: the Prepare-time
   submission specification (what Compute prepared and asked to run);
 * ``<logs_dir>/job_<JOB_ID>.json`` -- ``bmd_compute.job_record``: a
-  run-resolution record linking a scheduler job ID to a run.
+  run-resolution record linking a scheduler job ID to a run;
+* ``<run_dir>/runtime_environment.json`` -- ``bmd_compute.runtime_environment``:
+  written by the POWER runner before the workflow is built or VASP starts,
+  recording Compute's own runtime-parity verdict (``passed``/``failed``).
+
+The ``provenance`` block inside ``submission.json`` is versioned separately by
+its own ``schema_version`` (Compute ``docs/provenance.md``).
 
 BMD Compute owns both contracts (``backend/run_records.py`` and
 ``docs/run_records.md`` in bmd_compute). Records written before the contracts
@@ -39,6 +45,37 @@ UNSUPPORTED_LEGACY = "unsupported_legacy"
 # index in flow_spec.workflow_spec.stages. Key order is never used.
 STAGE_DIRECTORY_ID_PATTERN = re.compile(r"^(?:stage|relax)_(\d{2,})$")
 LOG_PATH_KEYS = ("log_out", "log_err", "slurm_out", "slurm_err")
+
+RUNTIME_ENVIRONMENT_SCHEMA = "bmd_compute.runtime_environment"
+RUNTIME_ENVIRONMENT_FILENAME = "runtime_environment.json"
+RUNTIME_PARITY_PASSED = "passed"
+RUNTIME_PARITY_FAILED = "failed"
+_RUNTIME_PARITY_STATUSES = (RUNTIME_PARITY_PASSED, RUNTIME_PARITY_FAILED)
+_RUNTIME_ENVIRONMENT_KNOWN_FIELDS = frozenset(
+    {
+        "schema",
+        "schema_version",
+        "recorded_at",
+        "status",
+        "problems",
+        "run_name",
+        "attempt_id",
+        "slurm_job_id",
+        "host",
+        "python",
+        "parity_policy",
+        "prepared_packages",
+        "runtime_packages",
+        "supporting_packages",
+        "atomate2_settings",
+    }
+)
+
+PROVENANCE_SUPPORTED_SCHEMA_VERSION = 1
+PROVENANCE_V1 = "v1"
+PROVENANCE_ABSENT = "absent"
+PROVENANCE_LEGACY = "legacy_unversioned"
+PROVENANCE_UNSUPPORTED = "unsupported"
 
 LEGACY_SUBMISSION_LIMITATION = (
     "submission.json is a legacy unversioned BMD Compute record; it was read with the "
@@ -77,6 +114,13 @@ class SubmissionRecord:
     environment: Mapping[str, Any]
     provenance: Mapping[str, Any]
     limitations: tuple[str, ...] = ()
+    # Additive bmd_compute.submission v1 fields (absent on runs prepared before
+    # Compute recorded runtime parity).
+    runtime_environment_path: str | None = None
+    runtime_parity: Mapping[str, Any] | None = None
+    # How the nested provenance block was read; ``provenance`` is empty unless
+    # this is PROVENANCE_V1 or PROVENANCE_LEGACY.
+    provenance_contract: str = PROVENANCE_ABSENT
 
     @property
     def label(self) -> str:
@@ -199,7 +243,20 @@ def parse_submission_record(payload: Any) -> SubmissionRecord:
         structure = None
 
     environment = payload.get("environment") if isinstance(payload.get("environment"), Mapping) else {}
-    provenance = payload.get("provenance") if isinstance(payload.get("provenance"), Mapping) else {}
+    provenance_contract, provenance, provenance_limitations = read_submission_provenance(payload)
+    if not v1 and provenance_contract == PROVENANCE_LEGACY:
+        # A legacy submission's unversioned provenance is already covered by
+        # the legacy-record limitation.
+        provenance_limitations = ()
+
+    runtime_environment_path = paths.get("runtime_environment")
+    if runtime_environment_path is not None:
+        runtime_environment_path = _text(runtime_environment_path, "submission paths.runtime_environment")
+    runtime_parity = payload.get("runtime_parity")
+    if runtime_parity is not None and not isinstance(runtime_parity, Mapping):
+        if v1:
+            raise ComputeRecordError("submission runtime_parity must be a JSON object", kind=INVALID_RECORD)
+        runtime_parity = None
 
     return SubmissionRecord(
         contract=contract,
@@ -216,7 +273,51 @@ def parse_submission_record(payload: Any) -> SubmissionRecord:
         resources=dict(resources),
         environment=dict(environment),
         provenance=dict(provenance),
-        limitations=() if v1 else (LEGACY_SUBMISSION_LIMITATION,),
+        limitations=(() if v1 else (LEGACY_SUBMISSION_LIMITATION,)) + provenance_limitations,
+        runtime_environment_path=runtime_environment_path,
+        runtime_parity=dict(runtime_parity) if runtime_parity is not None else None,
+        provenance_contract=provenance_contract,
+    )
+
+
+def read_submission_provenance(
+    payload: Mapping[str, Any],
+) -> tuple[str, Mapping[str, Any], tuple[str, ...]]:
+    """Return how the submission ``provenance`` block may be interpreted.
+
+    The block is versioned by its own ``schema_version``. Version 1 is read
+    intentionally and tolerates additive fields. A block without
+    ``schema_version`` is a legacy record and is read best-effort. Any other
+    version is not interpreted at all, so nested fields are never silently
+    misread under v1 assumptions; the returned mapping is then empty.
+    """
+
+    provenance = payload.get("provenance")
+    if provenance is None:
+        return PROVENANCE_ABSENT, {}, ()
+    if not isinstance(provenance, Mapping):
+        return (
+            PROVENANCE_UNSUPPORTED,
+            {},
+            ("submission provenance is not a JSON object; producer provenance was not interpreted",),
+        )
+    if "schema_version" not in provenance:
+        return (
+            PROVENANCE_LEGACY,
+            dict(provenance),
+            ("submission provenance has no schema_version; it was read as a legacy record",),
+        )
+    version = provenance.get("schema_version")
+    if _strict_int(version) and version == PROVENANCE_SUPPORTED_SCHEMA_VERSION:
+        return PROVENANCE_V1, dict(provenance), ()
+    return (
+        PROVENANCE_UNSUPPORTED,
+        {},
+        (
+            f"submission provenance schema_version {version!r} is not supported by this "
+            f"BMD Agent (supported: {PROVENANCE_SUPPORTED_SCHEMA_VERSION}); producer "
+            "provenance (Git source, Custodian policy, automatic treatments) was not interpreted",
+        ),
     )
 
 
@@ -365,3 +466,342 @@ def _optional_text(value: Any, label: str) -> str | None:
 
 def _strict_int(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
+
+
+@dataclass(frozen=True)
+class RuntimeEnvironmentRecord:
+    """Contractual view of ``bmd_compute.runtime_environment`` v1.
+
+    ``status`` is BMD Compute's own runtime-parity verdict. Agent reports it
+    and never recomputes it from the package versions.
+    """
+
+    schema_version: int
+    status: str
+    problems: tuple[str, ...]
+    run_name: str | None = None
+    attempt_id: str | None = None
+    slurm_job_id: str | None = None
+    host: str | None = None
+    recorded_at: str | None = None
+    python: Mapping[str, Any] = field(default_factory=dict)
+    parity_policy: Mapping[str, Any] = field(default_factory=dict)
+    prepared_packages: Mapping[str, str | None] | None = None
+    runtime_packages: Mapping[str, str | None] = field(default_factory=dict)
+    supporting_packages: Mapping[str, str | None] = field(default_factory=dict)
+    atomate2_settings: Mapping[str, Any] = field(default_factory=dict)
+    # Fields added to the record after this reader was written, preserved
+    # verbatim rather than rejected.
+    additional_fields: Mapping[str, Any] = field(default_factory=dict)
+
+    @property
+    def passed(self) -> bool:
+        return self.status == RUNTIME_PARITY_PASSED
+
+    @property
+    def label(self) -> str:
+        return f"{RUNTIME_ENVIRONMENT_SCHEMA} v{self.schema_version}"
+
+
+def parse_runtime_environment_record(payload: Any) -> RuntimeEnvironmentRecord:
+    """Validate a runtime-environment record, or raise ComputeRecordError."""
+
+    if not isinstance(payload, Mapping):
+        raise ComputeRecordError(
+            f"{RUNTIME_ENVIRONMENT_SCHEMA} record must be a JSON object",
+            kind=INVALID_RECORD,
+        )
+    if "schema" not in payload:
+        # The record was introduced with its schema; there is no legacy form.
+        raise ComputeRecordError(
+            f"runtime environment record has no schema (expected {RUNTIME_ENVIRONMENT_SCHEMA!r})",
+            kind=INVALID_RECORD,
+        )
+    declared = payload.get("schema")
+    if declared != RUNTIME_ENVIRONMENT_SCHEMA:
+        raise ComputeRecordError(
+            f"record declares schema {declared!r}, expected {RUNTIME_ENVIRONMENT_SCHEMA!r}",
+            kind=INVALID_RECORD,
+        )
+    version = payload.get("schema_version")
+    if not _strict_int(version):
+        raise ComputeRecordError(
+            f"{RUNTIME_ENVIRONMENT_SCHEMA} record schema_version must be an integer",
+            kind=INVALID_RECORD,
+        )
+    if version != SUPPORTED_SCHEMA_VERSION:
+        raise ComputeRecordError(
+            f"{RUNTIME_ENVIRONMENT_SCHEMA} schema_version {version} is not supported by this "
+            f"BMD Agent (supported: {SUPPORTED_SCHEMA_VERSION})",
+            kind=UNSUPPORTED_VERSION,
+        )
+    status = payload.get("status")
+    if status not in _RUNTIME_PARITY_STATUSES:
+        raise ComputeRecordError(
+            f"runtime environment status {status!r} is not a v1 value (passed or failed)",
+            kind=INVALID_RECORD,
+        )
+    problems = payload.get("problems")
+    if not isinstance(problems, list) or not all(isinstance(item, str) for item in problems):
+        raise ComputeRecordError(
+            "runtime environment problems must be a list of strings",
+            kind=INVALID_RECORD,
+        )
+    if status == RUNTIME_PARITY_PASSED and problems:
+        # Never read a pass from a record that also reports problems.
+        raise ComputeRecordError(
+            "runtime environment record says passed but lists problems",
+            kind=INVALID_RECORD,
+        )
+    prepared = payload.get("prepared_packages")
+    return RuntimeEnvironmentRecord(
+        schema_version=version,
+        status=status,
+        problems=tuple(problems),
+        run_name=_optional_record_text(payload, "run_name"),
+        attempt_id=_optional_record_text(payload, "attempt_id"),
+        slurm_job_id=_optional_record_text(payload, "slurm_job_id"),
+        host=_optional_record_text(payload, "host"),
+        recorded_at=_optional_record_text(payload, "recorded_at"),
+        python=_optional_record_mapping(payload, "python"),
+        parity_policy=_optional_record_mapping(payload, "parity_policy"),
+        prepared_packages=(
+            None if prepared is None else _package_versions(prepared, "prepared_packages")
+        ),
+        runtime_packages=_package_versions(payload.get("runtime_packages") or {}, "runtime_packages"),
+        supporting_packages=_package_versions(
+            payload.get("supporting_packages") or {},
+            "supporting_packages",
+        ),
+        atomate2_settings=_optional_record_mapping(payload, "atomate2_settings"),
+        additional_fields={
+            key: value
+            for key, value in payload.items()
+            if key not in _RUNTIME_ENVIRONMENT_KNOWN_FIELDS
+        },
+    )
+
+
+def _optional_record_text(payload: Mapping[str, Any], key: str) -> str | None:
+    value = payload.get(key)
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (str, int)):
+        raise ComputeRecordError(f"runtime environment {key} must be a string", kind=INVALID_RECORD)
+    return str(value)
+
+
+def _optional_record_mapping(payload: Mapping[str, Any], key: str) -> Mapping[str, Any]:
+    value = payload.get(key)
+    if value is None:
+        return {}
+    if not isinstance(value, Mapping):
+        raise ComputeRecordError(f"runtime environment {key} must be a JSON object", kind=INVALID_RECORD)
+    return dict(value)
+
+
+def _package_versions(value: Any, key: str) -> Mapping[str, str | None]:
+    if not isinstance(value, Mapping):
+        raise ComputeRecordError(f"runtime environment {key} must be a JSON object", kind=INVALID_RECORD)
+    for name, version in value.items():
+        if version is not None and not isinstance(version, str):
+            raise ComputeRecordError(
+                f"runtime environment {key}[{name!r}] must be a version string or null",
+                kind=INVALID_RECORD,
+            )
+    return dict(value)
+
+
+AUTOMATIC_TREATMENTS_RECORDED = "recorded"
+AUTOMATIC_TREATMENTS_NONE = "none_recorded"
+AUTOMATIC_TREATMENTS_NOT_RECORDED = "not_recorded"
+AUTOMATIC_TREATMENTS_UNAVAILABLE = "unavailable"
+DESIRED_OUTPUT_MODE = "bmd_managed_desired_output"
+
+
+@dataclass(frozen=True)
+class AppliedTreatment:
+    modifier: str
+    display_name: str | None
+    stage_indices: tuple[int, ...]
+    consideration_id: str | None = None
+
+
+@dataclass(frozen=True)
+class AutomaticTreatmentsObservation:
+    """BMD Compute's automatic-treatment record from ``provenance.execution``.
+
+    Compute writes this record for BMD-managed Desired Output workflows. Agent
+    reports what the record says; it never infers a treatment (for example
+    automatic DFT+U) from stage modifiers.
+    """
+
+    status: str
+    mode: str | None = None
+    desired_output: str | None = None
+    applied: tuple[AppliedTreatment, ...] = ()
+    not_applicable: tuple[Mapping[str, Any], ...] = ()
+    advisory_consideration_ids: tuple[str, ...] = ()
+    dft_u: Mapping[str, Any] | None = None
+    reason: str | None = None
+    raw: Mapping[str, Any] = field(default_factory=dict)
+
+    @property
+    def desired_output_managed(self) -> bool:
+        return self.status == AUTOMATIC_TREATMENTS_RECORDED and self.mode == DESIRED_OUTPUT_MODE
+
+
+def read_automatic_treatments(record: SubmissionRecord) -> AutomaticTreatmentsObservation:
+    if record.provenance_contract == PROVENANCE_UNSUPPORTED:
+        return AutomaticTreatmentsObservation(
+            status=AUTOMATIC_TREATMENTS_UNAVAILABLE,
+            reason="submission provenance version is not supported",
+        )
+    if record.provenance_contract == PROVENANCE_ABSENT:
+        return AutomaticTreatmentsObservation(
+            status=AUTOMATIC_TREATMENTS_NOT_RECORDED,
+            reason="submission has no provenance block",
+        )
+    execution = record.provenance.get("execution")
+    if not isinstance(execution, Mapping) or "automatic_treatments" not in execution:
+        return AutomaticTreatmentsObservation(
+            status=AUTOMATIC_TREATMENTS_NOT_RECORDED,
+            reason="submission provenance does not record automatic treatments (prepared before Compute recorded them)",
+        )
+    treatments = execution.get("automatic_treatments")
+    if treatments is None:
+        return AutomaticTreatmentsObservation(
+            status=AUTOMATIC_TREATMENTS_NONE,
+            reason="no BMD-managed Desired Output automatic-treatment record was written for this run",
+        )
+    if not isinstance(treatments, Mapping):
+        return AutomaticTreatmentsObservation(
+            status=AUTOMATIC_TREATMENTS_UNAVAILABLE,
+            reason="provenance execution.automatic_treatments is not a JSON object",
+        )
+    applied: list[AppliedTreatment] = []
+    for item in treatments.get("applied_treatments") or ():
+        if not isinstance(item, Mapping) or not isinstance(item.get("modifier"), str):
+            continue
+        indices = item.get("stage_indices")
+        applied.append(
+            AppliedTreatment(
+                modifier=item["modifier"],
+                display_name=item.get("display_name") if isinstance(item.get("display_name"), str) else None,
+                stage_indices=tuple(
+                    index for index in (indices if isinstance(indices, list) else ())
+                    if _strict_int(index)
+                ),
+                consideration_id=(
+                    item.get("consideration_id") if isinstance(item.get("consideration_id"), str) else None
+                ),
+            )
+        )
+    not_applicable = tuple(
+        dict(item) for item in treatments.get("not_applicable_considerations") or () if isinstance(item, Mapping)
+    )
+    advisory = tuple(
+        str(item) for item in treatments.get("advisory_consideration_ids") or () if isinstance(item, str)
+    )
+    dft_u = treatments.get("dft_u")
+    return AutomaticTreatmentsObservation(
+        status=AUTOMATIC_TREATMENTS_RECORDED,
+        mode=treatments.get("mode") if isinstance(treatments.get("mode"), str) else None,
+        desired_output=(
+            treatments.get("desired_output") if isinstance(treatments.get("desired_output"), str) else None
+        ),
+        applied=tuple(applied),
+        not_applicable=not_applicable,
+        advisory_consideration_ids=advisory,
+        dft_u=dict(dft_u) if isinstance(dft_u, Mapping) else None,
+        raw=dict(treatments),
+    )
+
+
+PRODUCER_RUNTIME_RECORD = "producer_runtime_record"
+RUNTIME_RECORD_RECORDED = "recorded"
+RUNTIME_RECORD_NOT_RECORDED = "not_recorded"
+RUNTIME_RECORD_UNAVAILABLE = "unavailable"
+RUNTIME_RECORD_INVALID = "invalid"
+RUNTIME_RECORD_UNSUPPORTED = "unsupported_version"
+
+RUNTIME_RECORD_NOT_DECLARED_REASON = (
+    "submission declares no runtime record (prepared before BMD Compute recorded "
+    "runtime parity); runtime evidence comes only from the runner log"
+)
+
+
+@dataclass(frozen=True)
+class RuntimeEnvironmentObservation:
+    """What Agent could learn about a run's ``runtime_environment.json``.
+
+    ``status`` describes Agent's access to the record; the parity verdict is
+    ``record.status`` and is only available when ``status`` is ``recorded``.
+    """
+
+    status: str
+    path: str | None = None
+    record: RuntimeEnvironmentRecord | None = None
+    reason: str | None = None
+    limitations: tuple[str, ...] = ()
+    evidence_type: str = PRODUCER_RUNTIME_RECORD
+
+    @property
+    def parity_status(self) -> str | None:
+        return self.record.status if self.record is not None else None
+
+
+def runtime_environment_not_declared() -> RuntimeEnvironmentObservation:
+    return RuntimeEnvironmentObservation(
+        status=RUNTIME_RECORD_NOT_RECORDED,
+        reason=RUNTIME_RECORD_NOT_DECLARED_REASON,
+    )
+
+
+def runtime_environment_unavailable(path: str | None, reason: str) -> RuntimeEnvironmentObservation:
+    return RuntimeEnvironmentObservation(status=RUNTIME_RECORD_UNAVAILABLE, path=path, reason=reason)
+
+
+def observe_runtime_environment(
+    payload: Any,
+    *,
+    path: str | None,
+    submission: SubmissionRecord | None = None,
+    expected_job_id: str | None = None,
+) -> RuntimeEnvironmentObservation:
+    """Parse a retrieved runtime record and cross-check which execution it names."""
+
+    try:
+        record = parse_runtime_environment_record(payload)
+    except ComputeRecordError as exc:
+        return RuntimeEnvironmentObservation(
+            status=(
+                RUNTIME_RECORD_UNSUPPORTED
+                if exc.kind == UNSUPPORTED_VERSION
+                else RUNTIME_RECORD_INVALID
+            ),
+            path=path,
+            reason=str(exc),
+        )
+    limitations: list[str] = []
+    if (
+        submission is not None
+        and submission.attempt_id
+        and record.attempt_id
+        and record.attempt_id != submission.attempt_id
+    ):
+        limitations.append(
+            f"runtime record attempt_id {record.attempt_id} differs from the submission "
+            f"attempt {submission.attempt_id}; it may describe a different execution"
+        )
+    if expected_job_id and record.slurm_job_id and record.slurm_job_id != expected_job_id:
+        limitations.append(
+            f"runtime record SLURM job {record.slurm_job_id} differs from the inspected job "
+            f"{expected_job_id}"
+        )
+    return RuntimeEnvironmentObservation(
+        status=RUNTIME_RECORD_RECORDED,
+        path=path,
+        record=record,
+        limitations=tuple(limitations),
+    )
