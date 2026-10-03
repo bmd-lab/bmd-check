@@ -389,6 +389,7 @@ def test_queue_uses_deployment_local_operational_timeouts(
 
     assert cli.show_queue(registry) == 0
 
+    assert observed.pop("runner") is cli.observation_runner("powerslurm-bmdguest")
     assert observed == {
         "ssh_host": "powerslurm-bmdguest",
         "partition": "leeburton-pool",

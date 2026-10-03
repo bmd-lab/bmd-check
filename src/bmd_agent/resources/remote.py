@@ -8,6 +8,7 @@ import tempfile
 from typing import Any
 
 from bmd_agent.profiling import profiled_runner
+from bmd_agent.resources.transport import run_ssh_command
 
 
 Runner = Callable[..., subprocess.CompletedProcess[Any]]
@@ -39,7 +40,7 @@ class ReusableSshSession:
         self,
         ssh_host: str,
         *,
-        runner: Runner = subprocess.run,
+        runner: Runner = run_ssh_command,
         close_timeout: float = 10,
         multiplex: bool | None = None,
     ) -> None:

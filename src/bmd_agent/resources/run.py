@@ -70,6 +70,7 @@ from bmd_agent.resources.vasp import (
     retrieve_remote_file,
     retrieve_remote_file_tail,
 )
+from bmd_agent.resources.transport import run_ssh_command
 
 
 RemoteRunner = Callable[..., subprocess.CompletedProcess[bytes]]
@@ -623,8 +624,8 @@ def inspect_remote_run(
     cluster: SlurmClusterResource,
     flow_root: str,
     *,
-    remote_runner: RemoteRunner = subprocess.run,
-    slurm_runner: SlurmRunner = subprocess.run,
+    remote_runner: RemoteRunner = run_ssh_command,
+    slurm_runner: SlurmRunner = run_ssh_command,
     scientific_parser: ScientificParser | None = None,
     derive_scientific: bool = True,
     modifier_policies: Iterable[Mapping[str, Any]] = (),
@@ -882,8 +883,8 @@ def compare_remote_runs(
     cluster: SlurmClusterResource,
     flow_roots: Sequence[str],
     *,
-    remote_runner: RemoteRunner = subprocess.run,
-    slurm_runner: SlurmRunner = subprocess.run,
+    remote_runner: RemoteRunner = run_ssh_command,
+    slurm_runner: SlurmRunner = run_ssh_command,
     scientific_parser: ScientificParser | None = None,
     modifier_policies: Iterable[Mapping[str, Any]] = (),
     timeout: float | None = None,
@@ -919,8 +920,8 @@ def diagnose_remote_run(
     cluster: SlurmClusterResource,
     flow_root: str,
     *,
-    remote_runner: RemoteRunner = subprocess.run,
-    slurm_runner: SlurmRunner = subprocess.run,
+    remote_runner: RemoteRunner = run_ssh_command,
+    slurm_runner: SlurmRunner = run_ssh_command,
     modifier_policies: Iterable[Mapping[str, Any]] = (),
     timeout: float | None = None,
     scheduler_timeout: float | None = None,
@@ -977,8 +978,8 @@ def inspect_slurm_job(
     cluster: SlurmClusterResource,
     job_id: str,
     *,
-    remote_runner: RemoteRunner = subprocess.run,
-    slurm_runner: SlurmRunner = subprocess.run,
+    remote_runner: RemoteRunner = run_ssh_command,
+    slurm_runner: SlurmRunner = run_ssh_command,
     scientific_parser: ScientificParser | None = None,
     modifier_policies: Iterable[Mapping[str, Any]] = (),
     timeout: float | None = None,

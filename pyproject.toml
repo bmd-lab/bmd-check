@@ -19,6 +19,7 @@ dev = [
 ]
 
 [project.scripts]
+bmd-check = "bmd_agent.cli:main"
 bmd-agent = "bmd_agent.cli:main"
 
 [tool.setuptools.packages.find]

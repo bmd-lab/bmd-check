@@ -8,6 +8,7 @@ from bmd_agent.config import (
     DEFAULT_SCHEDULER_ACCOUNTING_TIMEOUT_SECONDS,
     DEFAULT_SSH_CONNECT_TIMEOUT_SECONDS,
 )
+from bmd_agent.resources.transport import run_ssh_command
 
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
@@ -120,7 +121,7 @@ def get_queue(
     ssh_host: str,
     partition: str,
     *,
-    runner: Runner = subprocess.run,
+    runner: Runner = run_ssh_command,
     timeout: float = 20,
     ssh_connect_timeout: int = DEFAULT_SSH_CONNECT_TIMEOUT_SECONDS,
 ) -> list[SlurmJob]:
@@ -152,7 +153,7 @@ def get_job_accounting(
     ssh_host: str,
     job_id: str,
     *,
-    runner: Runner = subprocess.run,
+    runner: Runner = run_ssh_command,
     timeout: float = DEFAULT_SCHEDULER_ACCOUNTING_TIMEOUT_SECONDS,
     ssh_connect_timeout: int = DEFAULT_SSH_CONNECT_TIMEOUT_SECONDS,
 ) -> SlurmAccountingRecord | None:

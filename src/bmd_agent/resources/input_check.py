@@ -22,6 +22,7 @@ from bmd_agent.resources.vasp import (
     remote_file_exists,
     retrieve_remote_file,
 )
+from bmd_agent.resources.transport import run_ssh_command
 
 
 # check-input compares supplied inputs with one BMD Compute-generated
@@ -153,7 +154,7 @@ def check_remote_input_directory(
     stage: str,
     theory: str,
     modifiers: Sequence[str] = (),
-    remote_runner: RunnerBytes = subprocess.run,
+    remote_runner: RunnerBytes = run_ssh_command,
     producer_runner: RunnerText = subprocess.run,
     timeout: float = 20,
 ) -> InputCheckObservation:

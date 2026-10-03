@@ -9,6 +9,7 @@ import subprocess
 from typing import Callable, Iterable, Iterator, Sequence
 
 from pymatgen.io.vasp import Poscar
+from bmd_agent.resources.transport import run_ssh_command
 
 
 Runner = Callable[..., subprocess.CompletedProcess[bytes]]
@@ -427,7 +428,7 @@ def read_remote_structure(
     allowed_roots: Iterable[PurePosixPath | str],
     filename: str = "POSCAR",
     *,
-    runner: Runner = subprocess.run,
+    runner: Runner = run_ssh_command,
     timeout: float = 20,
 ) -> StructureInfo:
     """Read a VASP structure remotely without modifying the source."""
@@ -451,7 +452,7 @@ def retrieve_remote_file(
     ssh_host: str,
     remote_path: PurePosixPath,
     *,
-    runner: Runner = subprocess.run,
+    runner: Runner = run_ssh_command,
     timeout: float = 20,
 ) -> bytes:
     """Retrieve one already-authorized remote file over SSH."""
@@ -487,7 +488,7 @@ def retrieve_remote_file_tail(
     remote_path: PurePosixPath,
     *,
     limit: int,
-    runner: Runner = subprocess.run,
+    runner: Runner = run_ssh_command,
     timeout: float = 20,
 ) -> bytes:
     """Retrieve a bounded tail from one already-authorized remote file."""
@@ -521,7 +522,7 @@ def remote_file_exists(
     ssh_host: str,
     remote_path: PurePosixPath,
     *,
-    runner: Runner = subprocess.run,
+    runner: Runner = run_ssh_command,
     timeout: float = 20,
 ) -> bool:
     """Return whether one already-authorized remote file exists."""
@@ -545,7 +546,7 @@ def remote_file_size(
     ssh_host: str,
     remote_path: PurePosixPath,
     *,
-    runner: Runner = subprocess.run,
+    runner: Runner = run_ssh_command,
     timeout: float = 20,
 ) -> int:
     """Return the byte size of one already-authorized remote file."""
@@ -573,7 +574,7 @@ def probe_remote_error_archives(
     *,
     allowed_roots: Iterable[PurePosixPath | str],
     limit: int,
-    runner: Runner = subprocess.run,
+    runner: Runner = run_ssh_command,
     timeout: float = 20,
 ) -> tuple[PurePosixPath, ...]:
     """Probe a bounded contiguous error.N.tar.gz sequence without reading archives."""
@@ -642,7 +643,7 @@ def extract_remote_outcar_force_blocks(
     remote_path: PurePosixPath,
     *,
     expected_site_count: int | None = None,
-    runner: Runner = subprocess.run,
+    runner: Runner = run_ssh_command,
     timeout: float = 20,
 ) -> str:
     """Return compact OUTCAR force-block evidence without transferring the OUTCAR."""
@@ -752,7 +753,7 @@ def remote_directory_exists(
     ssh_host: str,
     remote_path: PurePosixPath,
     *,
-    runner: Runner = subprocess.run,
+    runner: Runner = run_ssh_command,
     timeout: float = 20,
 ) -> bool:
     """Return whether one already-authorized remote directory exists."""

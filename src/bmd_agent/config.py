@@ -379,9 +379,18 @@ def _optional_positive_int(
 
 def _missing_config_message(path: Path) -> str:
     example_path = resources_example_path()
+    if example_path.is_file():
+        # Running from a source checkout: the tracked example is right here.
+        example = f"Create one from {example_path}"
+    else:
+        # Installed package: the example lives in the repository, not the package.
+        example = (
+            "Create one from config/resources.example.toml in the BMD Agent repository"
+        )
 
     return (
         f"No BMD Agent resource configuration found at {path}. "
-        f"Create one from {example_path} or set {CONFIG_ENV_VAR} to a deployment-local "
-        "resources.toml file. The example configuration is not used for real execution."
+        f"{example}, or set {CONFIG_ENV_VAR} to a deployment-local resources.toml file "
+        "(a shared installation's launcher normally sets it). "
+        "The example configuration is not used for real execution."
     )

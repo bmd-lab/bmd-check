@@ -101,6 +101,9 @@ bmd-agent PATH
   Compute run when producer evidence permits.
 - Any other existing filesystem path analyzes that calculation or workflow.
 
+`bmd-check` is an equivalent command name for the same program; usage and hint
+text follow whichever name was invoked. `bmd-agent` remains fully supported.
+
 Examples:
 
 ```bash
@@ -166,6 +169,13 @@ Safe deployment relies on all three of the following:
 1. Agent's read-only, action-free implementation;
 2. correctly configured `allowed_remote_roots`; and
 3. appropriately restricted OS/SSH credentials and filesystem permissions.
+
+SSH observation runs with `BatchMode=yes`, so missing keys or unknown hosts
+fail immediately instead of prompting. When Agent runs on the cluster it
+observes, `ssh_host = "local"` selects the local transport: the same fixed
+observational commands, path authorization and size limits apply, but they run
+as the invoking user without SSH. That user's filesystem permissions are then
+the operating-system boundary.
 
 Remote path authorization is lexical. It rejects paths outside configured
 roots after POSIX normalization, but it is not a filesystem sandbox and does

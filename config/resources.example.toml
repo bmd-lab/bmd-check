@@ -58,6 +58,10 @@ capability_python = "/home/example/micromamba/envs/bmdex/bin/python"
 
 [clusters.powerslurm]
 name = "PowerSLURM"
+# An SSH host alias from the caller's SSH configuration (run non-interactively
+# with BatchMode=yes), or the reserved transport selector "local" when Agent
+# runs on the cluster itself: the same fixed observational commands then run
+# directly as the invoking user, without SSH. "local" is not a host name.
 ssh_host = "powerslurm-bmdguest"
 partition = "leeburton-pool"
 access = "observational"
