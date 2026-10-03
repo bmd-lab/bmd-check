@@ -171,11 +171,13 @@ Safe deployment relies on all three of the following:
 3. appropriately restricted OS/SSH credentials and filesystem permissions.
 
 SSH observation runs with `BatchMode=yes`, so missing keys or unknown hosts
-fail immediately instead of prompting. When Agent runs on the cluster it
-observes, `ssh_host = "local"` selects the local transport: the same fixed
-observational commands, path authorization and size limits apply, but they run
-as the invoking user without SSH. That user's filesystem permissions are then
-the operating-system boundary.
+fail immediately instead of prompting. When Agent runs on the POSIX cluster it
+observes, `ssh_host = "local"` selects the local transport: the same typed
+observational operations, path authorization and size limits apply, but they
+run as argument vectors under the invoking user's identity without SSH. That
+user's filesystem permissions are then the operating-system boundary,
+including for symlinks beneath allowed roots. Local mode is not available on
+Windows.
 
 Remote path authorization is lexical. It rejects paths outside configured
 roots after POSIX normalization, but it is not a filesystem sandbox and does

@@ -6,6 +6,8 @@ import sys
 import tomllib
 from typing import Any, Mapping
 
+from bmd_agent.resources import transport as _transport
+
 
 CONFIG_ENV_VAR = "BMD_AGENT_RESOURCES"
 DEFAULT_SSH_CONNECT_TIMEOUT_SECONDS = 10
@@ -188,9 +190,13 @@ def _parse_cluster(
 
     ssh_host = _required_str(table, "ssh_host", f"clusters.{key}", source=source)
 
-    if not _SSH_HOST_RE.fullmatch(ssh_host):
+    if not _SSH_HOST_RE.fullmatch(ssh_host) or ssh_host.startswith("-"):
         raise ConfigurationError(
             f"{source}: clusters.{key}.ssh_host contains unsafe characters"
+        )
+    if _transport.is_local_transport(ssh_host) and not _transport.local_transport_supported():
+        raise ConfigurationError(
+            f"{source}: clusters.{key}.ssh_host: {_transport.LOCAL_TRANSPORT_UNSUPPORTED_MESSAGE}"
         )
 
     roots = _required_list(table, "allowed_remote_roots", f"clusters.{key}", source=source)

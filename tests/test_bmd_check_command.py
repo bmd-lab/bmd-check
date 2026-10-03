@@ -1,9 +1,10 @@
-"""``bmd-check`` command and the local observational transport.
+"""``bmd-check`` command and the typed observational transports.
 
 ``bmd-check`` and ``bmd-agent`` are two console scripts for the same
-implementation. Local mode (``ssh_host = "local"``) runs Agent's existing fixed
-observational commands on this machine instead of over SSH; everything else --
-path authorization, size limits, parsing and evidence logic -- is shared.
+implementation. Every observational read is one value from a closed set of
+typed operations; the SSH transport and the local transport
+(``ssh_host = "local"``) each render that same operation themselves. Neither
+accepts command text, a preconstructed vector or caller SSH options.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ import importlib.metadata
 import os
 from pathlib import Path, PurePosixPath
 import subprocess
+import tempfile
 import tomllib
 
 import pytest
@@ -26,27 +28,55 @@ from bmd_agent.config import (
     load_resources,
     parse_resources,
 )
+from bmd_agent.profiling import PerformanceProfiler
+from bmd_agent.resources import observations as obs
 from bmd_agent.resources import transport
 from bmd_agent.resources.remote import ReusableSshSession
 from bmd_agent.resources.run import inspect_remote_run, inspect_slurm_job
 from bmd_agent.resources.slurm import get_job_accounting
 from bmd_agent.resources.transport import (
-    LOCAL_SHELL,
     LOCAL_TRANSPORT,
+    LocalInvocation,
     LocalObservationSession,
+    SshInvocation,
     TransportError,
-    local_command,
-    observation_runner,
-    run_local_command,
-    run_ssh_command,
+    build_invocation,
+    observe,
+    run_invocation,
 )
-from bmd_agent.resources.vasp import RemotePathError, retrieve_remote_file
+from bmd_agent.resources.vasp import (
+    RemotePathError,
+    authorize_remote_path,
+    retrieve_remote_file,
+)
 
 import test_run_inspection as ri
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 GUEST = "/bmd-db/guest"
+HOST = "powerslurm-bmdguest"
+CONTROL_PATH = Path(tempfile.gettempdir()) / "ba-ssh-test" / "control"
+
+posix_only = pytest.mark.skipif(
+    os.name != "posix",
+    reason="the local observation transport is POSIX-only (cluster login nodes)",
+)
+
+
+def cluster_config(ssh_host: str) -> dict:
+    return {
+        "repositories": {},
+        "clusters": {
+            "powerslurm": {
+                "name": "POWER",
+                "ssh_host": ssh_host,
+                "partition": "leeburton-pool",
+                "access": "observational",
+                "allowed_remote_roots": ["/bmd-db"],
+            }
+        },
+    }
 
 
 # --- console scripts and command names ----------------------------------------------------
@@ -81,6 +111,7 @@ def test_installed_entry_points_resolve_to_the_same_callable():
         ("/usr/bin/pytest", "bmd-agent"),
         ("python", "bmd-agent"),
         ("", "bmd-agent"),
+        ("bmd-check\n\x1b[2J", "bmd-agent"),
     ],
 )
 def test_invoked_command_name(argv0, expected):
@@ -96,6 +127,7 @@ SCENARIOS = [
     ["compare-runs", "/one"],
     ["12345", "--nonsense"],
     ["check-input"],
+    ["x", "y", "z"],
 ]
 
 
@@ -141,6 +173,20 @@ def test_command_name_does_not_leak_between_invocations(capsys):
     assert "Usage: bmd-agent job" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize(
+    "command_name",
+    ["evil\n\x1b[2Jrm -rf ~", "bmd-check\n", "bmd-agent ", "", "BMD-CHECK", "bmd"],
+)
+def test_command_name_override_is_restricted_to_the_allowlist(command_name, capsys):
+    # Codex attack: an embedding caller injecting terminal/newline text into hints.
+    with pytest.raises(ValueError, match="command_name must be one of"):
+        cli.main(["x", "y", "z"], command_name=command_name)
+
+    captured = capsys.readouterr()
+    assert captured.out == captured.err == ""
+    assert cli._command_name() == cli.DEFAULT_COMMAND_NAME
+
+
 # --- missing configuration guidance -------------------------------------------------------
 
 
@@ -164,7 +210,103 @@ def test_missing_config_guidance_from_a_source_checkout_names_the_example(tmp_pa
     assert str(REPO_ROOT / "config" / "resources.example.toml") in str(exc_info.value)
 
 
-# --- SSH transport: BatchMode -------------------------------------------------------------
+# --- the closed operation set -------------------------------------------------------------
+
+
+EXPECTED_ARGV = [
+    (obs.SqueuePartition("leeburton-pool"), ("squeue", "-p", "leeburton-pool", "--noheader", f"--format={obs._SQUEUE_FORMAT}")),
+    (obs.SacctJob("20893681"), ("sacct", "-P", "-n", "-j", "20893681", f"--format={obs._SACCT_FORMAT}")),
+    (obs.ReadFile("/allowed/INCAR"), ("cat", "--", "/allowed/INCAR")),
+    (obs.ReadFileTail("/allowed/OUTCAR", 10), ("tail", "-c", "10", "--", "/allowed/OUTCAR")),
+    (obs.FileSize("/allowed/vasprun.xml"), ("stat", "-c", "%s", "--", "/allowed/vasprun.xml")),
+    (obs.PathTest("/allowed/INCAR", "file"), ("test", "-f", "/allowed/INCAR")),
+    (obs.PathTest("/allowed", "directory"), ("test", "-d", "/allowed")),
+    (
+        obs.ProbeErrorArchives("/allowed", 3),
+        ("sh", "-c", obs._ARCHIVE_PROBE_PROGRAM, obs._ARCHIVE_PROBE_MARKER, "/allowed", "3"),
+    ),
+    (
+        obs.ExtractOutcarForces("/allowed/OUTCAR", 2),
+        ("awk", "-v", "expected=2", obs._OUTCAR_FORCE_EXTRACTOR_AWK, "/allowed/OUTCAR"),
+    ),
+]
+
+
+@pytest.mark.parametrize(("operation", "argv"), EXPECTED_ARGV)
+def test_each_operation_renders_one_fixed_argv(operation, argv):
+    assert operation.argv() == argv
+    assert type(operation) in obs.OBSERVATION_OPERATION_TYPES
+
+
+def test_operation_set_is_closed_and_derived_from_existing_builders():
+    assert {cls.__name__ for cls in obs.OBSERVATION_OPERATION_TYPES} == {
+        "SqueuePartition",
+        "SacctJob",
+        "ReadFile",
+        "ReadFileTail",
+        "FileSize",
+        "PathTest",
+        "ProbeErrorArchives",
+        "ExtractOutcarForces",
+        "AcquireBatch",
+    }
+
+
+def test_shell_programs_are_agent_owned_constants_with_data_as_positional_arguments():
+    probe = obs.ProbeErrorArchives("/allowed/x; touch /tmp/p", 2).argv()
+    assert probe[2] == obs._ARCHIVE_PROBE_PROGRAM
+    assert "/allowed" not in probe[2]
+    assert probe[4] == "/allowed/x; touch /tmp/p"
+
+    batch = obs.AcquireBatch((obs.AcquisitionItem("/allowed/$(id)", "file", 10),))
+    assert batch.argv()[:4] == ("sh", "-s", "--", obs._ACQUISITION_MARKER)
+    assert batch.argv()[-1] == "/allowed/$(id)"
+    assert batch.stdin == obs._ACQUISITION_SCRIPT.encode("ascii")
+
+
+@pytest.mark.parametrize(
+    "build",
+    [
+        lambda: obs.ReadFile("relative/INCAR"),
+        lambda: obs.ReadFile("/allowed/../etc/passwd"),
+        lambda: obs.ReadFile("/allowed/./INCAR"),
+        lambda: obs.ReadFile("/allowed//INCAR"),
+        lambda: obs.ReadFile("/allowed/INCAR\x00"),
+        lambda: obs.ReadFile(["cat", "/etc/passwd"]),
+        lambda: obs.ReadFileTail("/allowed/OUTCAR", 0),
+        lambda: obs.ReadFileTail("/allowed/OUTCAR", True),
+        lambda: obs.ReadFileTail("/allowed/OUTCAR", "10; id"),
+        lambda: obs.PathTest("/allowed", "-e"),
+        lambda: obs.ProbeErrorArchives("/allowed", 65),
+        lambda: obs.SacctJob("1; scancel 2"),
+        lambda: obs.SacctJob("0"),
+        lambda: obs.SqueuePartition("pool;scancel 1"),
+        lambda: obs.SqueuePartition("-oProxyCommand=x"),
+        lambda: obs.ExtractOutcarForces("/allowed/OUTCAR", "2; id"),
+        lambda: obs.AcquireBatch(()),
+        lambda: obs.AcquireBatch(("cat /etc/passwd",)),
+        lambda: obs.AcquisitionItem("/allowed", "exec", 0),
+    ],
+)
+def test_operations_reject_untyped_or_unsafe_values(build):
+    with pytest.raises(ValueError):
+        build()
+
+
+def test_transports_refuse_anything_outside_the_closed_set():
+    class Lookalike(obs.ReadFile):
+        def argv(self):
+            return ("sh", "-c", "id")
+
+    for operation in ("cat -- /etc/passwd", ["cat", "/etc/passwd"], Lookalike("/allowed/x"), object()):
+        with pytest.raises(ValueError):
+            SshInvocation(operation, host=HOST)
+        if transport.local_transport_supported():
+            with pytest.raises(ValueError):
+                LocalInvocation(operation)
+
+
+# --- Codex attacks: there is no arbitrary-command primitive -------------------------------
 
 
 def recording_subprocess(monkeypatch, *, stdout="", returncode=0):
@@ -178,19 +320,140 @@ def recording_subprocess(monkeypatch, *, stdout="", returncode=0):
     return calls
 
 
-def test_ssh_runner_adds_batch_mode(monkeypatch):
+@pytest.mark.parametrize(
+    "command",
+    [
+        ["ssh", "local", "true; touch /tmp/semicolon"],  # semicolon
+        ["ssh", "local", "echo $(touch /tmp/substitution)"],  # command substitution
+        ["ssh", "local", "true\ntouch /tmp/newline"],  # newline
+        ["sh", "-c", "true; touch /tmp/x"],
+        "cat /etc/passwd",
+        ("cat", "/etc/passwd"),
+    ],
+)
+def test_default_executor_refuses_preconstructed_commands(command, monkeypatch):
     calls = recording_subprocess(monkeypatch)
 
-    run_ssh_command(["ssh", "powerslurm-bmdguest", "cat -- /allowed/INCAR"], capture_output=True)
+    with pytest.raises(TransportError):
+        run_invocation(command, capture_output=True)
+    assert calls == []
 
-    assert calls[0][0] == ["ssh", "-o", "BatchMode=yes", "powerslurm-bmdguest", "cat -- /allowed/INCAR"]
+
+def test_no_transport_function_accepts_command_text():
+    assert not hasattr(transport, "run_local_command")
+    assert not hasattr(transport, "run_ssh_command")
+    assert not hasattr(transport, "local_command")
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"shell": True},
+        {"executable": "/bin/sh"},
+        {"env": {"PATH": "/tmp"}},
+        {"cwd": "/tmp"},
+        {"preexec_fn": print},
+        {"input": b"id\n"},
+    ],
+)
+def test_default_executor_refuses_caller_process_options(kwargs, monkeypatch):
+    calls = recording_subprocess(monkeypatch)
+    invocation = SshInvocation(obs.ReadFile("/allowed/INCAR"), host=HOST)
+
+    with pytest.raises(TransportError):
+        run_invocation(invocation, **kwargs)
+    assert calls == []
+
+
+def test_observe_refuses_caller_input():
+    with pytest.raises(TransportError):
+        observe(HOST, obs.ReadFile("/allowed/INCAR"), runner=pytest.fail, input=b"id\n")
+
+
+def test_tampered_invocation_is_refused(monkeypatch):
+    calls = recording_subprocess(monkeypatch)
+    for mutate in (
+        lambda inv: inv.insert(1, "-oProxyCommand=sh -c id"),
+        lambda inv: inv.__setitem__(2, "BatchMode=no"),
+        lambda inv: inv.__setitem__(-1, "id"),
+        lambda inv: inv.append("extra"),
+    ):
+        invocation = SshInvocation(obs.ReadFile("/allowed/INCAR"), host=HOST, connect_timeout=10)
+        mutate(invocation)
+        with pytest.raises(TransportError, match="modified"):
+            run_invocation(invocation, capture_output=True)
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    "connect_timeout",
+    ["1 -oProxyCommand=x", "10", 0, -1, 1.5, True, 10**6],
+)
+def test_malformed_connect_timeout_is_rejected(connect_timeout):
+    with pytest.raises(TransportError):
+        SshInvocation(obs.ReadFile("/allowed/INCAR"), host=HOST, connect_timeout=connect_timeout)
+
+
+@pytest.mark.parametrize(
+    "host",
+    ["-oProxyCommand=sh -c id", "-F/tmp/cfg", "host -oBatchMode=no", "host\nid", "", "local", 7],
+)
+def test_ssh_host_cannot_carry_options(host):
+    with pytest.raises(TransportError):
+        SshInvocation(obs.ReadFile("/allowed/INCAR"), host=host)
+
+
+AGENT_SSH_OPTIONS = ("BatchMode=yes", "ConnectTimeout=", "ControlMaster=auto", "ControlPersist=", "ControlPath=")
+
+
+def ssh_options(argv: list[str]) -> list[str]:
+    return [argv[index + 1] for index, item in enumerate(argv[:-2]) if item == "-o"]
+
+
+@pytest.mark.parametrize(("operation", "_argv"), EXPECTED_ARGV)
+@pytest.mark.parametrize("connect_timeout", [None, 7])
+@pytest.mark.parametrize("control_path", [None, CONTROL_PATH])
+def test_ssh_invocation_is_built_only_from_agent_owned_options(operation, _argv, connect_timeout, control_path):
+    argv = SshInvocation(
+        operation,
+        host=HOST,
+        connect_timeout=connect_timeout,
+        control_path=control_path,
+    ).render()
+
+    # BatchMode=yes is unconditionally the first option; OpenSSH keeps the
+    # first value it obtains, so nothing later could override it.
+    assert argv[:3] == ["ssh", "-o", "BatchMode=yes"]
+    assert argv[-2:] == [HOST, operation.remote_command()]
+    options = ssh_options(argv)
+    assert all(option.startswith(AGENT_SSH_OPTIONS) for option in options)
+    assert options.count("BatchMode=yes") == 1
+    assert not any(option.lower().startswith(("proxycommand", "batchmode=no", "localcommand")) for option in options)
+    # Only "-o" pairs precede the host: no other flags.
+    assert argv[1:-2] == [item for option in options for item in ("-o", option)]
+
+
+def test_session_exit_is_agent_owned_and_batch_mode():
+    argv = SshInvocation.session_exit(host=HOST, control_path=CONTROL_PATH).render()
+
+    assert argv == ["ssh", "-o", "BatchMode=yes", "-S", str(CONTROL_PATH), "-O", "exit", HOST]
+
+
+def test_remote_command_text_is_unchanged_from_the_previous_builders():
+    assert obs.ReadFile("/a/project with spaces/POSCAR").remote_command() == "cat -- '/a/project with spaces/POSCAR'"
+    assert obs.PathTest("/a/run", "file").remote_command() == "test -f /a/run"
+    assert obs.ReadFileTail("/a/OUTCAR", 10).remote_command() == "tail -c 10 -- /a/OUTCAR"
+    assert obs.FileSize("/a/v.xml").remote_command() == "stat -c %s -- /a/v.xml"
+
+
+# --- SSH transport: BatchMode on every real path ------------------------------------------
 
 
 def test_default_remote_reads_and_scheduler_lookups_use_batch_mode(monkeypatch):
     calls = recording_subprocess(monkeypatch, stdout="")
 
-    retrieve_remote_file("powerslurm-bmdguest", PurePosixPath("/allowed/INCAR"))
-    get_job_accounting("powerslurm-bmdguest", "123")
+    retrieve_remote_file(HOST, PurePosixPath("/allowed/INCAR"))
+    get_job_accounting(HOST, "123")
 
     assert calls[0][0][:3] == ["ssh", "-o", "BatchMode=yes"]
     assert calls[1][0][:5] == ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]
@@ -199,84 +462,190 @@ def test_default_remote_reads_and_scheduler_lookups_use_batch_mode(monkeypatch):
 def test_reusable_ssh_session_uses_batch_mode(monkeypatch):
     calls = recording_subprocess(monkeypatch)
 
-    with ReusableSshSession("powerslurm-bmdguest", multiplex=True) as session:
-        session.runner("remote")(["ssh", "powerslurm-bmdguest", "test -f /allowed/INCAR"], capture_output=True)
+    with ReusableSshSession(HOST, multiplex=True) as session:
+        session.runner("remote")(SshInvocation(obs.PathTest("/allowed/INCAR", "file"), host=HOST), capture_output=True)
 
     executed = calls[0][0]
     assert executed[:3] == ["ssh", "-o", "BatchMode=yes"]
-    assert executed[-2:] == ["powerslurm-bmdguest", "test -f /allowed/INCAR"]
+    assert executed[-2:] == [HOST, "test -f /allowed/INCAR"]
     assert any(item.startswith("ControlMaster=") for item in executed)
 
 
-def test_ssh_runner_refuses_the_local_selector(monkeypatch):
+@pytest.mark.parametrize(
+    "command",
+    [
+        ["ssh", "-o", "BatchMode=no", HOST, "true"],
+        ["ssh", "-o", "ProxyCommand=touch /tmp/x", HOST, "BatchMode=yes"],  # fake BatchMode elsewhere
+        ["ssh", "-o", "ProxyCommand=sh -c id", HOST, "true"],
+        ["ssh", "-o", "ConnectTimeout=1 -oProxyCommand=x", HOST, "true"],
+        ["ssh", HOST, "cat -- /allowed/INCAR"],
+    ],
+)
+def test_ssh_paths_refuse_malformed_vectors(command, monkeypatch):
     calls = recording_subprocess(monkeypatch)
 
     with pytest.raises(TransportError):
-        run_ssh_command(["ssh", LOCAL_TRANSPORT, "cat -- /allowed/INCAR"])
+        run_invocation(command, capture_output=True)
+    with ReusableSshSession(HOST, multiplex=False) as session:
+        with pytest.raises(TransportError):
+            session.runner("remote")(command, capture_output=True)
     assert calls == []
 
 
-# --- local transport: shape, safety, no SSH -----------------------------------------------
-
-
-def test_local_command_runs_the_same_fixed_command_text_without_ssh():
-    assert local_command(["ssh", "local", "cat -- /allowed/INCAR"]) == [LOCAL_SHELL, "-c", "cat -- /allowed/INCAR"]
-    assert local_command(["ssh", "-o", "ConnectTimeout=10", "local", "sacct -j 1"]) == [
-        LOCAL_SHELL,
-        "-c",
-        "sacct -j 1",
-    ]
-
-
-@pytest.mark.parametrize(
-    ("command", "kwargs"),
-    [
-        ("cat /etc/passwd", {}),  # a string, not an argument vector
-        (["cat", "/etc/passwd"], {}),  # not an Agent-built observational vector
-        (["ssh", "powerslurm-bmdguest", "cat -- /x"], {}),  # another host
-        (["ssh", "-o", "ProxyCommand=sh", "local", "cat -- /x"], {}),  # unexpected option
-        (["ssh", "-F", "/tmp/cfg", "local", "cat -- /x"], {}),  # unexpected flag
-        (["ssh", "local", "   "], {}),  # empty command
-        (["ssh", "local", "cat -- /x"], {"shell": True}),  # shell=True
-    ],
-)
-def test_local_transport_rejects_anything_but_agent_built_commands(command, kwargs):
+def test_reusable_ssh_session_refuses_the_local_selector_and_local_invocations(monkeypatch):
     with pytest.raises(TransportError):
-        local_command(command, kwargs)
+        ReusableSshSession(LOCAL_TRANSPORT)
+    if transport.local_transport_supported():
+        with ReusableSshSession(HOST, multiplex=False) as session:
+            with pytest.raises(TransportError):
+                session.runner("remote")(LocalInvocation(obs.ReadFile("/allowed/INCAR")))
 
 
+# --- platform support for the local transport ---------------------------------------------
+
+
+def test_local_selector_fails_fast_where_unsupported(monkeypatch):
+    # Codex attack: selecting ssh_host="local" on Windows must fail immediately
+    # with a concise configuration error, not later with FileNotFoundError.
+    monkeypatch.setattr(transport, "local_transport_supported", lambda: False)
+    calls = recording_subprocess(monkeypatch)
+
+    with pytest.raises(ConfigurationError, match="requires a POSIX system") as exc_info:
+        parse_resources(cluster_config("local"))
+    assert "\n" not in str(exc_info.value)
+    with pytest.raises(TransportError, match="requires a POSIX system"):
+        build_invocation(LOCAL_TRANSPORT, obs.ReadFile("/allowed/INCAR"))
+    with pytest.raises(TransportError, match="requires a POSIX system"):
+        LocalObservationSession()
+    assert calls == []
+    # SSH configuration is unaffected.
+    assert parse_resources(cluster_config(HOST)).clusters["powerslurm"].ssh_host == HOST
+
+
+def test_local_selector_from_a_real_config_file_fails_fast_where_unsupported(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(transport, "local_transport_supported", lambda: False)
+    path = tmp_path / "resources.toml"
+    path.write_text(
+        '[repositories]\n\n[clusters.powerslurm]\nname = "POWER"\nssh_host = "local"\n'
+        'partition = "leeburton-pool"\naccess = "observational"\nallowed_remote_roots = ["/bmd-db"]\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("BMD_AGENT_RESOURCES", str(path))
+
+    exit_code = cli.main(["20893681"], command_name="bmd-check")
+    captured = capsys.readouterr()
+
+    assert exit_code == 2
+    assert "requires a POSIX system" in captured.err
+    assert "FileNotFoundError" not in captured.out + captured.err
+
+
+@pytest.mark.skipif(os.name == "posix", reason="exercises the real non-POSIX platform")
+def test_local_selector_is_rejected_on_this_non_posix_platform():
+    with pytest.raises(ConfigurationError, match="requires a POSIX system"):
+        parse_resources(cluster_config("local"))
+
+
+@posix_only
+def test_local_selector_is_a_valid_posix_deployment_value():
+    cluster = parse_resources(cluster_config("local")).clusters["powerslurm"]
+
+    assert isinstance(cli._observation_session(cluster), LocalObservationSession)
+    assert isinstance(cli._observation_session(replace(cluster, ssh_host=HOST)), ReusableSshSession)
+    assert isinstance(build_invocation(cluster.ssh_host, obs.ReadFile("/bmd-db/x")), LocalInvocation)
+
+
+def test_config_still_rejects_unsafe_transport_values():
+    for value in ("local; rm -rf /", "local host", "$(id)", "-oProxyCommand=id"):
+        with pytest.raises(ConfigurationError):
+            parse_resources(cluster_config(value))
+
+
+# --- local transport: argv execution without a shell or SSH -------------------------------
+
+
+@posix_only
+@pytest.mark.parametrize(("operation", "argv"), EXPECTED_ARGV)
+def test_local_invocation_is_the_operation_argv(operation, argv, monkeypatch):
+    calls = recording_subprocess(monkeypatch)
+
+    observe(LOCAL_TRANSPORT, operation, capture_output=True)
+
+    executed, kwargs = calls[0]
+    assert executed == list(argv)
+    assert executed[0] != "ssh"
+    assert "shell" not in kwargs
+
+
+@posix_only
 def test_local_transport_never_invokes_ssh(monkeypatch):
     calls = recording_subprocess(monkeypatch, stdout="")
 
-    run_local_command(["ssh", "local", "cat -- /allowed/INCAR"], capture_output=True)
-    session = LocalObservationSession(runner=transport.subprocess.run)
-    session.runner("remote")(["ssh", "local", "test -f /allowed/INCAR"], capture_output=True)
+    retrieve_remote_file(LOCAL_TRANSPORT, PurePosixPath("/allowed/INCAR"))
+    get_job_accounting(LOCAL_TRANSPORT, "123")
+    LocalObservationSession().runner("remote")(LocalInvocation(obs.PathTest("/allowed/INCAR", "file")), capture_output=True)
 
-    assert [command[0] for command, _ in calls] == [LOCAL_SHELL, LOCAL_SHELL]
+    assert [command[0] for command, _ in calls] == ["cat", "sacct", "test"]
     assert all("ssh" not in command for command, _ in calls)
 
 
-def test_local_selector_is_a_valid_deployment_value():
-    registry = parse_resources(
-        {
-            "repositories": {},
-            "clusters": {
-                "powerslurm": {
-                    "name": "POWER",
-                    "ssh_host": "local",
-                    "partition": "leeburton-pool",
-                    "access": "observational",
-                    "allowed_remote_roots": ["/bmd-db"],
-                }
-            },
-        }
-    )
+@posix_only
+@pytest.mark.parametrize(
+    "name",
+    ["x; touch {marker}", "$(touch {marker})", "`touch {marker}`", "x\ntouch {marker}", "x' ; touch {marker}; '"],
+)
+def test_hostile_path_text_is_data_never_executed(tmp_path, name):
+    # Codex attacks as data: semicolon, command substitution, newline.
+    root = tmp_path / "root"
+    root.mkdir()
+    marker = tmp_path / "pwned"
+    hostile = root / name.format(marker=marker).replace("/", "_")
+    hostile.write_bytes(b"literal contents")
+    remote_path = authorize_remote_path(str(hostile), allowed_roots=(str(root),))
 
-    cluster = registry.clusters["powerslurm"]
-    assert observation_runner(cluster.ssh_host) is run_local_command
-    assert isinstance(cli._observation_session(cluster), LocalObservationSession)
-    assert observation_runner("powerslurm-bmdguest") is run_ssh_command
-    assert isinstance(cli._observation_session(replace(cluster, ssh_host="powerslurm-bmdguest")), ReusableSshSession)
+    assert retrieve_remote_file(LOCAL_TRANSPORT, remote_path) == b"literal contents"
+    assert obs.ProbeErrorArchives(remote_path, 2) is not None
+    assert not marker.exists()
+
+
+@posix_only
+def test_local_probe_and_acquisition_scripts_take_paths_only_as_arguments(tmp_path):
+    marker = tmp_path / "pwned"
+    directory = tmp_path / f"d; touch {marker}".replace("/", "_")
+    directory.mkdir()
+    (directory / "error.1.tar.gz").write_bytes(b"")
+
+    result = observe(LOCAL_TRANSPORT, obs.ProbeErrorArchives(directory, 3), capture_output=True, check=False)
+
+    assert result.stdout.decode().splitlines() == [f"{directory}/error.1.tar.gz"]
+    observe(
+        LOCAL_TRANSPORT,
+        obs.AcquireBatch((obs.AcquisitionItem(directory, "directory", 0),)),
+        capture_output=True,
+        check=False,
+    )
+    assert not marker.exists()
+
+
+@posix_only
+def test_local_session_refuses_ssh_invocations():
+    with pytest.raises(TransportError):
+        LocalObservationSession().runner("remote")(SshInvocation(obs.ReadFile("/allowed/INCAR"), host=HOST))
+
+
+@posix_only
+def test_local_observations_are_profiled_without_ssh(tmp_path):
+    (tmp_path / "INCAR").write_bytes(b"ENCUT = 520\n")
+    profiler = PerformanceProfiler()
+
+    with profiler.activate():
+        runner = LocalObservationSession().runner("remote")
+        retrieve_remote_file(LOCAL_TRANSPORT, PurePosixPath(f"{tmp_path}/INCAR"), runner=runner)
+
+    counts = profiler.snapshot().operations.counts
+    assert counts["remote_commands"] == 1
+    assert counts["ssh_invocations"] == 0
+    assert counts["ssh_connections"] == 0
 
 
 # --- local and simulated-SSH observation of the same evidence -----------------------------
@@ -316,12 +685,13 @@ def any_host_scheduler(root: Path):
     return runner
 
 
+@posix_only
 def test_local_and_simulated_ssh_observation_parse_identically(tmp_path):
     files, directories = materialize_fixture(tmp_path)
     flow_root = rebase(ri.FLOW_ROOT, tmp_path)
 
     over_ssh = inspect_remote_run(
-        fixture_cluster(tmp_path, "powerslurm-bmdguest"),
+        fixture_cluster(tmp_path, HOST),
         flow_root,
         remote_runner=ri.RemoteFixture(files=files, directories=directories),
         slurm_runner=any_host_scheduler(tmp_path),
@@ -331,7 +701,6 @@ def test_local_and_simulated_ssh_observation_parse_identically(tmp_path):
     local = inspect_remote_run(
         fixture_cluster(tmp_path, LOCAL_TRANSPORT),
         flow_root,
-        remote_runner=run_local_command,
         slurm_runner=any_host_scheduler(tmp_path),
         scientific_parser=ri.fake_scientific_parser,
         modifier_policies=(ri.modifier_policy(),),
@@ -350,13 +719,14 @@ def write_fake_sacct(tmp_path: Path, root: Path) -> Path:
     script = bin_dir / "sacct"
     script.write_text(f"#!/bin/sh\ncat {output}\n", encoding="utf-8")
     script.chmod(0o755)
-    # A fake ssh that fails loudly proves local mode never reaches it.
+    # A fake ssh that records any call proves local mode never reaches it.
     ssh = bin_dir / "ssh"
     ssh.write_text(f"#!/bin/sh\necho invoked >> {tmp_path / 'ssh-invoked'}\nexit 255\n", encoding="utf-8")
     ssh.chmod(0o755)
     return bin_dir
 
 
+@posix_only
 def test_local_job_inspection_end_to_end_without_ssh(tmp_path, monkeypatch, capsys):
     data = tmp_path / "data"
     materialize_fixture(data)
@@ -379,6 +749,7 @@ def test_local_job_inspection_end_to_end_without_ssh(tmp_path, monkeypatch, caps
     assert not (tmp_path / "ssh-invoked").exists()
 
 
+@posix_only
 def test_local_job_inspection_matches_simulated_ssh(tmp_path, monkeypatch):
     data = tmp_path / "data"
     files, directories = materialize_fixture(data)
@@ -386,11 +757,11 @@ def test_local_job_inspection_matches_simulated_ssh(tmp_path, monkeypatch):
     monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
 
     def ssh_scheduler(command, **kwargs):
-        assert command[-2] == "powerslurm-bmdguest"
+        assert isinstance(command, SshInvocation) and command[-2] == HOST
         return any_host_scheduler(data)(command, **kwargs)
 
     over_ssh = inspect_slurm_job(
-        fixture_cluster(data, "powerslurm-bmdguest"),
+        fixture_cluster(data, HOST),
         "20893681",
         remote_runner=ri.RemoteFixture(files=files, directories=directories),
         slurm_runner=ssh_scheduler,
@@ -412,20 +783,21 @@ def test_local_job_inspection_matches_simulated_ssh(tmp_path, monkeypatch):
     assert not (tmp_path / "ssh-invoked").exists()
 
 
-def test_path_mode_scheduler_lookup_uses_the_local_runner(tmp_path, monkeypatch, capsys):
+@posix_only
+def test_path_mode_scheduler_lookup_uses_the_local_transport(tmp_path, monkeypatch, capsys):
     data = tmp_path / "data"
     materialize_fixture(data)
     bin_dir = write_fake_sacct(tmp_path, data)
     monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
     cluster = fixture_cluster(data, LOCAL_TRANSPORT)
-    seen = []
-    real = cli.get_job_accounting
+    executed: list[list[str]] = []
+    real_run = subprocess.run
 
-    def recording_accounting(*args, **kwargs):
-        seen.append(kwargs.get("runner"))
-        return real(*args, **kwargs)
+    def recording_run(argv, **kwargs):
+        executed.append(list(argv))
+        return real_run(argv, **kwargs)
 
-    monkeypatch.setattr(cli, "get_job_accounting", recording_accounting)
+    monkeypatch.setattr(transport.subprocess, "run", recording_run)
 
     import test_lifecycle as lc
 
@@ -438,7 +810,7 @@ def test_path_mode_scheduler_lookup_uses_the_local_runner(tmp_path, monkeypatch,
     cli.show_current_directory(root, ResourceRegistry({}, {"powerslurm": cluster}), verbose=True)
     output = capsys.readouterr().out
 
-    assert seen == [run_local_command]
+    assert [argv[:5] for argv in executed] == [["sacct", "-P", "-n", "-j", "20893681"]]
     assert "Scheduler observation:" in output
     assert "state: COMPLETED" in output
     assert not (tmp_path / "ssh-invoked").exists()
@@ -447,24 +819,25 @@ def test_path_mode_scheduler_lookup_uses_the_local_runner(tmp_path, monkeypatch,
 # --- local mode keeps path protections ----------------------------------------------------
 
 
+@posix_only
 def test_local_mode_refuses_paths_outside_allowed_roots_before_running_anything(tmp_path, monkeypatch):
     calls = recording_subprocess(monkeypatch)
     cluster = fixture_cluster(tmp_path, LOCAL_TRANSPORT)
 
     for target in ("/etc", f"{tmp_path}{GUEST}/../../etc"):
         with pytest.raises(RemotePathError):
-            inspect_remote_run(cluster, target, remote_runner=run_local_command)
+            inspect_remote_run(cluster, target)
     assert calls == []
 
 
-def test_local_mode_refuses_an_unauthorized_scheduler_workdir(tmp_path, monkeypatch):
+@posix_only
+def test_local_mode_refuses_an_unauthorized_scheduler_workdir(tmp_path):
     def scheduler(command, **kwargs):
         return subprocess.CompletedProcess(command, 0, stdout=ri.job_sacct_output(work_dir="/etc"), stderr="")
 
     inspection = inspect_slurm_job(
         fixture_cluster(tmp_path, LOCAL_TRANSPORT),
         "20893681",
-        remote_runner=run_local_command,
         slurm_runner=scheduler,
     )
 
@@ -472,31 +845,32 @@ def test_local_mode_refuses_an_unauthorized_scheduler_workdir(tmp_path, monkeypa
     assert "not authorized" in inspection.calculation_reason
 
 
-def test_shell_metacharacters_in_authorized_paths_are_never_executed(tmp_path):
-    root = tmp_path / "root"
-    root.mkdir()
-    marker = tmp_path / "pwned"
-    hostile = PurePosixPath(f"{root}/x; touch {marker}")
-
-    with pytest.raises(subprocess.CalledProcessError):
-        retrieve_remote_file(LOCAL_TRANSPORT, hostile, runner=run_local_command)
-    assert not marker.exists()
+# --- documented limitation: allowed_remote_roots is lexical, not realpath containment -----
 
 
-def test_config_still_rejects_unsafe_transport_values():
-    for value in ("local; rm -rf /", "local host", "$(id)"):
-        with pytest.raises(ConfigurationError):
-            parse_resources(
-                {
-                    "repositories": {},
-                    "clusters": {
-                        "powerslurm": {
-                            "name": "POWER",
-                            "ssh_host": value,
-                            "partition": "leeburton-pool",
-                            "access": "observational",
-                            "allowed_remote_roots": ["/bmd-db"],
-                        }
-                    },
-                }
-            )
+def test_lexical_authorization_rejects_dot_dot_escapes_without_touching_the_filesystem():
+    with pytest.raises(RemotePathError):
+        authorize_remote_path("/bmd-db/guest/../../etc/passwd", allowed_roots=("/bmd-db/guest",))
+    # Accepted purely lexically: nothing is resolved or required to exist.
+    assert authorize_remote_path("/bmd-db/guest/does/not/exist", allowed_roots=("/bmd-db/guest",)) == PurePosixPath(
+        "/bmd-db/guest/does/not/exist"
+    )
+
+
+@posix_only
+def test_symlink_beneath_an_allowed_root_is_followed_outside_it(tmp_path):
+    """Current behaviour, kept deliberately in this change and documented in
+    SECURITY.md: authorization is lexical, so a symlink under an allowed root
+    that points elsewhere is followed with the invoking identity's
+    permissions. This is not realpath/symlink containment."""
+
+    allowed = tmp_path / "allowed"
+    outside = tmp_path / "outside"
+    allowed.mkdir()
+    outside.mkdir()
+    (outside / "secret").write_bytes(b"outside the allowed root")
+    (allowed / "link").symlink_to(outside / "secret")
+
+    remote_path = authorize_remote_path(f"{allowed}/link", allowed_roots=(str(allowed),))
+
+    assert retrieve_remote_file(LOCAL_TRANSPORT, remote_path) == b"outside the allowed root"

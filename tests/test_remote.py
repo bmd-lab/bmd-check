@@ -6,7 +6,15 @@ import subprocess
 import pytest
 
 from bmd_agent.profiling import PerformanceProfiler
+from bmd_agent.resources.observations import PathTest, ReadFile, ReadFileTail, SacctJob
 from bmd_agent.resources.remote import ReusableSshSession
+from bmd_agent.resources.transport import SshInvocation
+
+HOST = "powerslurm-bmdguest"
+
+
+def ssh(operation, **kwargs):
+    return SshInvocation(operation, host=kwargs.pop("host", HOST), **kwargs)
 
 
 class MultiplexingRunner:
@@ -31,7 +39,9 @@ class MultiplexingRunner:
             self.fail_transport = False
             return subprocess.CompletedProcess(command, 255, stdout=b"", stderr=b"lost")
 
-        if getattr(command, "ssh_opens_connection", False):
+        if getattr(command, "ssh_opens_connection", False) and any(
+            part.startswith("ControlPath=") for part in command
+        ):
             control_path = _control_path(command)
             control_path.touch()
         return subprocess.CompletedProcess(command, 0, stdout=b"ok", stderr=b"")
@@ -55,19 +65,13 @@ def test_reusable_session_uses_one_connection_for_multiple_exec_channels() -> No
             scheduler = session.runner("scheduler")
             remote = session.runner("remote")
             scheduler(
-                [
-                    "ssh",
-                    "-o",
-                    "ConnectTimeout=10",
-                    "powerslurm-bmdguest",
-                    "sacct -j 1",
-                ],
+                ssh(SacctJob("1"), connect_timeout=10),
                 capture_output=True,
                 check=True,
                 timeout=60,
             )
             remote(
-                ["ssh", "powerslurm-bmdguest", "cat -- /allowed/OSZICAR"],
+                ssh(ReadFile("/allowed/OSZICAR")),
                 capture_output=True,
                 check=True,
                 timeout=20,
@@ -97,7 +101,7 @@ def test_reusable_session_closes_connection_when_body_raises() -> None:
             multiplex=True,
         ) as session:
             session.runner("remote")(
-                ["ssh", "powerslurm-bmdguest", "test -f /allowed/INCAR"],
+                ssh(PathTest("/allowed/INCAR", "file")),
                 capture_output=True,
                 check=False,
                 timeout=20,
@@ -118,13 +122,13 @@ def test_reusable_session_preserves_each_command_timeout() -> None:
     ) as session:
         remote = session.runner("remote")
         remote(
-            ["ssh", "powerslurm-bmdguest", "cat -- /allowed/INCAR"],
+            ssh(ReadFile("/allowed/INCAR")),
             capture_output=True,
             check=True,
             timeout=11,
         )
         remote(
-            ["ssh", "powerslurm-bmdguest", "tail -c 10 -- /allowed/OUTCAR"],
+            ssh(ReadFileTail("/allowed/OUTCAR", 10)),
             capture_output=True,
             check=True,
             timeout=23,
@@ -144,14 +148,14 @@ def test_transport_failure_discards_session_without_retrying_command() -> None:
     ) as session:
         remote = session.runner("remote")
         result = remote(
-            ["ssh", "powerslurm-bmdguest", "test -f /allowed/INCAR"],
+            ssh(PathTest("/allowed/INCAR", "file")),
             capture_output=True,
             check=False,
             timeout=20,
         )
         assert result.returncode == 255
         remote(
-            ["ssh", "powerslurm-bmdguest", "test -f /allowed/OUTCAR"],
+            ssh(PathTest("/allowed/OUTCAR", "file")),
             capture_output=True,
             check=False,
             timeout=20,
@@ -169,8 +173,11 @@ def test_transport_failure_discards_session_without_retrying_command() -> None:
 @pytest.mark.parametrize(
     ("command", "kwargs"),
     (
-        (["ssh", "other-host", "cat -- /allowed/INCAR"], {}),
-        (["ssh", "powerslurm-bmdguest", "cat -- /allowed/INCAR"], {"shell": True}),
+        (ssh(ReadFile("/allowed/INCAR"), host="other-host"), {}),
+        (ssh(ReadFile("/allowed/INCAR")), {"shell": True}),
+        (ssh(ReadFile("/allowed/INCAR"), control_path=Path("/tmp/caller-controlled")), {}),
+        # Preconstructed vectors are refused outright, however they look.
+        (["ssh", "powerslurm-bmdguest", "cat -- /allowed/INCAR"], {}),
         (
             [
                 "ssh",
@@ -201,7 +208,7 @@ def test_reusable_session_rejects_host_shell_and_control_overrides(
 
 def test_session_is_lazy_and_nonmultiplex_fallback_preserves_command() -> None:
     base_runner = MultiplexingRunner()
-    command = ["ssh", "powerslurm-bmdguest", "cat -- /allowed/INCAR"]
+    command = ssh(ReadFile("/allowed/INCAR"))
 
     with ReusableSshSession(
         "powerslurm-bmdguest",

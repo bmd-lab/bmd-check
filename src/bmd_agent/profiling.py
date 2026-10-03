@@ -242,6 +242,18 @@ class PerformanceProfiler:
         command_parts = _command_parts(command)
         is_ssh = bool(command_parts) and command_parts[0] == "ssh"
         remote_command = command_parts[-1] if is_ssh else ""
+        local_observation = _local_observation_text(command)
+        if local_observation is not None:
+            # Local transport: the same fixed operation, counted as an
+            # observational command but never as an SSH invocation.
+            self._counts["remote_commands"] += 1
+            categories = _classify_remote_command(local_observation, self._counts)
+            for category in categories:
+                self._elapsed[f"{category}_wait"] += elapsed
+            if _is_acquisition_command(local_observation):
+                described, read = _acquisition_result_counts(result)
+                self._counts["logical_files_described"] += described
+                self._counts["logical_files_read"] += read
         if is_ssh:
             self._counts["ssh_invocations"] += 1
             self._elapsed["ssh_wait"] += elapsed
@@ -343,6 +355,13 @@ def profile_phase(name: str):
 def profiled_runner(runner: Runner, *, role: str) -> Runner:
     profiler = _ACTIVE_PROFILER.get()
     return runner if profiler is None else profiler.wrap_runner(runner, role=role)
+
+
+def _local_observation_text(command: object) -> str | None:
+    if getattr(command, "transport", None) != "local":
+        return None
+    text = getattr(command, "observation_text", None)
+    return text if isinstance(text, str) else None
 
 
 def _command_parts(command: object) -> tuple[str, ...]:
@@ -450,9 +469,15 @@ def _is_ssh_transport_failure(result: object | None, *, timed_out: bool) -> bool
 
 def _is_expected_negative_probe(command: object, returncode: object) -> bool:
     parts = _command_parts(command)
-    if returncode != 1 or not parts or parts[0] != "ssh":
+    local_observation = _local_observation_text(command)
+    if returncode != 1:
         return False
-    remote_command = parts[-1]
+    if local_observation is not None:
+        remote_command = local_observation
+    elif parts and parts[0] == "ssh":
+        remote_command = parts[-1]
+    else:
+        return False
     return remote_command.startswith("test -f ") or remote_command.startswith("test -d ")
 
 

@@ -77,7 +77,6 @@ from bmd_agent.resources.slurm import describe_exit_code, get_job_accounting, ge
 from bmd_agent.resources.transport import (
     LocalObservationSession,
     is_local_transport,
-    observation_runner,
 )
 from bmd_agent.resources.vasp import (
     RemotePathError,
@@ -215,7 +214,6 @@ def show_queue(registry: ResourceRegistry | None = None) -> int:
         jobs = get_queue(
             ssh_host=cluster.ssh_host,
             partition=cluster.partition,
-            runner=observation_runner(cluster.ssh_host),
             timeout=cluster.remote_command_timeout_seconds,
             ssh_connect_timeout=cluster.ssh_connect_timeout_seconds,
         )
@@ -286,7 +284,6 @@ def show_current_directory(
             scheduler_lookup = lambda job_id: get_job_accounting(
                 cluster.ssh_host,
                 job_id,
-                runner=observation_runner(cluster.ssh_host),
                 timeout=cluster.scheduler_accounting_timeout_seconds,
                 ssh_connect_timeout=cluster.ssh_connect_timeout_seconds,
             )
@@ -619,7 +616,6 @@ def show_structure(directory: str, registry: ResourceRegistry | None = None) -> 
             ssh_host=cluster.ssh_host,
             directory=directory,
             allowed_roots=cluster.allowed_remote_roots,
-            runner=observation_runner(cluster.ssh_host),
         )
 
     except RemotePathError as exc:
@@ -675,7 +671,6 @@ def show_check_input(args: list[str], registry: ResourceRegistry | None = None) 
             stage=parsed["stage"],
             theory=parsed["theory"],
             modifiers=parsed["modifiers"],
-            remote_runner=observation_runner(cluster.ssh_host),
         )
 
     except RemotePathError as exc:
@@ -802,8 +797,6 @@ def show_inspect_run(flow_root: str, registry: ResourceRegistry | None = None) -
             cluster,
             flow_root,
             compute_policy=compute_policy,
-            remote_runner=observation_runner(cluster.ssh_host),
-            slurm_runner=observation_runner(cluster.ssh_host),
         )
 
     except RemotePathError as exc:
@@ -853,8 +846,6 @@ def show_compare_runs(flow_roots: list[str], registry: ResourceRegistry | None =
             cluster,
             flow_roots,
             compute_policy=compute_policy,
-            remote_runner=observation_runner(cluster.ssh_host),
-            slurm_runner=observation_runner(cluster.ssh_host),
         )
 
     except RemotePathError as exc:
@@ -900,8 +891,6 @@ def show_diagnose_run(flow_root: str, registry: ResourceRegistry | None = None) 
             cluster,
             flow_root,
             compute_policy=compute_policy,
-            remote_runner=observation_runner(cluster.ssh_host),
-            slurm_runner=observation_runner(cluster.ssh_host),
         )
 
     except RemotePathError as exc:
@@ -2445,7 +2434,11 @@ def main(argv: list[str] | None = None, *, command_name: str | None = None) -> i
     changes the command shown in usage text and "Detailed evidence" hints.
     """
 
-    token = _COMMAND_NAME.set(command_name or invoked_command_name())
+    if command_name is None:
+        command_name = invoked_command_name()
+    elif command_name not in COMMAND_NAMES:
+        raise ValueError("command_name must be one of: " + ", ".join(COMMAND_NAMES))
+    token = _COMMAND_NAME.set(command_name)
     try:
         return _main(argv)
     finally:

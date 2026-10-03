@@ -4,114 +4,28 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import PurePosixPath
-import shlex
 import subprocess
 from typing import Callable, Iterable, Iterator, Sequence
 
 from pymatgen.io.vasp import Poscar
-from bmd_agent.resources.transport import run_ssh_command
+from bmd_agent.resources.observations import (
+    _ACQUISITION_MARKER,
+    _MAX_ACQUISITION_REQUESTS,
+    _MAX_ARCHIVE_PROBE_LIMIT,
+    _MAX_BATCH_FILE_BYTES,
+    AcquireBatch,
+    AcquisitionItem,
+    ExtractOutcarForces,
+    FileSize,
+    PathTest,
+    ProbeErrorArchives,
+    ReadFile,
+    ReadFileTail,
+)
+from bmd_agent.resources.transport import observe, run_invocation
 
 
 Runner = Callable[..., subprocess.CompletedProcess[bytes]]
-
-_ARCHIVE_PROBE_MARKER = "bmd-agent-archive-probe-v1"
-_MAX_ARCHIVE_PROBE_LIMIT = 64
-_ACQUISITION_MARKER = "bmd-agent-acquisition-v1"
-_MAX_ACQUISITION_REQUESTS = 128
-_MAX_BATCH_FILE_BYTES = 2_000_000
-_MAX_BATCH_TOTAL_BYTES = 8_000_000
-
-_ACQUISITION_SCRIPT = """\
-printf 'schema\\tbmd-agent-acquisition-v1\\n'
-total_limit=$1
-shift
-used=0
-while [ "$#" -ge 4 ]; do
-    item_id=$1
-    kind=$2
-    read_limit=$3
-    path=$4
-    shift 4
-    if [ "$kind" = "archives" ]; then
-        archive_index=1
-        archive_count=0
-        while [ "$archive_index" -le "$read_limit" ]; do
-            candidate="$path/error.$archive_index.tar.gz"
-            if [ ! -f "$candidate" ]; then
-                break
-            fi
-            archive_count=$archive_index
-            archive_index=$((archive_index + 1))
-        done
-        printf 'item\\t%s\\tarchives\\tpresent\\t%s\\t\\n' "$item_id" "$archive_count"
-        continue
-    fi
-    if [ "$kind" = "directory" ]; then
-        if [ -d "$path" ]; then
-            printf 'item\\t%s\\tdirectory\\tpresent\\t\\t\\n' "$item_id"
-        else
-            printf 'item\\t%s\\tdirectory\\tmissing\\t\\t\\n' "$item_id"
-        fi
-        continue
-    fi
-    if [ ! -f "$path" ]; then
-        printf 'item\\t%s\\tfile\\tmissing\\t\\t\\n' "$item_id"
-        continue
-    fi
-    if ! size=$(stat -c %s -- "$path" 2>/dev/null); then
-        printf 'item\\t%s\\tfile\\tread_error\\t\\t\\n' "$item_id"
-        continue
-    fi
-    if [ "$read_limit" -le 0 ]; then
-        printf 'item\\t%s\\tfile\\tpresent\\t%s\\t\\n' "$item_id" "$size"
-        continue
-    fi
-    next_used=$((used + size))
-    if [ "$size" -gt "$read_limit" ] || [ "$next_used" -gt "$total_limit" ]; then
-        printf 'item\\t%s\\tfile\\tdeferred\\t%s\\t\\n' "$item_id" "$size"
-        continue
-    fi
-    if encoded=$(head -c "$size" -- "$path" 2>/dev/null | base64 | tr -d '\\n'); then
-        printf 'item\\t%s\\tfile\\tread\\t%s\\t%s\\n' "$item_id" "$size" "$encoded"
-        used=$next_used
-    else
-        printf 'item\\t%s\\tfile\\tread_error\\t%s\\t\\n' "$item_id" "$size"
-    fi
-done
-"""
-
-_OUTCAR_FORCE_EXTRACTOR_AWK_EMIT = (
-    'complete=(emit_status=="complete"&&rows>0&&malformed==0);'
-    'final_status=emit_status;value="";'
-    'if(complete&&expected!=""&&rows!=expected+0){complete=0;final_status="row_count_mismatch"}'
-    'if(malformed){complete=0;final_status="malformed"}'
-    'if(complete){value=max_force}'
-    'printf("block\\t%d\\t%d\\t%s\\t%d\\t%s\\n",block_no,rows,final_status,complete,value);'
-    'state=0;rows=0;max_force=0;malformed=0'
-)
-
-_OUTCAR_FORCE_EXTRACTOR_AWK = (
-    'BEGIN{print "schema\\tbmd-agent-outcar-force-v1";'
-    'print "expected_site_count\\t" expected;'
-    'num="^[-+]?(([0-9]+([.][0-9]*)?)|([.][0-9]+))([Ee][-+]?[0-9]+)?$"}'
-    '/^[[:space:]]*POSITION[[:space:]]+TOTAL-FORCE[[:space:]]+\\(eV\\/Angst\\)[[:space:]]*$/{'
-    'if(state){emit_status="incomplete";'
-    + _OUTCAR_FORCE_EXTRACTOR_AWK_EMIT
-    + '};block_no++;state=1;rows=0;max_force=0;malformed=0;next}'
-    'state&&/^[[:space:]]*---[-]*[[:space:]]*$/{'
-    'if(state==1){state=2}else{emit_status="complete";'
-    + _OUTCAR_FORCE_EXTRACTOR_AWK_EMIT
-    + '};next}'
-    'state&&NF{'
-    'if(state==1){state=2;malformed=1}'
-    'if(NF<6||$4!~num||$5!~num||$6!~num){malformed=1;next}'
-    'fx=$4+0;fy=$5+0;fz=$6+0;rows++;force=sqrt(fx*fx+fy*fy+fz*fz);'
-    'if(force>max_force){max_force=force}next}'
-    'END{if(state){emit_status="incomplete";'
-    + _OUTCAR_FORCE_EXTRACTOR_AWK_EMIT
-    + '}}'
-)
-
 
 class RemoteOutcarForceExtractionError(RuntimeError):
     """Raised when the fixed remote OUTCAR extractor fails before valid output."""
@@ -270,35 +184,16 @@ class RemoteAcquisitionCache:
     ) -> None:
         if not requests:
             return
-        read_count = sum(
-            bool(request.read_limit)
-            for request in requests
-            if request.kind == "file"
-        )
-        archive_count = sum(request.kind == "archives" for request in requests)
-        arguments = [
-            "sh",
-            "-s",
-            "--",
-            _ACQUISITION_MARKER,
-            str(_MAX_BATCH_TOTAL_BYTES),
-            str(len(requests)),
-            str(read_count),
-            str(archive_count),
-        ]
-        for index, request in enumerate(requests, start=1):
-            arguments.extend(
-                (
-                    str(index),
-                    request.kind,
-                    str(request.read_limit),
-                    str(request.path),
-                )
+        operation = AcquireBatch(
+            tuple(
+                AcquisitionItem(request.path, request.kind, request.read_limit)
+                for request in requests
             )
-        remote_command = " ".join(shlex.quote(argument) for argument in arguments)
-        result = runner(
-            ["ssh", self.ssh_host, remote_command],
-            input=_ACQUISITION_SCRIPT.encode("ascii"),
+        )
+        result = observe(
+            self.ssh_host,
+            operation,
+            runner=runner,
             capture_output=True,
             check=True,
             timeout=timeout,
@@ -428,7 +323,7 @@ def read_remote_structure(
     allowed_roots: Iterable[PurePosixPath | str],
     filename: str = "POSCAR",
     *,
-    runner: Runner = run_ssh_command,
+    runner: Runner = run_invocation,
     timeout: float = 20,
 ) -> StructureInfo:
     """Read a VASP structure remotely without modifying the source."""
@@ -452,7 +347,7 @@ def retrieve_remote_file(
     ssh_host: str,
     remote_path: PurePosixPath,
     *,
-    runner: Runner = run_ssh_command,
+    runner: Runner = run_invocation,
     timeout: float = 20,
 ) -> bytes:
     """Retrieve one already-authorized remote file over SSH."""
@@ -469,10 +364,10 @@ def retrieve_remote_file(
                 stderr=b"missing",
             )
 
-    remote_command = "cat -- " + shlex.quote(str(remote_path))
-
-    result = runner(
-        ["ssh", ssh_host, remote_command],
+    result = observe(
+        ssh_host,
+        ReadFile(remote_path),
+        runner=runner,
         capture_output=True,
         check=True,
         timeout=timeout,
@@ -488,7 +383,7 @@ def retrieve_remote_file_tail(
     remote_path: PurePosixPath,
     *,
     limit: int,
-    runner: Runner = run_ssh_command,
+    runner: Runner = run_invocation,
     timeout: float = 20,
 ) -> bytes:
     """Retrieve a bounded tail from one already-authorized remote file."""
@@ -506,11 +401,10 @@ def retrieve_remote_file_tail(
                 ["ssh", ssh_host, "cached remote tail read"],
                 stderr=b"missing",
             )
-    remote_command = " ".join(
-        ["tail", "-c", str(limit), "--", shlex.quote(str(remote_path))]
-    )
-    result = runner(
-        ["ssh", ssh_host, remote_command],
+    result = observe(
+        ssh_host,
+        ReadFileTail(remote_path, limit),
+        runner=runner,
         capture_output=True,
         check=True,
         timeout=timeout,
@@ -522,7 +416,7 @@ def remote_file_exists(
     ssh_host: str,
     remote_path: PurePosixPath,
     *,
-    runner: Runner = run_ssh_command,
+    runner: Runner = run_invocation,
     timeout: float = 20,
 ) -> bool:
     """Return whether one already-authorized remote file exists."""
@@ -536,7 +430,7 @@ def remote_file_exists(
     return _remote_path_exists(
         ssh_host,
         remote_path,
-        test_flag="-f",
+        kind="file",
         runner=runner,
         timeout=timeout,
     )
@@ -546,7 +440,7 @@ def remote_file_size(
     ssh_host: str,
     remote_path: PurePosixPath,
     *,
-    runner: Runner = run_ssh_command,
+    runner: Runner = run_invocation,
     timeout: float = 20,
 ) -> int:
     """Return the byte size of one already-authorized remote file."""
@@ -557,9 +451,10 @@ def remote_file_size(
         if cached is not None and cached.present and cached.size is not None:
             return cached.size
 
-    remote_command = "stat -c %s -- " + shlex.quote(str(remote_path))
-    result = runner(
-        ["ssh", ssh_host, remote_command],
+    result = observe(
+        ssh_host,
+        FileSize(remote_path),
+        runner=runner,
         capture_output=True,
         check=True,
         timeout=timeout,
@@ -574,7 +469,7 @@ def probe_remote_error_archives(
     *,
     allowed_roots: Iterable[PurePosixPath | str],
     limit: int,
-    runner: Runner = run_ssh_command,
+    runner: Runner = run_invocation,
     timeout: float = 20,
 ) -> tuple[PurePosixPath, ...]:
     """Probe a bounded contiguous error.N.tar.gz sequence without reading archives."""
@@ -601,24 +496,10 @@ def probe_remote_error_archives(
                 authorized_directory / f"error.{index}.tar.gz"
                 for index in range(1, record.size + 1)
             )
-    program = (
-        'i=1; while [ "$i" -le "$2" ]; do '
-        'candidate="$1/error.$i.tar.gz"; '
-        'if [ -f "$candidate" ]; then printf "%s\\n" "$candidate"; else break; fi; '
-        'i=$((i + 1)); done'
-    )
-    remote_command = " ".join(
-        (
-            "sh",
-            "-c",
-            shlex.quote(program),
-            _ARCHIVE_PROBE_MARKER,
-            shlex.quote(str(authorized_directory)),
-            str(limit),
-        )
-    )
-    result = runner(
-        ["ssh", ssh_host, remote_command],
+    result = observe(
+        ssh_host,
+        ProbeErrorArchives(authorized_directory, limit),
+        runner=runner,
         capture_output=True,
         check=False,
         timeout=timeout,
@@ -643,18 +524,17 @@ def extract_remote_outcar_force_blocks(
     remote_path: PurePosixPath,
     *,
     expected_site_count: int | None = None,
-    runner: Runner = run_ssh_command,
+    runner: Runner = run_invocation,
     timeout: float = 20,
 ) -> str:
     """Return compact OUTCAR force-block evidence without transferring the OUTCAR."""
 
-    remote_command = build_remote_outcar_force_command(
-        remote_path,
-        expected_site_count=expected_site_count,
-    )
+    operation = ExtractOutcarForces(remote_path, expected_site_count)
     try:
-        result = runner(
-            ["ssh", ssh_host, remote_command],
+        result = observe(
+            ssh_host,
+            operation,
+            runner=runner,
             capture_output=True,
             check=True,
             timeout=timeout,
@@ -672,19 +552,7 @@ def build_remote_outcar_force_command(
 ) -> str:
     """Build the fixed read-only remote OUTCAR force extractor command."""
 
-    expected = "" if expected_site_count is None else str(expected_site_count)
-    command = [
-        "awk",
-        "-v",
-        "expected=" + expected,
-        shlex.quote(_OUTCAR_FORCE_EXTRACTOR_AWK),
-        shlex.quote(str(remote_path)),
-    ]
-    if expected_site_count is not None:
-        if expected_site_count <= 0:
-            raise ValueError("expected site count must be positive")
-
-    return " ".join(command)
+    return ExtractOutcarForces(remote_path, expected_site_count).remote_command()
 
 
 def _outcar_extraction_error(
@@ -753,7 +621,7 @@ def remote_directory_exists(
     ssh_host: str,
     remote_path: PurePosixPath,
     *,
-    runner: Runner = run_ssh_command,
+    runner: Runner = run_invocation,
     timeout: float = 20,
 ) -> bool:
     """Return whether one already-authorized remote directory exists."""
@@ -767,7 +635,7 @@ def remote_directory_exists(
     return _remote_path_exists(
         ssh_host,
         remote_path,
-        test_flag="-d",
+        kind="directory",
         runner=runner,
         timeout=timeout,
     )
@@ -777,13 +645,14 @@ def _remote_path_exists(
     ssh_host: str,
     remote_path: PurePosixPath,
     *,
-    test_flag: str,
+    kind: str,
     runner: Runner,
     timeout: float,
 ) -> bool:
-    remote_command = "test " + test_flag + " " + shlex.quote(str(remote_path))
-    result = runner(
-        ["ssh", ssh_host, remote_command],
+    result = observe(
+        ssh_host,
+        PathTest(remote_path, kind),
+        runner=runner,
         capture_output=True,
         check=False,
         timeout=timeout,

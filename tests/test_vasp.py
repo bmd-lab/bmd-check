@@ -114,6 +114,8 @@ def test_retrieve_remote_file_uses_quoted_read_only_cat_command() -> None:
     assert calls == [
         [
             "ssh",
+            "-o",
+            "BatchMode=yes",
             "powerslurm-bmdguest",
             "cat -- '/home/example/calculations/project with spaces/POSCAR'",
         ]
@@ -144,11 +146,15 @@ def test_remote_exists_helpers_use_read_only_test_commands() -> None:
     assert calls == [
         [
             "ssh",
+            "-o",
+            "BatchMode=yes",
             "powerslurm-bmdguest",
             "test -f /home/example/calculations/run/vasprun.xml",
         ],
         [
             "ssh",
+            "-o",
+            "BatchMode=yes",
             "powerslurm-bmdguest",
             "test -d /home/example/calculations/run",
         ],
@@ -175,6 +181,8 @@ def test_remote_file_size_uses_read_only_stat_command() -> None:
     assert calls == [
         [
             "ssh",
+            "-o",
+            "BatchMode=yes",
             "powerslurm-bmdguest",
             "stat -c %s -- '/home/example/calculations/project with spaces/vasprun.xml'",
         ]
@@ -359,10 +367,10 @@ def test_extract_remote_outcar_force_blocks_returns_compact_stdout() -> None:
 
     assert payload == "schema\tbmd-agent-outcar-force-v1\nexpected_site_count\t2\n"
     assert len(calls) == 1
-    assert calls[0][0:2] == ["ssh", "powerslurm-bmdguest"]
-    assert calls[0][2].startswith("awk -v expected=2 ")
-    assert "\n" not in calls[0][2]
-    assert calls[0][2].endswith(" /home/example/calculations/run/OUTCAR")
+    assert calls[0][0:4] == ["ssh", "-o", "BatchMode=yes", "powerslurm-bmdguest"]
+    assert calls[0][-1].startswith("awk -v expected=2 ")
+    assert "\n" not in calls[0][-1]
+    assert calls[0][-1].endswith(" /home/example/calculations/run/OUTCAR")
 
 
 def test_extract_remote_outcar_force_blocks_classifies_remote_runtime_failure() -> None:
