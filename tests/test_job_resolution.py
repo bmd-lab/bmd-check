@@ -33,10 +33,10 @@ class RemoteFiles:
         self.commands: list[str] = []
 
     def __call__(self, command: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
-        assert command[:2] == ["ssh", "powerslurm-bmdguest"]
+        assert command[:4] == ["ssh", "-o", "BatchMode=yes", "powerslurm-bmdguest"]
         assert kwargs["capture_output"] is True
         assert kwargs["timeout"] == 20
-        remote_command = command[2]
+        remote_command = command[-1]
         self.commands.append(remote_command)
         parts = shlex.split(remote_command)
 

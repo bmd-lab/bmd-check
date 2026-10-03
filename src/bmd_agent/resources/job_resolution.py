@@ -31,6 +31,7 @@ from bmd_agent.resources.vasp import (
     remote_file_size,
     retrieve_remote_file,
 )
+from bmd_agent.resources.transport import run_invocation
 
 
 RESOLVED = "resolved"
@@ -90,7 +91,7 @@ def resolve_bmd_compute_job(
     deployment: DeploymentContext | None,
     job_id: str,
     *,
-    runner=subprocess.run,
+    runner=run_invocation,
     timeout: float | None = None,
 ) -> JobRunResolution:
     """Resolve an exact producer job record without searching remote filesystems."""

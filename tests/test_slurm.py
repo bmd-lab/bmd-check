@@ -66,6 +66,8 @@ def test_get_queue_uses_mocked_ssh_transport() -> None:
         [
             "ssh",
             "-o",
+            "BatchMode=yes",
+            "-o",
             f"ConnectTimeout={DEFAULT_SSH_CONNECT_TIMEOUT_SECONDS}",
             "powerslurm-bmdguest",
             "squeue -p leeburton-pool --noheader '--format=%i|%u|%j|%t|%M|%R'",
@@ -240,6 +242,8 @@ def test_get_job_accounting_uses_mocked_ssh_transport() -> None:
         [
             "ssh",
             "-o",
+            "BatchMode=yes",
+            "-o",
             f"ConnectTimeout={DEFAULT_SSH_CONNECT_TIMEOUT_SECONDS}",
             "powerslurm-bmdguest",
             (
@@ -267,5 +271,5 @@ def test_get_job_accounting_uses_explicit_finite_scheduler_timeout() -> None:
     )
 
     assert observed["timeout"] == 45
-    assert observed["command"][:4] == ["ssh", "-o", "ConnectTimeout=7", "powerslurm-bmdguest"]
-    assert "-j 21853598" in observed["command"][4]
+    assert observed["command"][:6] == ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=7", "powerslurm-bmdguest"]
+    assert "-j 21853598" in observed["command"][-1]

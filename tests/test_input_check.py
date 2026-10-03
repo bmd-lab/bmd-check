@@ -127,10 +127,10 @@ def remote_runner_for(
     def runner(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
         if calls is not None:
             calls.append(command)
-        assert command[0:2] == ["ssh", HOST]
+        assert command[0:4] == ["ssh", "-o", "BatchMode=yes", HOST]
         assert kwargs["capture_output"] is True
         assert kwargs["timeout"] == 20
-        remote_command = command[2]
+        remote_command = command[-1]
         assert "POTCAR" not in remote_command
         assert "sacct" not in remote_command
         assert "sbatch" not in remote_command

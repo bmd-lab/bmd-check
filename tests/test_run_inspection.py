@@ -334,11 +334,11 @@ class RemoteFixture:
 
     def __call__(self, command: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
         self.commands.append(command)
-        assert command[:2] == ["ssh", "powerslurm-bmdguest"]
+        assert command[:4] == ["ssh", "-o", "BatchMode=yes", "powerslurm-bmdguest"]
         assert kwargs["capture_output"] is True
         assert kwargs["timeout"] == 20
 
-        remote_command = command[2]
+        remote_command = command[-1]
         parts = shlex.split(remote_command)
 
         if parts[:4] == ["sh", "-s", "--", "bmd-agent-acquisition-v1"]:
@@ -751,6 +751,8 @@ def slurm_runner(command: list[str], **kwargs: object) -> subprocess.CompletedPr
     assert command == [
         "ssh",
         "-o",
+        "BatchMode=yes",
+        "-o",
         "ConnectTimeout=10",
         "powerslurm-bmdguest",
         (
@@ -869,6 +871,8 @@ def job_slurm_runner(
         assert command == [
             "ssh",
             "-o",
+            "BatchMode=yes",
+            "-o",
             "ConnectTimeout=10",
             "powerslurm-bmdguest",
             f"sacct -P -n -j {job_id} {SACCT_FORMAT}",
@@ -922,12 +926,14 @@ class MultiplexedInspectionRunner:
             normalized = [
                 "ssh",
                 "-o",
+                "BatchMode=yes",
+                "-o",
                 "ConnectTimeout=10",
                 "powerslurm-bmdguest",
                 remote_command,
             ]
             return self.scheduler(normalized, **kwargs)
-        normalized = ["ssh", "powerslurm-bmdguest", remote_command]
+        normalized = ["ssh", "-o", "BatchMode=yes", "powerslurm-bmdguest", remote_command]
         return self.remote(normalized, **kwargs)
 
 
@@ -970,8 +976,8 @@ def test_inspect_slurm_job_scheduler_timeout_is_finite_and_oom_is_insufficient()
         command: list[str],
         **kwargs: object,
     ) -> subprocess.CompletedProcess[str]:
-        assert command[:4] == ["ssh", "-o", "ConnectTimeout=7", "powerslurm-bmdguest"]
-        assert "sacct -P -n -j 21906221" in command[4]
+        assert command[:6] == ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=7", "powerslurm-bmdguest"]
+        assert "sacct -P -n -j 21906221" in command[-1]
         assert kwargs["timeout"] == 45
         raise subprocess.TimeoutExpired(command, 45)
 
@@ -1109,7 +1115,7 @@ def test_missing_bmd_state_preserves_authorized_manual_vasp_workdir_fallback() -
     assert inspection.scheduler is not None
     assert inspection.calculation_type == "direct VASP"
     assert inspection.direct_vasp is not None
-    commands = " ".join(command[2] for command in remote.commands)
+    commands = " ".join(command[-1] for command in remote.commands)
     assert f"test -f {LOG_ROOT}/job_20893681.json" in commands
     assert "find " not in commands
     assert "ls " not in commands
@@ -1143,7 +1149,7 @@ def test_acquisition_batch_preserves_manual_vasp_fallback_evidence() -> None:
 
     assert optimized == baseline
     assert len(optimized_remote.commands) < len(baseline_remote.commands)
-    optimized_commands = [command[2] for command in optimized_remote.commands]
+    optimized_commands = [command[-1] for command in optimized_remote.commands]
     assert any("bmd-agent-acquisition-v1" in command for command in optimized_commands)
     assert not any(
         command.startswith(("test -f ", "test -d ", "stat -c "))
@@ -1188,11 +1194,11 @@ def test_inspect_slurm_job_reads_bounded_scheduler_stderr_for_explicit_oom() -> 
     assert inspection.oom is not None
     assert inspection.oom.assessment == OOM_ESTABLISHED
     assert any(marker.source.startswith("SLURM stderr") for marker in inspection.oom.explicit_evidence)
-    assert [command[2] for command in remote.commands if command[2].startswith("tail ")] == [
+    assert [command[-1] for command in remote.commands if command[-1].startswith("tail ")] == [
         f"tail -c 128000 -- {stderr_path}"
     ]
     assert not any(
-        token in command[2]
+        token in command[-1]
         for command in remote.commands
         for token in ("sbatch", "scancel", "scontrol")
     )
@@ -1327,15 +1333,15 @@ def test_authoritative_job_record_resolves_generic_workdir_into_common_bmd_analy
     assert inspection.bmd_compute is not None
     assert inspection.bmd_compute.inspection.scheduler is inspection.scheduler
     assert inspection.bmd_compute.inspection.scientific.final_formula == "Example2"
-    commands = " ".join(command[2] for command in remote.commands)
+    commands = " ".join(command[-1] for command in remote.commands)
     assert "find " not in commands
     assert "ls " not in commands
     assert "POTCAR" not in commands
     assert "/a/home/cc/tree/taucc/enginer/bmdguest" not in commands
-    assert [command[2] for command in remote.commands].count(
+    assert [command[-1] for command in remote.commands].count(
         f"cat -- {FLOW_ROOT}/submission.json"
     ) == 1
-    assert [command[2] for command in remote.commands].count(
+    assert [command[-1] for command in remote.commands].count(
         f"cat -- {LOG_ROOT}/submission_attempts/attempt.json"
     ) == 1
 
@@ -1558,7 +1564,7 @@ def test_historical_failed_bmd_fixture_resolves_trajectory_and_custodian_evidenc
     assert contextual_query["calculation_family"] == "hybrid_functional"
     assert contextual_query["functional"] == "hse06"
     assert contextual_query["observed_patterns"] == ["first_electronic_cycle_incomplete_after_only_dav_iterations"]
-    remote_commands = [command[2] for command in profiled_remote.commands]
+    remote_commands = [command[-1] for command in profiled_remote.commands]
     assert len(profiled_remote.commands) == 5
     assert any(
         "bmd-agent-acquisition-v1" in command
@@ -1608,7 +1614,7 @@ def test_remote_execution_diagnostics_use_bounded_exact_read_only_paths() -> Non
         "error.1.tar.gz",
         "error.2.tar.gz",
     ]
-    commands = [command[2] for command in remote.commands]
+    commands = [command[-1] for command in remote.commands]
     assert f"tail -c 128000 -- {FLOW_ROOT}/std_err.txt" in commands
     archive_commands = [
         command
@@ -2396,7 +2402,7 @@ def test_diagnose_outcar_extractor_invocation_failure_preserves_kind(
             command: list[str],
             **kwargs: object,
         ) -> subprocess.CompletedProcess[bytes]:
-            remote_command = command[2]
+            remote_command = command[-1]
             if shlex.split(remote_command)[0:2] == ["awk", "-v"]:
                 raise subprocess.CalledProcessError(
                     2,
@@ -2441,7 +2447,7 @@ def test_diagnose_malformed_outcar_extractor_output_is_distinct_from_read_failur
             command: list[str],
             **kwargs: object,
         ) -> subprocess.CompletedProcess[bytes]:
-            remote_command = command[2]
+            remote_command = command[-1]
             if shlex.split(remote_command)[0:2] == ["awk", "-v"]:
                 return subprocess.CompletedProcess(
                     command,
@@ -4538,7 +4544,7 @@ def test_remote_custodian_acquisition_is_fixed_bounded_and_read_only() -> None:
     commands: list[str] = []
 
     def runner(command, **_kwargs):
-        remote_command = command[2]
+        remote_command = command[-1]
         commands.append(remote_command)
         if remote_command.startswith("test -f "):
             return subprocess.CompletedProcess(command, 0, stdout=b"", stderr=b"")

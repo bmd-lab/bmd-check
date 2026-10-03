@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 import os
 from pathlib import Path
 import subprocess
@@ -8,28 +8,15 @@ import tempfile
 from typing import Any
 
 from bmd_agent.profiling import profiled_runner
+from bmd_agent.resources.transport import (
+    SshInvocation,
+    TransportError,
+    run_invocation,
+    validate_ssh_host,
+)
 
 
 Runner = Callable[..., subprocess.CompletedProcess[Any]]
-
-_CONTROL_PERSIST_SECONDS = 60
-
-
-class _SshCommand(list[str]):
-    """List-compatible command carrying transport facts for the profiler."""
-
-    def __init__(
-        self,
-        parts: Sequence[str],
-        *,
-        opens_connection: bool,
-        exec_channel: bool,
-        control_operation: bool = False,
-    ) -> None:
-        super().__init__(parts)
-        self.ssh_opens_connection = opens_connection
-        self.ssh_exec_channel = exec_channel
-        self.ssh_control_operation = control_operation
 
 
 class ReusableSshSession:
@@ -39,13 +26,13 @@ class ReusableSshSession:
         self,
         ssh_host: str,
         *,
-        runner: Runner = subprocess.run,
+        runner: Runner = run_invocation,
         close_timeout: float = 10,
         multiplex: bool | None = None,
     ) -> None:
         if close_timeout <= 0:
             raise ValueError("SSH session close timeout must be positive")
-        self.ssh_host = ssh_host
+        self.ssh_host = validate_ssh_host(ssh_host)
         self._runner = runner
         self._close_timeout = close_timeout
         self._multiplex = os.name == "posix" if multiplex is None else multiplex
@@ -77,18 +64,9 @@ class ReusableSshSession:
             if self._multiplex and self._control_path is not None and (
                 self._connected or self._control_path.exists()
             ):
-                command = _SshCommand(
-                    [
-                        "ssh",
-                        "-S",
-                        str(self._control_path),
-                        "-O",
-                        "exit",
-                        self.ssh_host,
-                    ],
-                    opens_connection=False,
-                    exec_channel=False,
-                    control_operation=True,
+                command = SshInvocation.session_exit(
+                    host=self.ssh_host,
+                    control_path=self._control_path,
                 )
                 try:
                     profiled_runner(self._runner, role="ssh_control")(
@@ -110,27 +88,17 @@ class ReusableSshSession:
     def _run(self, command: object, *, role: str, **kwargs: object):
         if self._closed:
             raise RuntimeError("SSH session is closed")
-        parts = _validated_ssh_command(command, self.ssh_host, kwargs)
+        invocation = _validated_invocation(command, self.ssh_host, kwargs)
         if not self._multiplex:
-            return profiled_runner(self._runner, role=role)(parts, **kwargs)
+            return profiled_runner(self._runner, role=role)(invocation, **kwargs)
 
         control_path = self._ensure_control_path()
         if self._connected and not control_path.exists():
             self._connected = False
         opens_connection = not self._connected
-        multiplexed = _SshCommand(
-            [
-                "ssh",
-                "-o",
-                "ControlMaster=auto",
-                "-o",
-                f"ControlPersist={_CONTROL_PERSIST_SECONDS}",
-                "-o",
-                f"ControlPath={control_path}",
-                *parts[1:],
-            ],
+        multiplexed = invocation.with_session_control(
+            control_path,
             opens_connection=opens_connection,
-            exec_channel=True,
         )
         runner = profiled_runner(self._runner, role=role)
         try:
@@ -174,31 +142,25 @@ class ReusableSshSession:
             self._control_path.unlink(missing_ok=True)
 
 
-def _validated_ssh_command(
+def _validated_invocation(
     command: object,
     ssh_host: str,
     kwargs: dict[str, object],
-) -> list[str]:
-    if kwargs.get("shell") is True:
-        raise ValueError("reusable SSH session does not permit shell=True")
-    if not isinstance(command, Sequence) or isinstance(command, (str, bytes)):
-        raise ValueError("reusable SSH session requires an argument sequence")
-    parts = [str(item) for item in command]
-    if len(parts) < 3 or parts[0] != "ssh" or parts[-2] != ssh_host or not parts[-1]:
-        raise ValueError("reusable SSH session received an unexpected SSH command shape")
-    if any(_is_control_option(item) for item in parts[1:-2]):
-        raise ValueError("callers may not override reusable SSH control options")
-    return parts
-
-
-def _is_control_option(item: str) -> bool:
-    normalized = item.removeprefix("-o")
-    return (
-        item == "-O"
-        or item.startswith("-O")
-        or item == "-S"
-        or item.startswith("-S")
-        or normalized.startswith("ControlMaster=")
-        or normalized.startswith("ControlPath=")
-        or normalized.startswith("ControlPersist=")
+) -> SshInvocation:
+    if "shell" in kwargs:
+        raise TransportError("reusable SSH session does not permit a shell option")
+    if type(command) is not SshInvocation or command.operation is None:
+        raise TransportError("reusable SSH session accepts only fixed observational operations")
+    if command.host != ssh_host:
+        raise TransportError("reusable SSH session received an operation for another host")
+    if command.control_path is not None:
+        raise TransportError("callers may not supply reusable SSH control options")
+    validated = SshInvocation(
+        command.operation,
+        host=ssh_host,
+        connect_timeout=command.connect_timeout,
+        opens_connection=command.ssh_opens_connection,
     )
+    if tuple(command) != tuple(validated):
+        raise TransportError("reusable SSH session received a modified invocation")
+    return validated

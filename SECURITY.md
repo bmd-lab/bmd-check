@@ -100,15 +100,30 @@ BMD knowledge.
 
 ## 6. PowerSLURM
 
-BMD Agent connects to PowerSLURM using the dedicated guest identity.
+BMD Agent observes PowerSLURM in one of two deployment modes, selected by
+`ssh_host` in the deployment-local `resources.toml`:
 
-SSH alias:
+- **Remote mode** (`ssh_host` is an SSH host alias): Agent runs elsewhere and
+  connects over SSH with the dedicated observational guest identity.
 
-    powerslurm-bmdguest
+      SSH alias:        powerslurm-bmdguest
+      Remote identity:  bmdguest
 
-Remote identity:
+  The SSH invocation is built entirely by Agent with `BatchMode=yes`, so a
+  missing key or unknown host fails immediately instead of prompting.
 
-    bmdguest
+- **Local mode** (`ssh_host = "local"`): Agent runs on the cluster itself, for
+  example from a shared installation on a login node, and SSH is not used.
+  The same fixed observational operations execute directly **under the Unix
+  identity of the user who invoked `bmd-check`/`bmd-agent`**, with that
+  user's environment (including `PATH` for `sacct`/`squeue`). Local mode is
+  POSIX-only; selecting it on another platform is a configuration error.
+
+Operating-system permissions therefore differ by deployment mode. In remote
+mode the boundary is the `bmdguest` identity's permissions; in local mode it is
+each invoking user's own permissions, which may be broader or narrower than
+`bmdguest`'s and may differ between users. In both modes those OS permissions
+remain part of the security boundary (see section 9).
 
 Normal scheduler inspection should be restricted to the BMD group
 scope:
@@ -187,18 +202,47 @@ environments are trusted code dependencies: imported module code executes with
 the operating-system privileges of the Agent caller. Agent must not be
 configured to execute untrusted third-party checkout code.
 
+Observational scheduler and file reads are a closed set of typed operations
+(squeue for one partition, sacct for one job, read/tail/stat/test of one
+authorized path, a bounded error-archive probe, the OUTCAR force extractor,
+and a batched metadata acquisition). Paths, job IDs, partitions and byte
+limits are separately validated values. Each operation renders one fixed
+argument vector:
+
+- in local mode it runs as an argument vector with no shell;
+- in remote mode it is shell-quoted as a whole for the remote login shell, and
+  Agent builds the `ssh` command itself, allowing only its own options
+  (`BatchMode=yes` first and unconditionally, `ConnectTimeout` from typed
+  configuration, and a reusable session's own control-socket options).
+
+Two operations (the archive probe and the batched acquisition) need shell
+control flow. Their shell programs are fixed Agent constants; every variable
+input is passed as a separate positional argument, never interpolated into
+program text. No interface accepts caller-supplied command text, a
+preconstructed command vector, or caller SSH options.
+
 Python producer invocations use `-B` to avoid creating import bytecode caches in
 trusted checkouts. This reduces incidental writes but does not sandbox producer
 code or remove the need to trust it.
 
 ## 9. Path authorization and OS enforcement
 
-`allowed_remote_roots` constrains remote reads using lexical POSIX path
-normalization. It rejects traversal and paths outside configured roots, but it
-is not a remote filesystem sandbox. In particular, it does not prove that a
-symlink beneath an authorized root resolves beneath that root. If the remote
-SSH identity can follow such a symlink, the operating system may permit access
-outside the lexical root.
+`allowed_remote_roots` constrains observational reads using lexical POSIX
+path normalization. It rejects traversal and paths outside configured roots,
+but it is not a filesystem sandbox. In particular, it does not resolve
+symlinks (`realpath`) and does not prove that a symlink beneath an authorized
+root resolves beneath that root. If the observing identity can follow such a
+symlink, the operating system may permit access outside the lexical root.
+
+This limitation applies to both deployment modes, but its consequences depend
+on the mode: in remote mode a symlink is followed with `bmdguest`'s
+permissions; in local mode it is followed with the invoking user's
+permissions. A local-mode user can therefore cause Agent to read, through a
+symlink they can create beneath an allowed root, any file that user could
+already read directly; Agent grants no access beyond the invoking user's own,
+but allowed roots must not be relied on to confine what that user can read.
+Choose allowed roots accordingly, and treat realpath containment as a separate
+hardening item rather than a current guarantee.
 
 Likewise, configuration values such as `access = "read_only"` and
 `access = "observational"` are enforced Agent policy declarations. They do not
@@ -208,7 +252,9 @@ Safe deployment therefore combines:
 
 1. Agent's fixed-purpose, action-free implementation;
 2. correctly configured allowed roots; and
-3. least-privileged OS/SSH credentials, filesystem permissions, and ACLs.
+3. least-privileged OS/SSH credentials, filesystem permissions, and ACLs for
+   the identity that actually performs the reads (`bmdguest` in remote mode,
+   the invoking user in local mode).
 
 Do not describe BMD Agent as a filesystem security sandbox. Server-side
 identity and permission controls remain part of the security boundary.

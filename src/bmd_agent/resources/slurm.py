@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 import re
-import shlex
 import subprocess
 from typing import Callable
 
@@ -8,44 +7,18 @@ from bmd_agent.config import (
     DEFAULT_SCHEDULER_ACCOUNTING_TIMEOUT_SECONDS,
     DEFAULT_SSH_CONNECT_TIMEOUT_SECONDS,
 )
+from bmd_agent.resources.observations import (
+    _SACCT_FIELDS,
+    SacctJob,
+    SqueuePartition,
+)
+from bmd_agent.resources.transport import observe, run_invocation
 
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 
 _PARTITION_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 _JOB_ID_RE = re.compile(r"^\d+(?:_\d+)?(?:\.(?:batch|extern|\d+))?$")
-_SQUEUE_FORMAT = "%i|%u|%j|%t|%M|%R"
-_SACCT_FIELDS = (
-    "JobIDRaw",
-    "JobName%30",
-    "User%20",
-    "Account%30",
-    "State",
-    "ExitCode",
-    "Reason%40",
-    "Elapsed",
-    "ElapsedRaw",
-    "Start",
-    "End",
-    "Partition%20",
-    "Timelimit%20",
-    "NodeList%80",
-    "NNodes",
-    "AllocCPUS",
-    "NTasks",
-    "ReqMem",
-    "ReqTRES%120",
-    "AllocTRES%120",
-    "TotalCPU",
-    "CPUTimeRAW",
-    "MaxRSS",
-    "MaxVMSize",
-    "AveRSS",
-    "StdOut%160",
-    "StdErr%160",
-    "WorkDir%160",
-)
-_SACCT_FORMAT = ",".join(_SACCT_FIELDS)
 
 
 @dataclass
@@ -120,7 +93,7 @@ def get_queue(
     ssh_host: str,
     partition: str,
     *,
-    runner: Runner = subprocess.run,
+    runner: Runner = run_invocation,
     timeout: float = 20,
     ssh_connect_timeout: int = DEFAULT_SSH_CONNECT_TIMEOUT_SECONDS,
 ) -> list[SlurmJob]:
@@ -129,16 +102,11 @@ def get_queue(
     if ssh_connect_timeout <= 0:
         raise ValueError("SSH connection timeout must be positive")
 
-    command = [
-        "ssh",
-        "-o",
-        f"ConnectTimeout={ssh_connect_timeout}",
+    result = observe(
         ssh_host,
-        build_squeue_command(partition),
-    ]
-
-    result = runner(
-        command,
+        SqueuePartition(_validated_partition(partition)),
+        runner=runner,
+        connect_timeout=ssh_connect_timeout,
         capture_output=True,
         text=True,
         check=True,
@@ -152,7 +120,7 @@ def get_job_accounting(
     ssh_host: str,
     job_id: str,
     *,
-    runner: Runner = subprocess.run,
+    runner: Runner = run_invocation,
     timeout: float = DEFAULT_SCHEDULER_ACCOUNTING_TIMEOUT_SECONDS,
     ssh_connect_timeout: int = DEFAULT_SSH_CONNECT_TIMEOUT_SECONDS,
 ) -> SlurmAccountingRecord | None:
@@ -161,16 +129,11 @@ def get_job_accounting(
     if ssh_connect_timeout <= 0:
         raise ValueError("SSH connection timeout must be positive")
 
-    command = [
-        "ssh",
-        "-o",
-        f"ConnectTimeout={ssh_connect_timeout}",
+    result = observe(
         ssh_host,
-        build_sacct_command(job_id),
-    ]
-
-    result = runner(
-        command,
+        SacctJob(normalize_job_id(job_id)),
+        runner=runner,
+        connect_timeout=ssh_connect_timeout,
         capture_output=True,
         text=True,
         check=True,
@@ -181,37 +144,21 @@ def get_job_accounting(
 
 
 def build_squeue_command(partition: str) -> str:
-    """Build a shell-quoted read-only remote squeue command."""
+    """Render the fixed read-only squeue operation as remote shell text."""
 
-    if not _PARTITION_RE.fullmatch(partition):
-        raise ValueError("partition contains unsafe characters")
-
-    return " ".join(
-        [
-            "squeue",
-            "-p",
-            shlex.quote(partition),
-            "--noheader",
-            shlex.quote(f"--format={_SQUEUE_FORMAT}"),
-        ]
-    )
+    return SqueuePartition(_validated_partition(partition)).remote_command()
 
 
 def build_sacct_command(job_id: str) -> str:
-    """Build a shell-quoted read-only remote sacct command."""
+    """Render the fixed read-only sacct operation as remote shell text."""
 
-    normalized_job_id = normalize_job_id(job_id)
+    return SacctJob(normalize_job_id(job_id)).remote_command()
 
-    return " ".join(
-        [
-            "sacct",
-            "-P",
-            "-n",
-            "-j",
-            shlex.quote(normalized_job_id),
-            shlex.quote(f"--format={_SACCT_FORMAT}"),
-        ]
-    )
+
+def _validated_partition(partition: str) -> str:
+    if not isinstance(partition, str) or not _PARTITION_RE.fullmatch(partition):
+        raise ValueError("partition contains unsafe characters")
+    return partition
 
 
 def parse_squeue_output(output: str) -> list[SlurmJob]:

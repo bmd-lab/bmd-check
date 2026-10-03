@@ -1,4 +1,5 @@
 from collections.abc import Callable, Iterable, Mapping
+from contextvars import ContextVar
 import hashlib
 import json
 from pathlib import Path
@@ -73,12 +74,23 @@ from bmd_agent.resources.run import (
     serialize_job_trajectory_evidence,
 )
 from bmd_agent.resources.slurm import describe_exit_code, get_job_accounting, get_queue
+from bmd_agent.resources.transport import (
+    LocalObservationSession,
+    is_local_transport,
+)
 from bmd_agent.resources.vasp import (
     RemotePathError,
     read_remote_structure,
     remote_acquisition_cache,
 )
 
+
+# User-facing command names. Both console scripts point at ``main``; the
+# Python package, distribution and configuration names stay ``bmd_agent``.
+PREFERRED_COMMAND_NAME = "bmd-check"
+DEFAULT_COMMAND_NAME = "bmd-agent"
+COMMAND_NAMES = (PREFERRED_COMMAND_NAME, DEFAULT_COMMAND_NAME)
+_COMMAND_NAME: ContextVar[str] = ContextVar("bmd_agent_command_name", default=DEFAULT_COMMAND_NAME)
 
 _EXECUTED_INPUT_DISPLAY_KEYS = (
     "ENCUT",
@@ -818,7 +830,7 @@ def show_compare_runs(flow_roots: list[str], registry: ResourceRegistry | None =
     """Display baseline-relative evidence comparisons for completed runs."""
 
     if len(flow_roots) < 2:
-        print("Usage: bmd-agent compare-runs <flow-a> <flow-b> [<flow-c> ...]")
+        print(f"Usage: {_command_name()} compare-runs <flow-a> <flow-b> [<flow-c> ...]")
         return 2
 
     registry = registry or load_resources()
@@ -971,10 +983,7 @@ def _show_job(
         print()
 
     try:
-        with ReusableSshSession(
-            cluster.ssh_host,
-            close_timeout=cluster.ssh_connect_timeout_seconds,
-        ) as ssh_session:
+        with _observation_session(cluster) as ssh_session:
             with remote_acquisition_cache(
                 cluster.ssh_host,
                 cluster.allowed_remote_roots,
@@ -1031,7 +1040,7 @@ def _show_job(
                     contextual_enrichment=contextual_enrichment,
                 )
             else:
-                command = detailed_evidence_command or f"bmd-agent {job_id} --verbose"
+                command = detailed_evidence_command or f"{_command_name()} {job_id} --verbose"
                 print(
                     render_concise_summary(
                         build_job_concise_summary(
@@ -2073,7 +2082,7 @@ def _parse_check_input_args(args: list[str]) -> tuple[dict[str, Any] | None, str
 
 def _check_input_usage() -> str:
     return (
-        "bmd-agent check-input <remote-directory> --stage <stage> "
+        f"{_command_name()} check-input <remote-directory> --stage <stage> "
         "--theory <theory> [--modifiers <name>[,<name>...]]"
     )
 
@@ -2395,6 +2404,17 @@ def bmd_compute_repository(registry: ResourceRegistry) -> GitRepositoryResource:
     )
 
 
+def _observation_session(cluster: SlurmClusterResource):
+    """One observation session per job inspection: local, or a reusable SSH connection."""
+
+    if is_local_transport(cluster.ssh_host):
+        return LocalObservationSession()
+    return ReusableSshSession(
+        cluster.ssh_host,
+        close_timeout=cluster.ssh_connect_timeout_seconds,
+    )
+
+
 def powerslurm_cluster(registry: ResourceRegistry) -> SlurmClusterResource:
     """Return the configured PowerSLURM resource."""
 
@@ -2407,13 +2427,43 @@ def powerslurm_cluster(registry: ResourceRegistry) -> SlurmClusterResource:
         ) from exc
 
 
-def main(argv: list[str] | None = None) -> int:
-    """BMD Agent command-line entry point."""
+def main(argv: list[str] | None = None, *, command_name: str | None = None) -> int:
+    """Command-line entry point for both ``bmd-check`` and ``bmd-agent``.
 
+    The two console scripts run this same function. The invoked name only
+    changes the command shown in usage text and "Detailed evidence" hints.
+    """
+
+    if command_name is None:
+        command_name = invoked_command_name()
+    elif command_name not in COMMAND_NAMES:
+        raise ValueError("command_name must be one of: " + ", ".join(COMMAND_NAMES))
+    token = _COMMAND_NAME.set(command_name)
+    try:
+        return _main(argv)
+    finally:
+        _COMMAND_NAME.reset(token)
+
+
+def invoked_command_name(argv0: str | None = None) -> str:
+    """Return ``bmd-check`` or ``bmd-agent`` for the script that was run."""
+
+    raw = sys.argv[0] if argv0 is None else argv0
+    name = (raw or "").replace("\\", "/").rsplit("/", 1)[-1]
+    if name.lower().endswith(".exe"):
+        name = name[:-4]
+    return name if name in COMMAND_NAMES else DEFAULT_COMMAND_NAME
+
+
+def _command_name() -> str:
+    return _COMMAND_NAME.get()
+
+
+def _main(argv: list[str] | None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv:
         return show_current_directory(
-            detailed_evidence_command="bmd-agent --verbose",
+            detailed_evidence_command=f"{_command_name()} --verbose",
         )
 
     if argv == ["--verbose"]:
@@ -2432,7 +2482,7 @@ def main(argv: list[str] | None = None) -> int:
             options = _parse_job_options(argv[2:], allow_trajectory_json=True)
             if len(argv) < 2 or options is None:
                 print(
-                    "Usage: bmd-agent job <SLURM_JOB_ID> "
+                    f"Usage: {_command_name()} job <SLURM_JOB_ID> "
                     "[--trajectory-json | --verbose [--profile] | --profile]"
                 )
                 return 2
@@ -2442,7 +2492,7 @@ def main(argv: list[str] | None = None) -> int:
                 trajectory_json=trajectory_json,
                 verbose=verbose,
                 profile=profile,
-                detailed_evidence_command=f"bmd-agent job {argv[1]} --verbose",
+                detailed_evidence_command=f"{_command_name()} job {argv[1]} --verbose",
             )
 
         if command == "compute":
@@ -2450,7 +2500,7 @@ def main(argv: list[str] | None = None) -> int:
 
         if command == "structure":
             if len(argv) < 2:
-                print("Usage: bmd-agent structure <remote-directory>")
+                print(f"Usage: {_command_name()} structure <remote-directory>")
                 return 2
 
             return show_structure(argv[1])
@@ -2460,7 +2510,7 @@ def main(argv: list[str] | None = None) -> int:
 
         if command == "inspect-run":
             if len(argv) < 2:
-                print("Usage: bmd-agent inspect-run <remote-flow-root>")
+                print(f"Usage: {_command_name()} inspect-run <remote-flow-root>")
                 return 2
 
             return show_inspect_run(argv[1])
@@ -2470,7 +2520,7 @@ def main(argv: list[str] | None = None) -> int:
 
         if command == "diagnose-run":
             if len(argv) < 2:
-                print("Usage: bmd-agent diagnose-run <remote-flow-root>")
+                print(f"Usage: {_command_name()} diagnose-run <remote-flow-root>")
                 return 2
 
             return show_diagnose_run(argv[1])
@@ -2478,14 +2528,14 @@ def main(argv: list[str] | None = None) -> int:
         if _is_positive_decimal_job_id(command):
             options = _parse_job_options(argv[1:], allow_trajectory_json=False)
             if options is None:
-                print("Usage: bmd-agent <SLURM_JOB_ID> [--verbose] [--profile]")
+                print(f"Usage: {_command_name()} <SLURM_JOB_ID> [--verbose] [--profile]")
                 return 2
             _, verbose, profile = options
             return show_job(
                 command,
                 verbose=verbose,
                 profile=profile,
-                detailed_evidence_command=f"bmd-agent {command} --verbose",
+                detailed_evidence_command=f"{_command_name()} {command} --verbose",
             )
 
         if len(argv) in {1, 2} and (len(argv) == 1 or argv[1] == "--verbose"):
@@ -2498,7 +2548,7 @@ def main(argv: list[str] | None = None) -> int:
                     detailed_evidence_command=(
                         None
                         if verbose
-                        else f"bmd-agent {_quote_cli_target(command)} --verbose"
+                        else f"{_command_name()} {_quote_cli_target(command)} --verbose"
                     ),
                 )
 
@@ -2514,7 +2564,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print("Target was not recognized as a SLURM job ID or existing calculation path.")
     print()
-    print("Usage: bmd-agent [TARGET] [--verbose] [--profile]")
+    print(f"Usage: {_command_name()} [TARGET] [--verbose] [--profile]")
     print("  no target [--verbose]: analyze the current calculation directory")
     print("  positive decimal integer [--verbose] [--profile]: analyze that SLURM job")
     print("  existing filesystem path [--verbose]: analyze that calculation directory")
@@ -2562,8 +2612,8 @@ def _parse_job_options(
 
 def _path_detail_command(target: Path | None) -> str:
     if target is None:
-        return "bmd-agent --verbose"
-    return f"bmd-agent {_quote_cli_target(str(target))} --verbose"
+        return f"{_command_name()} --verbose"
+    return f"{_command_name()} {_quote_cli_target(str(target))} --verbose"
 
 
 def _quote_cli_target(target: str) -> str:
