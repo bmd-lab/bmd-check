@@ -10,10 +10,12 @@ accepts command text, a preconstructed vector or caller SSH options.
 from __future__ import annotations
 
 from dataclasses import replace
+import ast
 import importlib.metadata
 import os
 from pathlib import Path, PurePosixPath
 import subprocess
+import sys
 import tempfile
 import tomllib
 
@@ -350,8 +352,8 @@ def test_no_transport_function_accepts_command_text():
     [
         {"shell": True},
         {"executable": "/bin/sh"},
-        {"env": {"PATH": "/tmp"}},
-        {"cwd": "/tmp"},
+        {"env": {"PATH": tempfile.gettempdir()}},
+        {"cwd": tempfile.gettempdir()},
         {"preexec_fn": print},
         {"input": b"id\n"},
     ],
@@ -431,6 +433,27 @@ def test_ssh_invocation_is_built_only_from_agent_owned_options(operation, _argv,
     assert not any(option.lower().startswith(("proxycommand", "batchmode=no", "localcommand")) for option in options)
     # Only "-o" pairs precede the host: no other flags.
     assert argv[1:-2] == [item for option in options for item in ("-o", option)]
+
+
+@pytest.mark.parametrize(
+    "make_path",
+    [
+        lambda tmp: Path("relative") / "control",
+        lambda tmp: str(tmp / "control"),  # a string, not a Path
+        lambda tmp: tmp / "bad\x00control",
+    ],
+)
+def test_control_path_must_be_an_absolute_native_path(make_path, tmp_path):
+    with pytest.raises(TransportError, match="control path"):
+        SshInvocation(obs.ReadFile("/allowed/INCAR"), host=HOST, control_path=make_path(tmp_path))
+    # A platform-native absolute path is accepted on every platform.
+    assert SshInvocation(obs.ReadFile("/allowed/INCAR"), host=HOST, control_path=tmp_path / "control").control_path
+
+
+@pytest.mark.skipif(os.name == "posix", reason="a drive-less POSIX path is absolute here")
+def test_posix_style_control_path_is_not_absolute_on_this_platform():
+    with pytest.raises(TransportError, match="control path"):
+        SshInvocation(obs.ReadFile("/allowed/INCAR"), host=HOST, control_path=Path("/tmp/caller-controlled"))
 
 
 def test_session_exit_is_agent_owned_and_batch_mode():
@@ -874,3 +897,80 @@ def test_symlink_beneath_an_allowed_root_is_followed_outside_it(tmp_path):
     remote_path = authorize_remote_path(f"{allowed}/link", allowed_roots=(str(allowed),))
 
     assert retrieve_remote_file(LOCAL_TRANSPORT, remote_path) == b"outside the allowed root"
+
+
+# --- the suite collects on every platform -------------------------------------------------
+
+
+TESTS_DIR = Path(__file__).resolve().parent
+
+
+def _collection_time_nodes(tree: ast.Module):
+    """Expressions evaluated when a module is imported/collected (not test bodies)."""
+
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            yield from node.decorator_list
+            if not isinstance(node, ast.ClassDef):
+                yield from node.args.defaults
+                yield from (d for d in node.args.kw_defaults if d is not None)
+        else:
+            yield node
+
+
+def test_no_native_posix_path_literal_is_evaluated_at_collection_time():
+    """Regression: test_remote.py once built Path("/tmp/...") in a parametrize
+    list, which the control-path validator rejects on Windows, so collection
+    failed there. Native ``Path``/``pathlib.Path`` literals beginning with "/"
+    must not be evaluated at import time (``PurePosixPath`` is fine)."""
+
+    offenders = []
+    for source in sorted(TESTS_DIR.rglob("*.py")):
+        tree = ast.parse(source.read_text(encoding="utf-8"))
+        for root in _collection_time_nodes(tree):
+            for node in ast.walk(root):
+                if not isinstance(node, ast.Call) or not node.args:
+                    continue
+                func = node.func
+                name = func.id if isinstance(func, ast.Name) else func.attr if isinstance(func, ast.Attribute) else None
+                first = node.args[0]
+                if (
+                    name == "Path"
+                    and isinstance(first, ast.Constant)
+                    and isinstance(first.value, str)
+                    and first.value.startswith("/")
+                ):
+                    offenders.append(f"{source.name}:{node.lineno}")
+
+    assert offenders == []
+
+
+_COLLECT_AS_IF_UNSUPPORTED = """
+import sys
+import pytest
+from bmd_agent.resources import transport
+
+def refuse(*args, **kwargs):
+    raise RuntimeError("SSH control path validated during collection")
+
+transport._validate_control_path = refuse
+transport.local_transport_supported = lambda: False
+sys.exit(pytest.main(["--collect-only", "-q", "-p", "no:cacheprovider", sys.argv[1]]))
+"""
+
+
+def test_suite_collects_without_platform_dependent_transport_validation():
+    """Collect the whole suite with control-path validation poisoned and the
+    local transport reported unsupported (as on Windows): collection must not
+    construct invocations, validate control paths or select local mode."""
+
+    result = subprocess.run(
+        [sys.executable, "-c", _COLLECT_AS_IF_UNSUPPORTED, str(TESTS_DIR)],
+        capture_output=True,
+        text=True,
+        cwd=TESTS_DIR.parent,
+        timeout=300,
+    )
+
+    assert result.returncode == 0, result.stdout[-4000:] + result.stderr[-4000:]
+    assert "error" not in result.stdout.lower().splitlines()[-1]

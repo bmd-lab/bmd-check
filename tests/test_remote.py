@@ -170,18 +170,23 @@ def test_transport_failure_discards_session_without_retrying_command() -> None:
     assert all(getattr(command, "ssh_opens_connection", False) for command in exec_commands)
 
 
+# Commands are built lazily inside the test: constructing an invocation at
+# collection time would validate paths on the collecting platform (a POSIX
+# "/tmp/..." control path is not absolute on Windows).
 @pytest.mark.parametrize(
-    ("command", "kwargs"),
+    ("make_command", "kwargs"),
     (
-        (ssh(ReadFile("/allowed/INCAR"), host="other-host"), {}),
-        (ssh(ReadFile("/allowed/INCAR")), {"shell": True}),
-        (ssh(ReadFile("/allowed/INCAR"), control_path=Path("/tmp/caller-controlled")), {}),
+        (lambda tmp: ssh(ReadFile("/allowed/INCAR"), host="other-host"), {}),
+        (lambda tmp: ssh(ReadFile("/allowed/INCAR")), {"shell": True}),
+        # A valid, platform-native absolute path that the caller (not the
+        # session) chose: refused because callers may not supply control options.
+        (lambda tmp: ssh(ReadFile("/allowed/INCAR"), control_path=tmp / "caller-controlled"), {}),
         # Preconstructed vectors are refused outright, however they look.
-        (["ssh", "powerslurm-bmdguest", "cat -- /allowed/INCAR"], {}),
+        (lambda tmp: ["ssh", "powerslurm-bmdguest", "cat -- /allowed/INCAR"], {}),
         (
-            [
+            lambda tmp: [
                 "ssh",
-                "-oControlPath=/tmp/caller-controlled",
+                f"-oControlPath={tmp / 'caller-controlled'}",
                 "powerslurm-bmdguest",
                 "cat -- /allowed/INCAR",
             ],
@@ -190,9 +195,11 @@ def test_transport_failure_discards_session_without_retrying_command() -> None:
     ),
 )
 def test_reusable_session_rejects_host_shell_and_control_overrides(
-    command: list[str],
+    make_command,
     kwargs: dict[str, object],
+    tmp_path: Path,
 ) -> None:
+    command = make_command(tmp_path)
     base_runner = MultiplexingRunner()
 
     with ReusableSshSession(
