@@ -155,16 +155,22 @@ def test_default_invocation_keeps_existing_bmd_agent_wording(capsys):
 
 def test_detailed_evidence_hint_follows_the_invoked_command(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(cli, "load_resources", lambda: (_ for _ in ()).throw(ConfigurationError("none")))
-    monkeypatch.chdir(tmp_path)
+    calculation_dir = tmp_path / "bmd-agent-calculation"
+    calculation_dir.mkdir()
+    monkeypatch.chdir(calculation_dir)
 
     cli.main([], command_name="bmd-check")
     check = capsys.readouterr().out
     cli.main([], command_name="bmd-agent")
     agent = capsys.readouterr().out
 
-    assert "Detailed evidence:\n  bmd-check --verbose" in check
-    assert "Detailed evidence:\n  bmd-agent --verbose" in agent
-    assert check == agent.replace("bmd-agent", "bmd-check")
+    check_hint = "Detailed evidence:\n  bmd-check --verbose"
+    agent_hint = "Detailed evidence:\n  bmd-agent --verbose"
+    assert check_hint in check
+    assert agent_hint in agent
+    assert str(calculation_dir) in check
+    assert str(calculation_dir) in agent
+    assert check == agent.replace(agent_hint, check_hint)
 
 
 def test_command_name_does_not_leak_between_invocations(capsys):
