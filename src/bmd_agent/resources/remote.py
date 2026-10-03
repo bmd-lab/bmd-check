@@ -147,12 +147,20 @@ def _validated_invocation(
     ssh_host: str,
     kwargs: dict[str, object],
 ) -> SshInvocation:
-    if kwargs.get("shell") is True:
-        raise TransportError("reusable SSH session does not permit shell=True")
-    if not isinstance(command, SshInvocation) or command.operation is None:
+    if "shell" in kwargs:
+        raise TransportError("reusable SSH session does not permit a shell option")
+    if type(command) is not SshInvocation or command.operation is None:
         raise TransportError("reusable SSH session accepts only fixed observational operations")
     if command.host != ssh_host:
         raise TransportError("reusable SSH session received an operation for another host")
     if command.control_path is not None:
         raise TransportError("callers may not supply reusable SSH control options")
-    return command
+    validated = SshInvocation(
+        command.operation,
+        host=ssh_host,
+        connect_timeout=command.connect_timeout,
+        opens_connection=command.ssh_opens_connection,
+    )
+    if tuple(command) != tuple(validated):
+        raise TransportError("reusable SSH session received a modified invocation")
+    return validated

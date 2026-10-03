@@ -15,7 +15,7 @@ interpolated into program text.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import PurePosixPath
+from pathlib import PosixPath, PurePosixPath
 import re
 import shlex
 
@@ -168,7 +168,7 @@ class ObservationOperationError(ValueError):
 def _authorized_path(value: object) -> PurePosixPath:
     """Require an absolute, lexically normalized POSIX path (already authorized)."""
 
-    if not isinstance(value, (str, PurePosixPath)):
+    if type(value) not in (str, PurePosixPath, PosixPath):
         raise ObservationOperationError("observation path must be a POSIX path")
     text = str(value)
     if "\x00" in text or "\\" in text or not text.startswith("/"):
@@ -183,7 +183,7 @@ def _authorized_path(value: object) -> PurePosixPath:
 
 
 def _bounded_int(value: object, *, minimum: int, maximum: int, label: str) -> int:
-    if isinstance(value, bool) or not isinstance(value, int):
+    if type(value) is not int:
         raise ObservationOperationError(f"{label} must be an integer")
     if value < minimum or value > maximum:
         raise ObservationOperationError(f"{label} must be between {minimum} and {maximum}")
@@ -205,34 +205,34 @@ class ObservationOperation:
     def remote_command(self) -> str:
         """The same argv, shell-quoted for a POSIX remote login shell."""
 
-        return " ".join(shlex.quote(item) for item in self.argv())
+        return operation_remote_command(self)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SqueuePartition(ObservationOperation):
     partition: str
 
     def __post_init__(self) -> None:
-        if not isinstance(self.partition, str) or not _PARTITION_RE.fullmatch(self.partition):
+        if type(self.partition) is not str or not _PARTITION_RE.fullmatch(self.partition):
             raise ObservationOperationError("partition contains unsafe characters")
 
     def argv(self) -> tuple[str, ...]:
         return ("squeue", "-p", self.partition, "--noheader", f"--format={_SQUEUE_FORMAT}")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SacctJob(ObservationOperation):
     job_id: str
 
     def __post_init__(self) -> None:
-        if not isinstance(self.job_id, str) or not _NORMALIZED_JOB_ID_RE.fullmatch(self.job_id):
+        if type(self.job_id) is not str or not _NORMALIZED_JOB_ID_RE.fullmatch(self.job_id):
             raise ObservationOperationError("SLURM job ID must be a normalized positive job ID")
 
     def argv(self) -> tuple[str, ...]:
         return ("sacct", "-P", "-n", "-j", self.job_id, f"--format={_SACCT_FORMAT}")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ReadFile(ObservationOperation):
     path: PurePosixPath
 
@@ -243,7 +243,7 @@ class ReadFile(ObservationOperation):
         return ("cat", "--", str(self.path))
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ReadFileTail(ObservationOperation):
     path: PurePosixPath
     limit: int
@@ -256,7 +256,7 @@ class ReadFileTail(ObservationOperation):
         return ("tail", "-c", str(self.limit), "--", str(self.path))
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class FileSize(ObservationOperation):
     path: PurePosixPath
 
@@ -267,14 +267,14 @@ class FileSize(ObservationOperation):
         return ("stat", "-c", "%s", "--", str(self.path))
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PathTest(ObservationOperation):
     path: PurePosixPath
     kind: str
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "path", _authorized_path(self.path))
-        if self.kind not in ("file", "directory"):
+        if type(self.kind) is not str or self.kind not in ("file", "directory"):
             raise ObservationOperationError("path test kind must be file or directory")
 
     def argv(self) -> tuple[str, ...]:
@@ -282,7 +282,7 @@ class PathTest(ObservationOperation):
         return ("test", flag, str(self.path))
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ProbeErrorArchives(ObservationOperation):
     directory: PurePosixPath
     limit: int
@@ -296,7 +296,7 @@ class ProbeErrorArchives(ObservationOperation):
         return ("sh", "-c", _ARCHIVE_PROBE_PROGRAM, _ARCHIVE_PROBE_MARKER, str(self.directory), str(self.limit))
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ExtractOutcarForces(ObservationOperation):
     path: PurePosixPath
     expected_site_count: int | None = None
@@ -304,7 +304,7 @@ class ExtractOutcarForces(ObservationOperation):
     def __post_init__(self) -> None:
         object.__setattr__(self, "path", _authorized_path(self.path))
         if self.expected_site_count is not None:
-            if isinstance(self.expected_site_count, bool) or not isinstance(self.expected_site_count, int):
+            if type(self.expected_site_count) is not int:
                 raise ObservationOperationError("expected site count must be an integer")
             if self.expected_site_count <= 0:
                 raise ValueError("expected site count must be positive")
@@ -317,7 +317,7 @@ class ExtractOutcarForces(ObservationOperation):
 _ACQUISITION_KINDS = ("file", "directory", "archives")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class AcquisitionItem:
     path: PurePosixPath
     kind: str
@@ -325,21 +325,23 @@ class AcquisitionItem:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "path", _authorized_path(self.path))
-        if self.kind not in _ACQUISITION_KINDS:
+        if type(self.kind) is not str or self.kind not in _ACQUISITION_KINDS:
             raise ObservationOperationError("acquisition kind must be file, directory, or archives")
         maximum = _MAX_ARCHIVE_PROBE_LIMIT if self.kind == "archives" else _MAX_BATCH_FILE_BYTES
         _bounded_int(self.read_limit, minimum=0, maximum=maximum, label="acquisition read limit")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class AcquireBatch(ObservationOperation):
     items: tuple[AcquisitionItem, ...]
 
     def __post_init__(self) -> None:
-        items = tuple(self.items)
+        if type(self.items) is not tuple:
+            raise ObservationOperationError("acquisition batch items must be a tuple")
+        items = self.items
         if not items or len(items) > _MAX_ACQUISITION_REQUESTS:
             raise ObservationOperationError("acquisition batch size is out of range")
-        if not all(isinstance(item, AcquisitionItem) for item in items):
+        if not all(type(item) is AcquisitionItem for item in items):
             raise ObservationOperationError("acquisition batch items must be AcquisitionItem values")
         object.__setattr__(self, "items", items)
 
@@ -383,3 +385,60 @@ def require_operation(operation: object) -> ObservationOperation:
     if type(operation) not in OBSERVATION_OPERATION_TYPES:
         raise ObservationOperationError("not a fixed BMD Agent observational operation")
     return operation  # type: ignore[return-value]
+
+
+def snapshot_operation(operation: object) -> ObservationOperation:
+    """Return a freshly validated exact-type copy of one trusted operation."""
+
+    operation = require_operation(operation)
+    operation_type = type(operation)
+    if operation_type is SqueuePartition:
+        return SqueuePartition(operation.partition)
+    if operation_type is SacctJob:
+        return SacctJob(operation.job_id)
+    if operation_type is ReadFile:
+        return ReadFile(operation.path)
+    if operation_type is ReadFileTail:
+        return ReadFileTail(operation.path, operation.limit)
+    if operation_type is FileSize:
+        return FileSize(operation.path)
+    if operation_type is PathTest:
+        return PathTest(operation.path, operation.kind)
+    if operation_type is ProbeErrorArchives:
+        return ProbeErrorArchives(operation.directory, operation.limit)
+    if operation_type is ExtractOutcarForces:
+        return ExtractOutcarForces(operation.path, operation.expected_site_count)
+    if operation_type is AcquireBatch:
+        items = tuple(
+            AcquisitionItem(item.path, item.kind, item.read_limit)
+            for item in operation.items
+            if type(item) is AcquisitionItem
+        )
+        if len(items) != len(operation.items):
+            raise ObservationOperationError(
+                "acquisition batch items must be exact AcquisitionItem values"
+            )
+        return AcquireBatch(items)
+    raise ObservationOperationError("not a fixed BMD Agent observational operation")
+
+
+def operation_argv(operation: object) -> tuple[str, ...]:
+    """Render an operation only after exact-type copying and validation."""
+
+    snapshot = snapshot_operation(operation)
+    return type(snapshot).argv(snapshot)
+
+
+def operation_stdin(operation: object) -> bytes | None:
+    """Return only fixed Agent-owned stdin for an exact trusted operation."""
+
+    snapshot = snapshot_operation(operation)
+    if type(snapshot) is AcquireBatch:
+        return _ACQUISITION_SCRIPT.encode("ascii")
+    return None
+
+
+def operation_remote_command(operation: object) -> str:
+    """Shell-quote a freshly validated operation argv for remote SSH."""
+
+    return " ".join(shlex.quote(item) for item in operation_argv(operation))

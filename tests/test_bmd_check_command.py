@@ -231,6 +231,23 @@ EXPECTED_ARGV = [
         obs.ExtractOutcarForces("/allowed/OUTCAR", 2),
         ("awk", "-v", "expected=2", obs._OUTCAR_FORCE_EXTRACTOR_AWK, "/allowed/OUTCAR"),
     ),
+    (
+        obs.AcquireBatch((obs.AcquisitionItem("/allowed/INCAR", "file", 1024),)),
+        (
+            "sh",
+            "-s",
+            "--",
+            obs._ACQUISITION_MARKER,
+            str(obs._MAX_BATCH_TOTAL_BYTES),
+            "1",
+            "1",
+            "0",
+            "1",
+            "file",
+            "1024",
+            "/allowed/INCAR",
+        ),
+    ),
 ]
 
 
@@ -252,6 +269,9 @@ def test_operation_set_is_closed_and_derived_from_existing_builders():
         "ExtractOutcarForces",
         "AcquireBatch",
     }
+    assert {type(operation) for operation, _argv in EXPECTED_ARGV} == set(
+        obs.OBSERVATION_OPERATION_TYPES
+    )
 
 
 def test_shell_programs_are_agent_owned_constants_with_data_as_positional_arguments():
@@ -306,6 +326,18 @@ def test_transports_refuse_anything_outside_the_closed_set():
         if transport.local_transport_supported():
             with pytest.raises(ValueError):
                 LocalInvocation(operation)
+
+
+def test_operation_subclass_never_reaches_subprocess(monkeypatch):
+    calls = recording_subprocess(monkeypatch)
+
+    class Lookalike(obs.ReadFile):
+        def argv(self):
+            return ("sh", "-c", "echo injected")
+
+    with pytest.raises(ValueError, match="fixed BMD Agent observational operation"):
+        observe(HOST, Lookalike("/allowed/INCAR"), capture_output=True)
+    assert calls == []
 
 
 # --- Codex attacks: there is no arbitrary-command primitive -------------------------------
@@ -372,19 +404,178 @@ def test_observe_refuses_caller_input():
         observe(HOST, obs.ReadFile("/allowed/INCAR"), runner=pytest.fail, input=b"id\n")
 
 
-def test_tampered_invocation_is_refused(monkeypatch):
+def test_invocation_sequence_and_fields_are_immutable(monkeypatch):
     calls = recording_subprocess(monkeypatch)
-    for mutate in (
-        lambda inv: inv.insert(1, "-oProxyCommand=sh -c id"),
-        lambda inv: inv.__setitem__(2, "BatchMode=no"),
-        lambda inv: inv.__setitem__(-1, "id"),
-        lambda inv: inv.append("extra"),
-    ):
-        invocation = SshInvocation(obs.ReadFile("/allowed/INCAR"), host=HOST, connect_timeout=10)
-        mutate(invocation)
-        with pytest.raises(TransportError, match="modified"):
-            run_invocation(invocation, capture_output=True)
+    invocation = SshInvocation(
+        obs.ReadFile("/allowed/INCAR"),
+        host=HOST,
+        connect_timeout=10,
+    )
+
+    with pytest.raises(TypeError):
+        invocation[2] = "BatchMode=no"
+    with pytest.raises(AttributeError):
+        invocation.operation = obs.ReadFile("/etc/passwd")
+    with pytest.raises(AttributeError):
+        invocation.host = "-oProxyCommand=sh -c id"
     assert calls == []
+
+
+def test_executor_rejects_synchronized_post_construction_operation_replacement(monkeypatch):
+    calls = recording_subprocess(monkeypatch)
+
+    class FabricatedRead(obs.ReadFile):
+        def argv(self):
+            return ("sh", "-c", "echo injected")
+
+    invocation = SshInvocation(obs.ReadFile("/allowed/INCAR"), host=HOST)
+    with pytest.raises(AttributeError):
+        object.__setattr__(invocation, "_operation", FabricatedRead("/allowed/INCAR"))
+    with pytest.raises(AttributeError):
+        object.__setattr__(
+            invocation,
+            "_argv",
+            ("ssh", "-o", "BatchMode=yes", HOST, "sh -c 'echo injected'"),
+        )
+    assert calls == []
+
+
+def test_executor_rejects_synchronized_post_construction_host_replacement(monkeypatch):
+    calls = recording_subprocess(monkeypatch)
+    invocation = SshInvocation(obs.ReadFile("/allowed/INCAR"), host=HOST)
+    hostile_host = "-oProxyCommand=sh -c id"
+    with pytest.raises(AttributeError):
+        object.__setattr__(invocation, "_host", hostile_host)
+    with pytest.raises(AttributeError):
+        object.__setattr__(
+            invocation,
+            "_argv",
+            ("ssh", "-o", "BatchMode=yes", hostile_host, "cat -- /allowed/INCAR"),
+        )
+    assert calls == []
+
+
+def test_synchronized_mutation_to_other_valid_fields_is_impossible(monkeypatch):
+    calls = recording_subprocess(monkeypatch)
+    invocation = SshInvocation(obs.ReadFile("/allowed/INCAR"), host=HOST)
+
+    for field, value in (
+        ("_operation", obs.ReadFile("/allowed/OTHER")),
+        ("_host", "another-host"),
+        ("_connect_timeout", 5),
+        (
+            "_argv",
+            ("ssh", "-o", "BatchMode=yes", "another-host", "cat -- /allowed/OTHER"),
+        ),
+    ):
+        with pytest.raises(AttributeError):
+            object.__setattr__(invocation, field, value)
+    assert calls == []
+
+
+def test_executor_rejects_fabricated_invocation_subclass(monkeypatch):
+    calls = recording_subprocess(monkeypatch)
+
+    class FabricatedInvocation(transport.ObservationInvocation):
+        @property
+        def operation(self):
+            return None
+
+        def render(self):
+            return ["sh", "-c", "echo injected"]
+
+    invocation = FabricatedInvocation()
+
+    with pytest.raises(TransportError, match="only fixed observational operations"):
+        run_invocation(invocation, capture_output=True)
+    assert calls == []
+
+
+def test_reusable_session_rejects_fabricated_ssh_invocation_subclass(monkeypatch):
+    calls = recording_subprocess(monkeypatch)
+
+    class FabricatedSshInvocation(SshInvocation):
+        pass
+
+    invocation = FabricatedSshInvocation(obs.ReadFile("/allowed/INCAR"), host=HOST)
+    with ReusableSshSession(HOST, runner=transport.run_invocation, multiplex=False) as session:
+        with pytest.raises(TransportError, match="only fixed observational operations"):
+            session.runner("remote")(invocation, capture_output=True)
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("_connect_timeout", "1 -oProxyCommand=id"),
+        ("_control_path", "-oProxyCommand=id"),
+        ("_control_exit", 1),
+        ("_opens_connection", 1),
+    ],
+)
+def test_executor_revalidates_every_other_execution_field(
+    field,
+    value,
+    monkeypatch,
+):
+    calls = recording_subprocess(monkeypatch)
+    invocation = SshInvocation(obs.ReadFile("/allowed/INCAR"), host=HOST)
+    with pytest.raises(AttributeError):
+        object.__setattr__(invocation, field, value)
+    with pytest.raises(AttributeError):
+        object.__setattr__(invocation, "_argv", tuple(invocation))
+    assert calls == []
+
+
+def test_scalar_subclasses_cannot_override_executable_rendering(monkeypatch):
+    calls = recording_subprocess(monkeypatch)
+
+    class Host(str):
+        def __format__(self, format_spec):
+            return "-oProxyCommand=id"
+
+    class Count(int):
+        def __str__(self):
+            return "1; id"
+
+    for build in (
+        lambda: SshInvocation(obs.ReadFile("/allowed/INCAR"), host=Host(HOST)),
+        lambda: build_invocation(Host(LOCAL_TRANSPORT), obs.ReadFile("/allowed/INCAR")),
+        lambda: SshInvocation(
+            obs.ReadFile("/allowed/INCAR"),
+            host=HOST,
+            connect_timeout=Count(10),
+        ),
+        lambda: SshInvocation(obs.ReadFile(Host("/allowed/INCAR")), host=HOST),
+        lambda: SshInvocation(
+            obs.ReadFileTail("/allowed/OUTCAR", Count(10)),
+            host=HOST,
+        ),
+    ):
+        with pytest.raises((TransportError, ValueError)):
+            build()
+    assert calls == []
+
+
+def test_private_state_access_returns_a_non_executable_snapshot(monkeypatch):
+    calls = recording_subprocess(monkeypatch)
+    invocation = SshInvocation(obs.ReadFile("/allowed/INCAR"), host=HOST)
+    snapshot = transport._invocation_state(invocation)
+    object.__setattr__(snapshot, "host", "another-host")
+    object.__setattr__(
+        snapshot,
+        "argv",
+        ("ssh", "-o", "BatchMode=yes", "another-host", "cat -- /allowed/OTHER"),
+    )
+
+    run_invocation(invocation, capture_output=True)
+
+    assert calls == [
+        (
+            ["ssh", "-o", "BatchMode=yes", HOST, "cat -- /allowed/INCAR"],
+            {"capture_output": True, "shell": False},
+        )
+    ]
 
 
 @pytest.mark.parametrize(
@@ -433,6 +624,19 @@ def test_ssh_invocation_is_built_only_from_agent_owned_options(operation, _argv,
     assert not any(option.lower().startswith(("proxycommand", "batchmode=no", "localcommand")) for option in options)
     # Only "-o" pairs precede the host: no other flags.
     assert argv[1:-2] == [item for option in options for item in ("-o", option)]
+
+
+@pytest.mark.parametrize(("operation", "_argv"), EXPECTED_ARGV)
+def test_each_operation_executes_through_the_ssh_boundary(operation, _argv, monkeypatch):
+    calls = recording_subprocess(monkeypatch)
+
+    observe(HOST, operation, capture_output=True)
+
+    assert len(calls) == 1
+    executed, kwargs = calls[0]
+    assert executed[:3] == ["ssh", "-o", "BatchMode=yes"]
+    assert executed[-2:] == [HOST, obs.operation_remote_command(operation)]
+    assert kwargs["shell"] is False
 
 
 @pytest.mark.parametrize(
@@ -587,17 +791,17 @@ def test_config_still_rejects_unsafe_transport_values():
 # --- local transport: argv execution without a shell or SSH -------------------------------
 
 
-@posix_only
 @pytest.mark.parametrize(("operation", "argv"), EXPECTED_ARGV)
 def test_local_invocation_is_the_operation_argv(operation, argv, monkeypatch):
     calls = recording_subprocess(monkeypatch)
+    monkeypatch.setattr(transport, "require_local_transport_supported", lambda: None)
 
     observe(LOCAL_TRANSPORT, operation, capture_output=True)
 
     executed, kwargs = calls[0]
     assert executed == list(argv)
     assert executed[0] != "ssh"
-    assert "shell" not in kwargs
+    assert kwargs["shell"] is False
 
 
 @posix_only

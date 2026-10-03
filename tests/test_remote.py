@@ -178,6 +178,7 @@ def test_transport_failure_discards_session_without_retrying_command() -> None:
     (
         (lambda tmp: ssh(ReadFile("/allowed/INCAR"), host="other-host"), {}),
         (lambda tmp: ssh(ReadFile("/allowed/INCAR")), {"shell": True}),
+        (lambda tmp: ssh(ReadFile("/allowed/INCAR")), {"shell": False}),
         # A valid, platform-native absolute path that the caller (not the
         # session) chose: refused because callers may not supply control options.
         (lambda tmp: ssh(ReadFile("/allowed/INCAR"), control_path=tmp / "caller-controlled"), {}),
@@ -237,4 +238,8 @@ def test_session_is_lazy_and_nonmultiplex_fallback_preserves_command() -> None:
             timeout=20,
         )
 
-    assert base_runner.commands == [command]
+    assert len(base_runner.commands) == 1
+    forwarded = base_runner.commands[0]
+    assert type(forwarded) is SshInvocation
+    assert tuple(forwarded) == tuple(command)
+    assert forwarded is not command

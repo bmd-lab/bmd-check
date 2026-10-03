@@ -23,13 +23,22 @@ typed fields and refuses anything else.
 
 from __future__ import annotations
 
+from collections.abc import Iterator, Sequence
+from dataclasses import dataclass
 import os
 from pathlib import Path
 import re
 import subprocess
 from typing import Any, Callable
+from weakref import ReferenceType, ref
 
-from bmd_agent.resources.observations import ObservationOperation, require_operation
+from bmd_agent.resources.observations import (
+    ObservationOperation,
+    operation_argv,
+    operation_remote_command,
+    operation_stdin,
+    snapshot_operation,
+)
 
 LOCAL_TRANSPORT = "local"
 SSH_BATCH_MODE_OPTION = "BatchMode=yes"
@@ -49,7 +58,7 @@ class TransportError(ValueError):
 
 
 def is_local_transport(ssh_host: object) -> bool:
-    return ssh_host == LOCAL_TRANSPORT
+    return type(ssh_host) is str and ssh_host == LOCAL_TRANSPORT
 
 
 def local_transport_supported() -> bool:
@@ -69,7 +78,7 @@ def require_local_transport_supported() -> None:
 
 
 def validate_ssh_host(ssh_host: object) -> str:
-    if not isinstance(ssh_host, str) or not _SSH_HOST_RE.fullmatch(ssh_host):
+    if type(ssh_host) is not str or not _SSH_HOST_RE.fullmatch(ssh_host):
         raise TransportError("SSH host alias contains unsafe characters")
     if is_local_transport(ssh_host):
         raise TransportError('"local" is a transport selector, not an SSH host')
@@ -79,7 +88,7 @@ def validate_ssh_host(ssh_host: object) -> str:
 def _validate_connect_timeout(value: object) -> int | None:
     if value is None:
         return None
-    if isinstance(value, bool) or not isinstance(value, int):
+    if type(value) is not int:
         raise TransportError("SSH connection timeout must be an integer number of seconds")
     if value <= 0 or value > MAX_SSH_CONNECT_TIMEOUT_SECONDS:
         raise TransportError(
@@ -89,48 +98,156 @@ def _validate_connect_timeout(value: object) -> int | None:
 
 
 def _validate_control_path(value: object) -> Path:
-    if not isinstance(value, Path) or not value.is_absolute() or "\x00" in str(value):
+    if type(value) is not type(Path()) or not value.is_absolute() or "\x00" in str(value):
         raise TransportError("SSH control path must be an absolute session-owned path")
     return value
 
 
-class ObservationInvocation(list[str]):
-    """A rendered invocation of one fixed operation. Built only by transports."""
+@dataclass(frozen=True, slots=True)
+class _InvocationState:
+    transport: str
+    operation: ObservationOperation | None
+    argv: tuple[str, ...]
+    stdin: bytes | None
+    host: str | None = None
+    connect_timeout: int | None = None
+    control_path: Path | None = None
+    control_exit: bool = False
+    opens_connection: bool = False
 
+
+def _state_store():
+    states: dict[int, tuple[ReferenceType[object], _InvocationState]] = {}
+
+    def seal(invocation: object, state: _InvocationState) -> None:
+        key = id(invocation)
+        existing = states.get(key)
+        if existing is not None and existing[0]() is invocation:
+            raise AttributeError("observational invocation is already sealed")
+        operation = (
+            None if state.operation is None else snapshot_operation(state.operation)
+        )
+        sealed_state = _InvocationState(
+            transport=state.transport,
+            operation=operation,
+            argv=tuple(state.argv),
+            stdin=state.stdin,
+            host=state.host,
+            connect_timeout=state.connect_timeout,
+            control_path=state.control_path,
+            control_exit=state.control_exit,
+            opens_connection=state.opens_connection,
+        )
+
+        def discard(reference: object, *, identity: int = key) -> None:
+            current = states.get(identity)
+            if current is not None and current[0] is reference:
+                del states[identity]
+
+        states[key] = (ref(invocation, discard), sealed_state)
+
+    def get(invocation: object) -> _InvocationState:
+        entry = states.get(id(invocation))
+        if entry is None or entry[0]() is not invocation:
+            raise TransportError("observational invocation is not sealed")
+        state = entry[1]
+        operation = (
+            None if state.operation is None else snapshot_operation(state.operation)
+        )
+        return _InvocationState(
+            transport=state.transport,
+            operation=operation,
+            argv=tuple(state.argv),
+            stdin=state.stdin,
+            host=state.host,
+            connect_timeout=state.connect_timeout,
+            control_path=state.control_path,
+            control_exit=state.control_exit,
+            opens_connection=state.opens_connection,
+        )
+
+    return seal, get
+
+
+_seal_invocation, _invocation_state = _state_store()
+
+
+class ObservationInvocation(Sequence[str]):
+    """Immutable sequence view of one transport-rendered operation.
+
+    The instance deliberately has no execution-bearing attributes. Its sealed
+    state is held outside the object so even ``object.__setattr__`` cannot
+    synchronize mutated fields with a caller-supplied argv.
+    """
+
+    __slots__ = ("__weakref__",)
     transport = ""
-    operation: ObservationOperation | None = None
 
-    def render(self) -> list[str]:  # pragma: no cover - abstract
-        raise NotImplementedError
+    def __len__(self) -> int:
+        return len(_invocation_state(self).argv)
+
+    def __getitem__(self, index: int | slice) -> str | list[str]:
+        value = _invocation_state(self).argv[index]
+        return list(value) if isinstance(index, slice) else value
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(_invocation_state(self).argv)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, (ObservationInvocation, list, tuple)):
+            return tuple(self) == tuple(other)
+        return NotImplemented
+
+    __hash__ = None
+
+    def render(self) -> list[str]:
+        """Return a copy for diagnostics and injected test runners only."""
+
+        return list(_invocation_state(self).argv)
 
     @property
     def stdin(self) -> bytes | None:
-        return None if self.operation is None else self.operation.stdin
+        return _invocation_state(self).stdin
+
+    @property
+    def operation(self) -> ObservationOperation | None:  # pragma: no cover - abstract
+        raise NotImplementedError
 
     @property
     def observation_text(self) -> str | None:
         """Shell-quoted operation text, used for profiling classification."""
 
-        return None if self.operation is None else self.operation.remote_command()
-
-    def _freeze(self) -> None:
-        super().__init__(self.render())
+        operation = self.operation
+        return None if operation is None else operation_remote_command(operation)
 
 
 class LocalInvocation(ObservationInvocation):
+    __slots__ = ()
     transport = LOCAL_TRANSPORT
 
     def __init__(self, operation: ObservationOperation) -> None:
         require_local_transport_supported()
-        self.operation = require_operation(operation)
-        self._freeze()
+        validated = snapshot_operation(operation)
+        _seal_invocation(
+            self,
+            _InvocationState(
+                transport=LOCAL_TRANSPORT,
+                operation=validated,
+                argv=operation_argv(validated),
+                stdin=operation_stdin(validated),
+            ),
+        )
 
-    def render(self) -> list[str]:
-        assert self.operation is not None
-        return list(self.operation.argv())
+    @property
+    def operation(self) -> ObservationOperation:
+        operation = _invocation_state(self).operation
+        if operation is None:  # pragma: no cover - sealed constructor invariant
+            raise TransportError("local invocation has no operation")
+        return snapshot_operation(operation)
 
 
 class SshInvocation(ObservationInvocation):
+    __slots__ = ()
     transport = "ssh"
 
     def __init__(
@@ -142,31 +259,100 @@ class SshInvocation(ObservationInvocation):
         control_path: Path | None = None,
         opens_connection: bool = True,
     ) -> None:
-        self.operation = require_operation(operation)
-        self.host = validate_ssh_host(host)
-        self.connect_timeout = _validate_connect_timeout(connect_timeout)
-        self.control_path = None if control_path is None else _validate_control_path(control_path)
-        self.control_exit = False
-        self.ssh_opens_connection = bool(opens_connection)
-        self.ssh_exec_channel = True
-        self.ssh_control_operation = False
-        self._freeze()
+        if type(opens_connection) is not bool:
+            raise TransportError("SSH connection-state metadata must be boolean")
+        validated_operation = snapshot_operation(operation)
+        validated_host = validate_ssh_host(host)
+        validated_timeout = _validate_connect_timeout(connect_timeout)
+        validated_control = (
+            None if control_path is None else _validate_control_path(control_path)
+        )
+        argv, stdin = _render_ssh_invocation(
+            operation=validated_operation,
+            host=validated_host,
+            connect_timeout=validated_timeout,
+            control_path=validated_control,
+            control_exit=False,
+            opens_connection=opens_connection,
+        )
+        _seal_invocation(
+            self,
+            _InvocationState(
+                transport="ssh",
+                operation=validated_operation,
+                argv=tuple(argv),
+                stdin=stdin,
+                host=validated_host,
+                connect_timeout=validated_timeout,
+                control_path=validated_control,
+                opens_connection=opens_connection,
+            ),
+        )
 
     @classmethod
     def session_exit(cls, *, host: str, control_path: Path) -> "SshInvocation":
         """The session's own ``-O exit`` for its control master."""
 
-        invocation = cls.__new__(cls)
-        invocation.operation = None
-        invocation.host = validate_ssh_host(host)
-        invocation.connect_timeout = None
-        invocation.control_path = _validate_control_path(control_path)
-        invocation.control_exit = True
-        invocation.ssh_opens_connection = False
-        invocation.ssh_exec_channel = False
-        invocation.ssh_control_operation = True
-        invocation._freeze()
+        invocation = SshInvocation.__new__(SshInvocation)
+        validated_host = validate_ssh_host(host)
+        validated_control = _validate_control_path(control_path)
+        argv, stdin = _render_ssh_invocation(
+            operation=None,
+            host=validated_host,
+            connect_timeout=None,
+            control_path=validated_control,
+            control_exit=True,
+            opens_connection=False,
+        )
+        _seal_invocation(
+            invocation,
+            _InvocationState(
+                transport="ssh",
+                operation=None,
+                argv=tuple(argv),
+                stdin=stdin,
+                host=validated_host,
+                control_path=validated_control,
+                control_exit=True,
+            ),
+        )
         return invocation
+
+    @property
+    def operation(self) -> ObservationOperation | None:
+        operation = _invocation_state(self).operation
+        return None if operation is None else snapshot_operation(operation)
+
+    @property
+    def host(self) -> str:
+        host = _invocation_state(self).host
+        if host is None:  # pragma: no cover - sealed constructor invariant
+            raise TransportError("SSH invocation has no host")
+        return host
+
+    @property
+    def connect_timeout(self) -> int | None:
+        return _invocation_state(self).connect_timeout
+
+    @property
+    def control_path(self) -> Path | None:
+        return _invocation_state(self).control_path
+
+    @property
+    def control_exit(self) -> bool:
+        return _invocation_state(self).control_exit
+
+    @property
+    def ssh_opens_connection(self) -> bool:
+        return _invocation_state(self).opens_connection
+
+    @property
+    def ssh_exec_channel(self) -> bool:
+        return not self.control_exit
+
+    @property
+    def ssh_control_operation(self) -> bool:
+        return self.control_exit
 
     def with_session_control(self, control_path: Path, *, opens_connection: bool) -> "SshInvocation":
         if self.operation is None or self.control_path is not None:
@@ -178,26 +364,6 @@ class SshInvocation(ObservationInvocation):
             control_path=control_path,
             opens_connection=opens_connection,
         )
-
-    def render(self) -> list[str]:
-        argv = ["ssh", "-o", SSH_BATCH_MODE_OPTION]
-        if self.control_exit:
-            assert self.control_path is not None
-            return [*argv, "-S", str(self.control_path), "-O", "exit", self.host]
-        if self.control_path is not None:
-            argv += [
-                "-o",
-                "ControlMaster=auto",
-                "-o",
-                f"ControlPersist={SSH_CONTROL_PERSIST_SECONDS}",
-                "-o",
-                f"ControlPath={self.control_path}",
-            ]
-        if self.connect_timeout is not None:
-            argv += ["-o", f"ConnectTimeout={self.connect_timeout}"]
-        assert self.operation is not None
-        return [*argv, self.host, self.operation.remote_command()]
-
 
 def build_invocation(
     ssh_host: str,
@@ -215,21 +381,24 @@ def build_invocation(
 def run_invocation(command: object, **kwargs: Any) -> subprocess.CompletedProcess[Any]:
     """Default executor: runs only transport-rendered fixed invocations."""
 
-    if not isinstance(command, ObservationInvocation):
+    if type(command) is LocalInvocation:
+        argv, fixed_input = _reconstruct_local_invocation(command)
+    elif type(command) is SshInvocation:
+        argv, fixed_input = _reconstruct_ssh_invocation(command)
+    else:
         raise TransportError("BMD Agent executes only fixed observational operations")
-    argv = command.render()
-    if list(command) != argv:
+    if tuple(command) != tuple(argv):
         raise TransportError("observational invocation was modified after rendering")
     unexpected = set(kwargs) - _EXECUTOR_KWARGS
     if unexpected:
         raise TransportError(
             "observational transports do not accept: " + ", ".join(sorted(unexpected))
         )
-    if kwargs.get("input") != command.stdin:
+    if kwargs.get("input") != fixed_input:
         raise TransportError("observational input must be the operation's own fixed input")
-    if command.stdin is None:
+    if fixed_input is None:
         kwargs.pop("input", None)
-    return subprocess.run(argv, **kwargs)
+    return subprocess.run(argv, shell=False, **kwargs)
 
 
 def observe(
@@ -277,8 +446,85 @@ class LocalObservationSession:
         profiled = profiled_runner(self._runner, role=role)
 
         def run(command: object, **kwargs: Any):
-            if not isinstance(command, LocalInvocation):
+            if type(command) is not LocalInvocation:
                 raise TransportError("local observation session accepts only local operations")
             return profiled(command, **kwargs)
 
         return run
+
+
+def _reconstruct_local_invocation(
+    command: LocalInvocation,
+) -> tuple[list[str], bytes | None]:
+    require_local_transport_supported()
+    state = _invocation_state(command)
+    if state.transport != LOCAL_TRANSPORT or state.operation is None:
+        raise TransportError("local invocation has inconsistent sealed state")
+    operation = snapshot_operation(state.operation)
+    argv = list(operation_argv(operation))
+    stdin = operation_stdin(operation)
+    if state.argv != tuple(argv) or state.stdin != stdin:
+        raise TransportError("local invocation has inconsistent sealed state")
+    return argv, stdin
+
+
+def _reconstruct_ssh_invocation(
+    command: SshInvocation,
+) -> tuple[list[str], bytes | None]:
+    state = _invocation_state(command)
+    if state.transport != "ssh":
+        raise TransportError("SSH invocation has inconsistent sealed state")
+    argv, stdin = _render_ssh_invocation(
+        operation=state.operation,
+        host=state.host,
+        connect_timeout=state.connect_timeout,
+        control_path=state.control_path,
+        control_exit=state.control_exit,
+        opens_connection=state.opens_connection,
+    )
+    if state.argv != tuple(argv) or state.stdin != stdin:
+        raise TransportError("SSH invocation has inconsistent sealed state")
+    return argv, stdin
+
+
+def _render_ssh_invocation(
+    *,
+    operation: ObservationOperation | None,
+    host: object,
+    connect_timeout: object,
+    control_path: object,
+    control_exit: object,
+    opens_connection: object,
+) -> tuple[list[str], bytes | None]:
+    """Validate immutable fields and reconstruct one exact SSH invocation."""
+
+    validated_host = validate_ssh_host(host)
+    validated_timeout = _validate_connect_timeout(connect_timeout)
+    validated_control = (
+        None if control_path is None else _validate_control_path(control_path)
+    )
+    if type(control_exit) is not bool or type(opens_connection) is not bool:
+        raise TransportError("SSH invocation metadata must be boolean")
+
+    argv = ["ssh", "-o", SSH_BATCH_MODE_OPTION]
+    if control_exit:
+        if operation is not None or validated_timeout is not None or validated_control is None:
+            raise TransportError("SSH control invocation has inconsistent fields")
+        if opens_connection:
+            raise TransportError("SSH control invocation has inconsistent fields")
+        return [*argv, "-S", str(validated_control), "-O", "exit", validated_host], None
+
+    validated_operation = snapshot_operation(operation)
+    if validated_control is not None:
+        argv += [
+            "-o",
+            "ControlMaster=auto",
+            "-o",
+            f"ControlPersist={SSH_CONTROL_PERSIST_SECONDS}",
+            "-o",
+            f"ControlPath={validated_control}",
+        ]
+    if validated_timeout is not None:
+        argv += ["-o", f"ConnectTimeout={validated_timeout}"]
+    argv += [validated_host, operation_remote_command(validated_operation)]
+    return argv, operation_stdin(validated_operation)
