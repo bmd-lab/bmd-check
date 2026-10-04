@@ -27,9 +27,12 @@ _MAX_BATCH_FILE_BYTES = 2_000_000
 _MAX_BATCH_TOTAL_BYTES = 8_000_000
 
 _ACQUISITION_SCRIPT = """\
+if [ "$1" != "bmd-agent-acquisition-v1" ]; then
+    exit 2
+fi
+total_limit=$2
+shift 5
 printf 'schema\\tbmd-agent-acquisition-v1\\n'
-total_limit=$1
-shift
 used=0
 while [ "$#" -ge 4 ]; do
     item_id=$1
