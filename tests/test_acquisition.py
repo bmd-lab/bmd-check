@@ -9,6 +9,7 @@ import subprocess
 
 import pytest
 
+from bmd_agent.resources import observations as observation_operations
 from bmd_agent.profiling import PerformanceProfiler, profiled_runner
 from bmd_agent.resources.vasp import (
     RemoteAcquisitionRequest,
@@ -390,11 +391,16 @@ def test_fixed_acquisition_protocol_runs_with_system_sh_when_available(
     root = PurePosixPath(tmp_path.as_posix())
     path = root / "OSZICAR"
     (tmp_path / "OSZICAR").write_bytes(b"DAV: 1\n")
+    commands: list[list[str]] = []
+    results: list[subprocess.CompletedProcess[bytes]] = []
 
     def runner(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
-        return subprocess.run(shlex.split(command[-1]), **kwargs)
+        commands.append(command)
+        result = subprocess.run(shlex.split(command[-1]), **kwargs)
+        results.append(result)
+        return result
 
-    with remote_acquisition_cache("host", (root,)):
+    with remote_acquisition_cache("host", (root,)) as cache:
         prime_remote_acquisition(
             "host",
             (RemoteAcquisitionRequest(path, read_limit=100),),
@@ -402,3 +408,72 @@ def test_fixed_acquisition_protocol_runs_with_system_sh_when_available(
             timeout=20,
         )
         assert retrieve_remote_file("host", path, runner=runner) == b"DAV: 1\n"
+        assert cache._disabled is False
+
+    assert len(commands) == 1
+    assert results[0].stderr == b""
+    lines = results[0].stdout.decode("ascii").splitlines()
+    assert lines[0] == "schema\tbmd-agent-acquisition-v1"
+    assert lines[1].startswith("item\t1\tfile\tread\t")
+    assert not any(line.startswith("item\t8000000\t") for line in lines)
+
+
+def test_fixed_acquisition_protocol_enforces_aggregate_limit_with_system_sh(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    if os.name == "nt" or shutil.which("sh") is None:
+        pytest.skip("system POSIX shell is not available in this environment")
+    monkeypatch.setattr(observation_operations, "_MAX_BATCH_TOTAL_BYTES", 5)
+    root = PurePosixPath(tmp_path.as_posix())
+    first = root / "first"
+    second = root / "second"
+    (tmp_path / "first").write_bytes(b"aaaa")
+    (tmp_path / "second").write_bytes(b"bbbb")
+    commands: list[list[str]] = []
+    results: list[subprocess.CompletedProcess[bytes]] = []
+
+    def runner(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        commands.append(command)
+        result = subprocess.run(shlex.split(command[-1]), **kwargs)
+        results.append(result)
+        return result
+
+    with remote_acquisition_cache("host", (root,)) as cache:
+        prime_remote_acquisition(
+            "host",
+            (
+                RemoteAcquisitionRequest(first, read_limit=4),
+                RemoteAcquisitionRequest(second, read_limit=4),
+            ),
+            runner=runner,
+            timeout=20,
+        )
+        first_record = cache.record(first, "file")
+        second_record = cache.record(second, "file")
+        assert first_record is not None and first_record.contents == b"aaaa"
+        assert second_record is not None and second_record.contents is None
+        assert second_record.content_status == "deferred"
+        assert cache._disabled is False
+
+    assert len(commands) == 1
+    assert results[0].stderr == b""
+    lines = results[0].stdout.decode("ascii").splitlines()
+    assert lines[1].startswith("item\t1\tfile\tread\t4\t")
+    assert lines[2] == "item\t2\tfile\tdeferred\t4\t"
+
+
+def test_fixed_acquisition_protocol_rejects_wrong_marker_with_system_sh() -> None:
+    if os.name == "nt" or shutil.which("sh") is None:
+        pytest.skip("system POSIX shell is not available in this environment")
+
+    result = subprocess.run(
+        ["sh", "-s", "--", "wrong-marker", "5", "0", "0", "0"],
+        input=observation_operations._ACQUISITION_SCRIPT.encode("ascii"),
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == b""
+    assert result.stderr == b""
