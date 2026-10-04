@@ -13,6 +13,22 @@ from bmd_agent.resources.run import (
 )
 
 
+@pytest.mark.parametrize("command_name", ("bmd-check", "bmd-agent"))
+@pytest.mark.parametrize("help_flag", ("-h", "--help"))
+def test_cli_standard_help(
+    command_name: str,
+    help_flag: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    exit_code = cli.main([help_flag], command_name=command_name)
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert captured.err == ""
+    assert f"Usage: {command_name} [TARGET] [--verbose] [--profile]" in captured.out
+    assert "Target was not recognized" not in captured.out
+
+
 def test_cli_nonexistent_nonnumeric_target_is_clean_error(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

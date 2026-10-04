@@ -2461,6 +2461,10 @@ def _command_name() -> str:
 
 def _main(argv: list[str] | None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv in (["-h"], ["--help"]):
+        _print_help()
+        return 0
+
     if not argv:
         return show_current_directory(
             detailed_evidence_command=f"{_command_name()} --verbose",
@@ -2564,6 +2568,11 @@ def _main(argv: list[str] | None) -> int:
 
     print("Target was not recognized as a SLURM job ID or existing calculation path.")
     print()
+    _print_help()
+    return 2
+
+
+def _print_help() -> None:
     print(f"Usage: {_command_name()} [TARGET] [--verbose] [--profile]")
     print("  no target [--verbose]: analyze the current calculation directory")
     print("  positive decimal integer [--verbose] [--profile]: analyze that SLURM job")
@@ -2579,7 +2588,6 @@ def _main(argv: list[str] | None) -> int:
     print("  inspect-run <remote-flow-root>")
     print("  compare-runs <flow-a> <flow-b> [<flow-c> ...]")
     print("  diagnose-run <remote-flow-root>")
-    return 2
 
 
 def _is_positive_decimal_job_id(target: str) -> bool:
