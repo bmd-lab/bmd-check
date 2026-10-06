@@ -1,0 +1,3 @@
+# Hash-bound corpus bytes must never be altered by end-of-line conversion.
+src/bmd_agent/reference_corpus/vasp_wiki/** -text
+tests/fixtures/vasp_wiki_synthetic/** -text

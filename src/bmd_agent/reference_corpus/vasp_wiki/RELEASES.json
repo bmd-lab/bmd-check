@@ -1,0 +1,12 @@
+{
+  "releases": [
+    {
+      "corpus_digest": "sha256:04cee53846c41ef0411ce100967741a048a056677076bbedb9d873ea10a1e2f6",
+      "corpus_kind": "unpopulated",
+      "corpus_version": "0.0.0",
+      "previous_corpus_digest": null
+    }
+  ],
+  "schema": "bmd_agent.vasp_wiki_corpus_releases",
+  "schema_version": 1
+}

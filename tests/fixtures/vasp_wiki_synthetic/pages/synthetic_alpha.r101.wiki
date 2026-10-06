@@ -1,0 +1,6 @@
+== Synthetic heading ==
+SYNTHETIC TEST FIXTURE: this is not VASP Wiki content.
+<script>alert('inert text, never executed')</script>
+{{SyntheticTemplate|value=1}} [[Synthetic link]] [https://synthetic.invalid ext]
+Unicode is preserved: café, αβγ, −, Å.
+	Indented with a tab.

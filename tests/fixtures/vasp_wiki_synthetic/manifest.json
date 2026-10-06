@@ -1,0 +1,92 @@
+{
+  "assembly": {
+    "assembled_at": "2026-01-02T03:04:05Z",
+    "updater": {
+      "name": "tests/vasp_wiki_support.py",
+      "version": "1"
+    }
+  },
+  "corpus_digest": "sha256:5908013abca3fe296a98305e0b34b33549e825251f8184532424931503fb9748",
+  "corpus_kind": "synthetic_fixture",
+  "corpus_version": "1.0.0",
+  "license": {
+    "cover_texts": "none_declared",
+    "identifier": "LicenseRef-BMD-Synthetic-Test-Fixture",
+    "invariant_sections": "none_declared",
+    "license_text_file": "COPYING.SYNTHETIC-FIXTURE.txt",
+    "license_text_sha256": "2d409e2ae0db689bcc7d3999c77bbc58da1f7fff3bf3ef86a8c9fd9c8aec2437",
+    "license_text_source_url": "https://synthetic.invalid/synthetic-license.txt",
+    "review": {
+      "reviewed_on": "2026-01-02",
+      "reviewer": "Synthetic Reviewer",
+      "status": "approved"
+    },
+    "site_notice_as_displayed": "SYNTHETIC notice placeholder."
+  },
+  "pages": [
+    {
+      "canonical_url": "https://synthetic.invalid/wiki/Synthetic_Alpha",
+      "content_bytes": 281,
+      "content_file": "pages/synthetic_alpha.r101.wiki",
+      "content_model": "wikitext",
+      "content_sha256": "8026c8759b923be08bf7fd1e7d4805c8221cda62648e5715e9b32774a498d0b0",
+      "history_url": "https://synthetic.invalid/wiki/index.php?title=Synthetic_Alpha&action=history",
+      "id": "vasp.wiki.synthetic_alpha",
+      "license_review": {
+        "notes": null,
+        "reviewed_on": "2026-01-02",
+        "reviewer": "Synthetic Reviewer",
+        "status": "reviewed_no_exceptions"
+      },
+      "namespace": 0,
+      "page_id": 11,
+      "parent_revision_id": 100,
+      "permalink": "https://synthetic.invalid/wiki/index.php?title=Synthetic_Alpha&oldid=101",
+      "redirected_from": null,
+      "requested_title": "Synthetic Alpha",
+      "retrieved_at": "2026-01-02T03:04:05Z",
+      "revision_id": 101,
+      "revision_timestamp": "2026-01-02T03:04:05Z",
+      "title": "Synthetic Alpha",
+      "upstream_sha1": "78837791a655d7f7dd022f1bdc76b2fbf41b65d6"
+    },
+    {
+      "canonical_url": "https://synthetic.invalid/wiki/Synthetic_Beta",
+      "content_bytes": 54,
+      "content_file": "pages/synthetic_old_name.r202.wiki",
+      "content_model": "wikitext",
+      "content_sha256": "e25217503b6d6bffc19bb6baa33815f5587ebcb31e186c28c9b66ae6e2401cf8",
+      "history_url": "https://synthetic.invalid/wiki/index.php?title=Synthetic_Beta&action=history",
+      "id": "vasp.wiki.synthetic_old_name",
+      "license_review": {
+        "notes": null,
+        "reviewed_on": "2026-01-02",
+        "reviewer": "Synthetic Reviewer",
+        "status": "reviewed_no_exceptions"
+      },
+      "namespace": 0,
+      "page_id": 12,
+      "parent_revision_id": null,
+      "permalink": "https://synthetic.invalid/wiki/index.php?title=Synthetic_Beta&oldid=202",
+      "redirected_from": "Synthetic Old Name",
+      "requested_title": "Synthetic_Old_Name",
+      "retrieved_at": "2026-01-02T03:04:05Z",
+      "revision_id": 202,
+      "revision_timestamp": "2026-01-02T03:04:05Z",
+      "title": "Synthetic Beta",
+      "upstream_sha1": "223014c8e2a2c6af92ca63af33091ccf27ce22a5"
+    }
+  ],
+  "schema": "bmd_agent.vasp_wiki_corpus",
+  "schema_version": 1,
+  "upstream": {
+    "api_endpoint": "https://synthetic.invalid/wiki/api.php",
+    "article_path": "/wiki/$1",
+    "generator": "MediaWiki 1.0.0-synthetic",
+    "rights_text": "SYNTHETIC (synthetic fixture rights)",
+    "rights_url": "",
+    "script_path": "/wiki/index.php",
+    "server": "https://synthetic.invalid",
+    "site_name": "Synthetic Test Wiki"
+  }
+}
