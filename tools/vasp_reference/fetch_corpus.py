@@ -708,6 +708,10 @@ def command_review(args: argparse.Namespace) -> int:
             "reviewed_on": reviewed_on,
         }
     pages = {page["id"]: page for page in manifest["pages"]}
+    reviewed_ids = set(args.page_reviewed or [])
+    excepted_ids = {page_id for page_id, _ in args.page_exception or []}
+    if reviewed_ids & excepted_ids:
+        raise FetchError("a page cannot be both free of exceptions and have an exception")
     for page_id in args.page_reviewed or []:
         if page_id not in pages:
             raise FetchError(f"unknown page id {page_id}")
@@ -720,6 +724,8 @@ def command_review(args: argparse.Namespace) -> int:
     for page_id, note in args.page_exception or []:
         if page_id not in pages:
             raise FetchError(f"unknown page id {page_id}")
+        if not note.strip() or note != note.strip():
+            raise FetchError("a license exception note must be non-empty text without surrounding whitespace")
         pages[page_id]["license_review"] = {
             "status": corpus.PAGE_REVIEW_EXCEPTION_FOUND,
             "reviewer": reviewer,

@@ -55,6 +55,19 @@ is never rewritten: acquisition and loading refuse it for human review.
 Markup-like text (HTML tags, templates, links) is preserved as inert text;
 BMD Check never interprets it.
 
+## Page license review states
+
+Each page's `license_review` is a closed state:
+
+| `status` | `notes` | Loads? |
+| --- | --- | --- |
+| `pending` | must be `null` | no |
+| `reviewed_no_exceptions` | must be `null` | yes |
+| `exception_found` | must be non-empty text describing the exception | no |
+
+A note is allowed only to describe a recorded exception. A no-exceptions
+review carrying a caveat is a contradiction and makes the corpus invalid.
+
 ## Identity
 
 `corpus_digest` is a SHA-256 over the content-defining fields of the manifest:

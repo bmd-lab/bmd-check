@@ -812,12 +812,18 @@ def _validate_page(
     if status not in (PAGE_REVIEW_PENDING, PAGE_REVIEW_NO_EXCEPTIONS, PAGE_REVIEW_EXCEPTION_FOUND):
         raise CorpusError(UNAVAILABLE_INVALID, f"{label} license review status is not recognized")
     _optional_reviewer(review["reviewer"], review["reviewed_on"], f"{label} license review")
-    if review["notes"] is not None:
-        _text(review["notes"], f"{label} license review notes", max_length=500)
+    # Review notes are semantically closed: they exist only to describe a
+    # recorded license exception. A pending or no-exceptions review cannot
+    # carry a caveat, so a note there is a contradiction, not commentary.
+    if status == PAGE_REVIEW_EXCEPTION_FOUND:
+        _text(review["notes"], f"{label} license exception notes", max_length=500)
+    elif review["notes"] is not None:
+        raise CorpusError(
+            UNAVAILABLE_INVALID,
+            f"{label} license review notes are only allowed for {PAGE_REVIEW_EXCEPTION_FOUND}",
+        )
     if status != PAGE_REVIEW_PENDING and (review["reviewer"] is None or review["reviewed_on"] is None):
         raise CorpusError(UNAVAILABLE_LICENSE, f"{label} license review must name reviewer and date")
-    if status == PAGE_REVIEW_EXCEPTION_FOUND and review["notes"] is None:
-        raise CorpusError(UNAVAILABLE_LICENSE, f"{label} license exception must be described")
     if require_reviewed and status != PAGE_REVIEW_NO_EXCEPTIONS:
         raise CorpusError(
             UNAVAILABLE_LICENSE,

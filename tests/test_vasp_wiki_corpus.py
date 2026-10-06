@@ -565,7 +565,6 @@ def test_pages_must_be_sorted(synthetic: Path) -> None:
         lambda m: m["upstream"].__setitem__("rights_text", "All rights reserved"),
         lambda m: m["pages"][0]["license_review"].update(status="pending", reviewer=None, reviewed_on=None),
         lambda m: m["pages"][0]["license_review"].update(status="exception_found", notes="image is CC-BY-NC"),
-        lambda m: m["pages"][0]["license_review"].update(status="exception_found", notes=None),
         lambda m: m["pages"][0]["license_review"].update(reviewer=None),
     ],
 )
@@ -732,3 +731,90 @@ def test_corpus_bytes_are_protected_from_line_ending_conversion() -> None:
     rules = (REPO / ".gitattributes").read_text(encoding="utf-8").splitlines()
     assert "src/bmd_agent/reference_corpus/vasp_wiki/** -text" in rules
     assert "tests/fixtures/vasp_wiki_synthetic/** -text" in rules
+
+
+# ---------------------------------------------------------------------------
+# Page license review notes are semantically closed
+# ---------------------------------------------------------------------------
+
+
+def _set_review(directory: Path, status: str, notes, *, reviewed: bool = True) -> None:
+    manifest = read_manifest(directory)
+    manifest["pages"][0]["license_review"] = {
+        "status": status,
+        "reviewer": "Synthetic Reviewer" if reviewed else None,
+        "reviewed_on": "2026-01-02" if reviewed else None,
+        "notes": notes,
+    }
+    write_manifest(directory, manifest)
+    reseal(directory)
+
+
+@pytest.mark.parametrize(
+    "status,notes,reviewed,expected",
+    [
+        ("pending", None, False, corpus.UNAVAILABLE_LICENSE),
+        ("pending", "awaiting check of figure licences", False, corpus.UNAVAILABLE_INVALID),
+        ("reviewed_no_exceptions", None, True, None),
+        ("reviewed_no_exceptions", "Figure 2 is licensed separately; not GFDL", True, corpus.UNAVAILABLE_INVALID),
+        ("reviewed_no_exceptions", "", True, corpus.UNAVAILABLE_INVALID),
+        ("exception_found", None, True, corpus.UNAVAILABLE_INVALID),
+        ("exception_found", "", True, corpus.UNAVAILABLE_INVALID),
+        ("exception_found", "   ", True, corpus.UNAVAILABLE_INVALID),
+        ("exception_found", " padded note", True, corpus.UNAVAILABLE_INVALID),
+        ("exception_found", "Figure 2 is CC-BY-NC, not GFDL", True, corpus.UNAVAILABLE_LICENSE),
+    ],
+)
+def test_review_notes_are_allowed_only_for_recorded_exceptions(
+    synthetic: Path, status: str, notes, reviewed: bool, expected: str | None
+) -> None:
+    _set_review(synthetic, status, notes, reviewed=reviewed)
+    if expected is None:
+        assert loaded(synthetic).pages[0].license_review.notes is None
+    else:
+        assert unavailable(synthetic) == expected
+
+
+def test_meaningful_exception_note_is_structurally_valid_but_never_loads(synthetic: Path) -> None:
+    _set_review(synthetic, "exception_found", "Figure 2 is CC-BY-NC, not GFDL")
+    manifest = read_manifest(synthetic)
+    corpus.validate_manifest(manifest, SYNTHETIC_POLICY, require_reviewed=False)
+    with pytest.raises(corpus.CorpusError) as excinfo:
+        corpus.validate_manifest(manifest, SYNTHETIC_POLICY, require_reviewed=True)
+    assert excinfo.value.reason == corpus.UNAVAILABLE_LICENSE
+
+
+def test_codex_contradictory_note_attack_is_refused(synthetic: Path) -> None:
+    """Add a caveat to a no-exceptions review, keep digest and ledger, recompute everything else."""
+
+    original = read_manifest(synthetic)
+    manifest = json.loads(json.dumps(original))
+    assert manifest["pages"][0]["license_review"]["status"] == "reviewed_no_exceptions"
+    manifest["pages"][0]["license_review"]["notes"] = "Figure 2 is licensed separately; not GFDL"
+    (synthetic / corpus.MANIFEST_FILE).write_bytes(corpus.canonical_manifest_bytes(manifest))
+    (synthetic / corpus.NOTICE_FILE).write_bytes(corpus.render_notice(manifest))
+    rewrite_sums(synthetic)
+    # The notes are not part of the identity, so digest and ledger still match...
+    assert corpus.compute_corpus_digest(manifest) == original["corpus_digest"] == manifest["corpus_digest"]
+    # ...but the review state is contradictory and the corpus is refused.
+    assert unavailable(synthetic) == corpus.UNAVAILABLE_INVALID
+    # A full reseal by the attacker does not help either.
+    reseal(synthetic)
+    assert unavailable(synthetic) == corpus.UNAVAILABLE_INVALID
+
+
+@pytest.mark.parametrize(
+    "notes",
+    ["Resolved: actually GFDL", "none", "N/A", "No exception after all", "Figure removed upstream"],
+)
+def test_editing_exception_notes_cannot_make_a_page_authoritative(synthetic: Path, notes: str) -> None:
+    _set_review(synthetic, "exception_found", "Figure 2 is CC-BY-NC, not GFDL")
+    assert unavailable(synthetic) == corpus.UNAVAILABLE_LICENSE
+    _set_review(synthetic, "exception_found", notes)
+    assert unavailable(synthetic) == corpus.UNAVAILABLE_LICENSE
+    # Flipping the status while keeping any caveat is structurally invalid.
+    _set_review(synthetic, "reviewed_no_exceptions", notes)
+    assert unavailable(synthetic) == corpus.UNAVAILABLE_INVALID
+    # Dropping the note while keeping the exception is structurally invalid.
+    _set_review(synthetic, "exception_found", None)
+    assert unavailable(synthetic) == corpus.UNAVAILABLE_INVALID

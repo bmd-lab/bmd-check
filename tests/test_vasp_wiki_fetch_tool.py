@@ -565,3 +565,36 @@ def test_diff_refuses_a_hand_edited_manifest_with_control_characters(
     (staging / "manifest.json").write_bytes(corpus.canonical_manifest_bytes(manifest))
     assert run(committed, "diff", "--staging", str(staging)) == 2
     assert "\x1b" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("note", ["", "   ", " padded", "trailing "])
+def test_review_refuses_empty_or_padded_exception_notes(
+    tmp_path: Path, committed: Path, wiki: FakeWiki, note: str
+) -> None:
+    staging = tmp_path / "staging"
+    assert fetch(committed, staging, wiki, "Synthetic Alpha") == 0
+    before = tree(staging)
+    assert run(committed, "review", "--staging", str(staging), "--reviewer", "M", "--reviewed-on", "2026-03-05",
+               "--page-exception", "vasp.wiki.synthetic_alpha", note) == 2
+    assert tree(staging) == before
+
+
+def test_review_refuses_a_page_marked_both_clean_and_excepted(tmp_path: Path, committed: Path, wiki: FakeWiki) -> None:
+    staging = tmp_path / "staging"
+    assert fetch(committed, staging, wiki, "Synthetic Alpha") == 0
+    assert run(committed, "review", "--staging", str(staging), "--reviewer", "M", "--reviewed-on", "2026-03-05",
+               "--page-reviewed", "vasp.wiki.synthetic_alpha",
+               "--page-exception", "vasp.wiki.synthetic_alpha", "figure licensed separately") == 2
+
+
+def test_review_states_written_by_the_tool_follow_the_notes_rule(tmp_path: Path, committed: Path, wiki: FakeWiki) -> None:
+    staging = tmp_path / "staging"
+    assert fetch(committed, staging, wiki, "Synthetic Alpha") == 0
+    assert read_manifest(staging)["pages"][0]["license_review"]["notes"] is None
+    assert run(committed, "review", "--staging", str(staging), "--reviewer", "M", "--reviewed-on", "2026-03-05",
+               "--page-exception", "vasp.wiki.synthetic_alpha", "figure licensed separately") == 0
+    assert read_manifest(staging)["pages"][0]["license_review"]["notes"] == "figure licensed separately"
+    assert run(committed, "review", "--staging", str(staging), "--reviewer", "M", "--reviewed-on", "2026-03-06",
+               "--page-reviewed", "vasp.wiki.synthetic_alpha") == 0
+    review = read_manifest(staging)["pages"][0]["license_review"]
+    assert review == {"status": "reviewed_no_exceptions", "reviewer": "M", "reviewed_on": "2026-03-06", "notes": None}

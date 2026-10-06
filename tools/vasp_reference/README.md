@@ -33,6 +33,10 @@ $TOOL review --staging /tmp/vasp-corpus-staging \
     --approve-license \
     --page-reviewed vasp.wiki.nelm --page-reviewed vasp.wiki.ediff ...
 
+#    A page with an "unless otherwise noted" exception is recorded with
+#    --page-exception ID "description"; it cannot be released. Notes exist only
+#    for exceptions: a no-exceptions or pending review never carries one.
+
 # 4. Version, append the release ledger and verify with BMD Check's loader.
 $TOOL release --staging /tmp/vasp-corpus-staging --corpus-version 1.0.0
 
