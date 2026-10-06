@@ -1,0 +1,18 @@
+{
+  "releases": [
+    {
+      "corpus_digest": "sha256:04cee53846c41ef0411ce100967741a048a056677076bbedb9d873ea10a1e2f6",
+      "corpus_kind": "unpopulated",
+      "corpus_version": "0.0.0",
+      "previous_corpus_digest": null
+    },
+    {
+      "corpus_digest": "sha256:5908013abca3fe296a98305e0b34b33549e825251f8184532424931503fb9748",
+      "corpus_kind": "synthetic_fixture",
+      "corpus_version": "1.0.0",
+      "previous_corpus_digest": "sha256:04cee53846c41ef0411ce100967741a048a056677076bbedb9d873ea10a1e2f6"
+    }
+  ],
+  "schema": "bmd_agent.vasp_wiki_corpus_releases",
+  "schema_version": 1
+}

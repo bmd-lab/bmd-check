@@ -249,9 +249,23 @@ The architecture is described in [ARCHITECTURE.md](ARCHITECTURE.md). Graduate
 students can contribute using the lightweight process in
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## VASP Wiki reference corpus
+
+The package reserves an offline, versioned corpus of preserved VASP Wiki pages
+in `src/bmd_agent/reference_corpus/vasp_wiki/`. BMD Check never fetches the
+VASP Wiki at runtime, so a change to the live wiki cannot change an installed
+release. Corpus updates are explicit maintainer operations with
+[`tools/vasp_reference/fetch_corpus.py`](tools/vasp_reference/README.md),
+reviewed through normal pull requests.
+
+The corpus is currently unpopulated, and BMD Check does not use it in its
+output yet. Preserved pages are third-party material; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
 ## License
 
 BMD Agent's repository-owned source and documentation are released under the
 [MIT License](LICENSE). This license does not grant rights to VASP, POTCAR/PAW
-datasets, or third-party dependencies; those remain subject to their own
-licenses and access terms.
+datasets, preserved third-party reference material, or third-party
+dependencies; those remain subject to their own licenses and access terms (see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).

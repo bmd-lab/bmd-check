@@ -26,7 +26,11 @@ bmd-agent = "bmd_agent.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-bmd_agent = ["deployment_profiles/*.toml"]
+bmd_agent = [
+    "deployment_profiles/*.toml",
+    "reference_corpus/vasp_wiki/*",
+    "reference_corpus/vasp_wiki/pages/*",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

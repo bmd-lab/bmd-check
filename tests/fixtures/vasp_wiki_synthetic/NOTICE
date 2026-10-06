@@ -1,0 +1,46 @@
+VASP Wiki reference corpus - third-party material notice
+=========================================================
+
+Corpus kind: synthetic_fixture
+Corpus version: 1.0.0
+Corpus identity: sha256:5908013abca3fe296a98305e0b34b33549e825251f8184532424931503fb9748
+
+SYNTHETIC TEST FIXTURE. This corpus contains no VASP Wiki material;
+its pages, site details and license text are invented placeholders.
+
+Site name (MediaWiki API): Synthetic Test Wiki
+Site server: https://synthetic.invalid
+Site rights text (MediaWiki API): SYNTHETIC (synthetic fixture rights)
+Site rights URL (MediaWiki API): (none reported)
+License notice displayed by the site (maintainer-recorded): SYNTHETIC notice placeholder.
+License identifier (maintainer-reviewed): LicenseRef-BMD-Synthetic-Test-Fixture
+Invariant Sections: none_declared
+Front-Cover and Back-Cover Texts: none_declared
+License text file: COPYING.SYNTHETIC-FIXTURE.txt
+License text source: https://synthetic.invalid/synthetic-license.txt
+License text SHA-256: 2d409e2ae0db689bcc7d3999c77bbc58da1f7fff3bf3ef86a8c9fd9c8aec2437
+License review: approved
+
+Pages:
+- Synthetic Alpha (requested as Synthetic Alpha)
+  redirected from: (not a redirect)
+  page ID 11, revision 101 (2026-01-02T03:04:05Z)
+  retrieved: 2026-01-02T03:04:05Z
+  canonical URL: https://synthetic.invalid/wiki/Synthetic_Alpha
+  this revision: https://synthetic.invalid/wiki/index.php?title=Synthetic_Alpha&oldid=101
+  history and authors: https://synthetic.invalid/wiki/index.php?title=Synthetic_Alpha&action=history
+  file: pages/synthetic_alpha.r101.wiki
+  SHA-256: 8026c8759b923be08bf7fd1e7d4805c8221cda62648e5715e9b32774a498d0b0
+  MediaWiki SHA-1: 78837791a655d7f7dd022f1bdc76b2fbf41b65d6
+  license review: reviewed_no_exceptions
+- Synthetic Beta (requested as Synthetic_Old_Name)
+  redirected from: Synthetic Old Name
+  page ID 12, revision 202 (2026-01-02T03:04:05Z)
+  retrieved: 2026-01-02T03:04:05Z
+  canonical URL: https://synthetic.invalid/wiki/Synthetic_Beta
+  this revision: https://synthetic.invalid/wiki/index.php?title=Synthetic_Beta&oldid=202
+  history and authors: https://synthetic.invalid/wiki/index.php?title=Synthetic_Beta&action=history
+  file: pages/synthetic_old_name.r202.wiki
+  SHA-256: e25217503b6d6bffc19bb6baa33815f5587ebcb31e186c28c9b66ae6e2401cf8
+  MediaWiki SHA-1: 223014c8e2a2c6af92ca63af33091ccf27ce22a5
+  license review: reviewed_no_exceptions
