@@ -2,7 +2,7 @@
 
 `fetch_corpus.py` is the only way pages enter the frozen VASP Wiki corpus in
 `src/bmd_agent/reference_corpus/vasp_wiki/`. It is a maintainer tool: it is
-not part of the installed package and BMD Check never imports or runs it.
+not part of the installed package and bmd-check never imports or runs it.
 It needs a workstation that can reach the official VASP Wiki over HTTPS.
 
 The tool reads the committed corpus and writes **only to a new staging
@@ -37,7 +37,7 @@ $TOOL review --staging /tmp/vasp-corpus-staging \
 #    --page-exception ID "description"; it cannot be released. Notes exist only
 #    for exceptions: a no-exceptions or pending review never carries one.
 
-# 4. Version, append the release ledger and verify with BMD Check's loader.
+# 4. Version, append the release ledger and verify with bmd-check's loader.
 $TOOL release --staging /tmp/vasp-corpus-staging --corpus-version 1.0.0
 
 # 5. Copy the staging files over the committed corpus in a branch and open a PR.

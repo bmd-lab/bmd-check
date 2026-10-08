@@ -1,15 +1,15 @@
-# Contributing to BMD Agent
+# Contributing to bmd-check
 
-BMD Agent is a research and training project. Focused contributions from
+bmd-check is a research and training project. Focused contributions from
 graduate students are welcome.
 
 ## Development setup
 
-BMD Agent requires Python 3.12 or newer.
+bmd-check requires Python 3.12 or newer.
 
 ```bash
-git clone https://github.com/bmd-lab/bmd_agent.git
-cd bmd_agent
+git clone https://github.com/bmd-lab/bmd-check.git
+cd bmd-check
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
@@ -36,7 +36,7 @@ human scientific review, and BMD methodology adoption distinct.
 
 ## Safety expectations
 
-BMD Agent is an observation and diagnosis layer. Contributions must preserve
+bmd-check is an observation and diagnosis layer. Contributions must preserve
 its controlled, read-only interfaces unless a separately reviewed project
 explicitly introduces an authorized action boundary.
 

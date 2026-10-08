@@ -1,6 +1,6 @@
 # Third-party notices
 
-BMD Agent's own source code and documentation are released under the MIT
+bmd-check's own source code and documentation are released under the MIT
 License in `LICENSE`. That license does not cover the third-party material
 listed here, which keeps its own license and attribution.
 

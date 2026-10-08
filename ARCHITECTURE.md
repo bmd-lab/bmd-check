@@ -1,9 +1,8 @@
-# BMD Agent Architecture
+# bmd-check Architecture
 
 ## 1. Purpose
 
-BMD Agent is the persistent scientific coordination layer of the BMD
-ecosystem.
+bmd-check is the observational diagnostic layer of the BMD ecosystem.
 
 It does not replace the systems it observes.
 
@@ -15,56 +14,58 @@ what has been validated, what has failed, and what should happen next.
 
 The core responsibilities are:
 
-    BMD Compute   generate
-    BMDex         preserve
-    BMDwiki       explain
+    bmd-compute   generate
+    bmd-store     preserve
+    bmd-help      explain
     BMD website   present and connect
-    BMD Agent     understand, diagnose, advise, and coordinate
+    bmd-check     inspect, diagnose, explain, and advise
 
 These boundaries are architectural invariants.
 
-BMD Compute must function without BMD Agent.
+bmd-compute must function without bmd-check.
 
-BMDex must remain independently authoritative for curated supporting
+bmd-store must remain independently authoritative for curated supporting
 scientific data, reference evidence, and non-core scientific tools.
 
-BMDwiki must remain independently usable as human-oriented
+bmd-help must remain independently usable as human-oriented
 documentation.
 
 The BMD website remains the public face of the group.
 
-BMD Agent may consume information from all of these systems without
+bmd-check may consume information from all of these systems without
 requiring them to become components of the agent.
 
-In this ecosystem, BMD Compute is the core VASP data-generation pipeline. It
+In this ecosystem, bmd-compute is the core VASP data-generation pipeline. It
 owns the authoritative implementation of decisions required to construct,
-validate, execute, and provenance BMD VASP calculations. BMDex contains
+validate, execute, and provenance BMD VASP calculations. bmd-store contains
 BMD-curated supporting scientific data, reference evidence, and non-core
-scientific tools outside that pipeline. BMD Agent consumes and coordinates
-these capabilities without duplicating their authority.
+scientific tools outside that pipeline. bmd-check consumes exposed capabilities
+and evidence to inspect, diagnose, explain, and advise without duplicating
+their authority.
 
 If a capability determines how BMD generates a VASP calculation, its
-authoritative implementation belongs in BMD Compute. If it provides supporting
+authoritative implementation belongs in bmd-compute. If it provides supporting
 scientific data or tooling but is not part of the core VASP data-generation
-pipeline, it belongs in BMDex.
+pipeline, it belongs in bmd-store.
 
 ## 3. Scientific architecture
 
-The long-term scientific model is approximately:
+The following long-term scientific model is speculative architecture, not a
+description of bmd-check's current functionality or authority:
 
                          Human researcher
                                 |
                                 v
-                           BMD Agent
+                           bmd-check
                                 |
                 scientific reasoning / planning
                                 |
           +---------------------+---------------------+
           |                     |                     |
           v                     v                     v
-       Knowledge             Analysis              Compute
-       BMDex                 pymatgen             BMD Compute
-       BMDwiki               ML models                 |
+       Knowledge             Analysis              Generation
+       bmd-store             pymatgen              bmd-compute
+       bmd-help              ML models                 |
        literature            other tools               v
        Materials Project                          PowerSLURM
                                                        |
@@ -83,7 +84,7 @@ The long-term scientific model is approximately:
                          human validation
                                 |
                                 v
-                              BMDex
+                              bmd-store
 
 AI/ML can progressively accelerate this loop while physics-based
 validation remains central.
@@ -98,8 +99,8 @@ The observation plane includes operations such as:
 
 - reading repository files;
 - inspecting Git state and history;
-- searching BMDex;
-- reading BMDwiki;
+- searching bmd-store;
+- reading bmd-help;
 - reading public BMD website information;
 - inspecting PowerSLURM queue state;
 - inspecting SLURM accounting;
@@ -125,26 +126,26 @@ The action plane includes operations such as:
 - publishing information;
 - changing BMD scientific standards.
 
-BMD Agent v0 has no action plane.
+bmd-check v0 has no action plane.
 
 Future action capabilities must be introduced deliberately and must
 require appropriate authorization.
 
 ## 5. Current infrastructure
 
-BMD Agent is hosted on the BMD university Linux VM.
+bmd-check is hosted on the BMD university Linux VM.
 
 Current project layout:
 
     ~/projects/
-        bmd_compute/
-        BMDex/
-        bmd_agent/
+        bmd-compute/
+        bmd-store/
+        bmd-check/
 
-The BMD Compute checkout is a live operational checkout and must be
+The bmd-compute checkout is a live operational checkout and must be
 treated as a protected resource.
 
-BMD Compute currently runs from this checkout using Uvicorn.
+bmd-compute currently runs from this checkout using Uvicorn.
 
 The agent accesses PowerSLURM through the dedicated SSH identity:
 
@@ -154,7 +155,7 @@ which connects as:
 
     bmdguest
 
-The intended scheduler scope for normal BMD Agent operation is:
+The intended scheduler scope for normal bmd-check operation is:
 
     leeburton-pool
 
@@ -178,13 +179,13 @@ Relevant resources include:
 The `bmdguest` account is intended to observe group resources without
 modifying researchers' files.
 
-Agent-owned scratch space may be used for temporary analysis.
+bmd-check-owned scratch space may be used for temporary analysis.
 
 Temporary agent artifacts do not become authoritative scientific
 knowledge merely because the agent generated them.
 
 Scientifically valuable datasets or conclusions that should persist
-beyond individual projects should be deliberately curated into BMDex.
+beyond individual projects should be deliberately curated into bmd-store.
 
 ## 7. People and identity
 
@@ -267,7 +268,7 @@ immediately.
 
 ## 9. Evidence and validation
 
-BMD Agent must distinguish different validation states.
+bmd-check must distinguish different validation states.
 
 Candidate states include:
 
@@ -305,10 +306,10 @@ Examples include:
 - ML-derived predictions;
 - human scientific assessment.
 
-## 10. Tool architecture
+## 10. Tool boundaries
 
-BMD Agent should orchestrate specialist tools rather than reproduce
-their functionality.
+bmd-check consumes controlled observational interfaces and evidence from
+specialist tools rather than reproducing their functionality.
 
 Examples:
 
@@ -320,8 +321,9 @@ Examples:
     remote collaboration         -> GitHub
     materials reference data     -> Materials Project
 
-The agent determines what operation is appropriate and invokes a
-controlled interface to the specialist tool.
+Current bmd-check does not coordinate or execute calculations through these
+systems. Any future orchestration or action capability is speculative and would
+require a separately reviewed, controlled interface and explicit authorization.
 
 ## 11. Resource registry
 
@@ -377,7 +379,7 @@ Persistent state may later use SQLite plus ordinary structured files.
 
 An HTTP API or web interface may be added when justified.
 
-The BMD Lab website may eventually provide an interface to BMD Agent,
+The Burton Materials Discovery Lab website may eventually provide an interface to bmd-check,
 but this is not an initial architectural requirement.
 
 ## 13. LLM boundary
@@ -409,14 +411,16 @@ the underlying operating-system account possesses it.
 
 ## 14. Development trajectory
 
-A tentative progression is:
+The following trajectory is speculative planning material, not a claim of
+implemented capability. Current bmd-check remains the read-only observer
+described above.
 
 ### v0 — Observer
 
 - resource registry;
 - read-only Git inspection;
-- BMD Compute inspection;
-- BMDex inspection;
+- bmd-compute inspection;
+- bmd-store inspection;
 - PowerSLURM queue inspection;
 - calculation-file inspection;
 - pymatgen/VASP parsing;
@@ -445,7 +449,7 @@ A tentative progression is:
 ### v2 — Computational proposals
 
 - formulate validation strategies;
-- propose BMD Compute workflows;
+- propose bmd-compute workflows;
 - prepare proposed changes without executing protected actions.
 
 ### v3 — Controlled action plane
