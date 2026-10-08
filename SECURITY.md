@@ -1,8 +1,8 @@
-# BMD Agent Security Model
+# bmd-check Security Model
 
 ## 1. Core rule
 
-BMD Agent v0 has no authority to mutate authoritative BMD resources.
+bmd-check v0 has no authority to mutate authoritative BMD resources.
 
 This is a system design requirement, not merely an instruction to the
 language model.
@@ -11,7 +11,7 @@ Observation and action are separate security domains.
 
 ## 2. Governance
 
-BMD Agent is PI-governed.
+bmd-check is PI-governed.
 
 Students and other group members may:
 
@@ -19,7 +19,7 @@ Students and other group members may:
 - inspect results;
 - conduct investigations;
 - propose improvements;
-- contribute code to the BMD Agent project;
+- contribute code to the bmd-check project;
 - use agent development as a learning exercise.
 
 They may not use the agent to make authoritative changes without PI
@@ -31,9 +31,9 @@ Future action capabilities must preserve this boundary.
 
 Protected resources include, but are not limited to:
 
-- the live BMD Compute checkout;
-- BMDex;
-- BMDwiki;
+- the live bmd-compute checkout;
+- bmd-store;
+- bmd-help;
 - student and researcher project files;
 - PowerSLURM jobs;
 - BMD scientific datasets;
@@ -41,15 +41,15 @@ Protected resources include, but are not limited to:
 - Git remotes;
 - public-facing BMD resources.
 
-## 4. BMD Compute
+## 4. bmd-compute
 
-The local BMD Compute checkout is a live production resource.
+The local bmd-compute checkout is a live production resource.
 
 Current location:
 
-    ~/projects/bmd_compute
+    ~/projects/bmd-compute
 
-The running BMD Compute service uses this checkout.
+The running bmd-compute service uses this checkout.
 
 The agent may inspect it but must not modify it in v0.
 
@@ -78,17 +78,17 @@ Examples of prohibited operations:
 
 A dirty working tree must be reported, not "fixed."
 
-## 5. BMDex
+## 5. bmd-store
 
-BMDex is authoritative for curated supporting scientific data, reference
-evidence, and non-core scientific tools. It is not the authority for BMD
-Compute's core VASP data-generation implementation.
+bmd-store is authoritative for curated supporting scientific data, reference
+evidence, and non-core scientific tools. It is not the authority for
+bmd-compute's core VASP data-generation implementation.
 
-BMD Agent v0 may read and search BMDex.
+bmd-check v0 may read and search bmd-store.
 
 It may not:
 
-- modify BMDex records;
+- modify bmd-store records;
 - promote an observation into a standard;
 - commit;
 - push;
@@ -100,19 +100,19 @@ BMD knowledge.
 
 ## 6. PowerSLURM
 
-BMD Agent observes PowerSLURM in one of two deployment modes, selected by
+bmd-check observes PowerSLURM in one of two deployment modes, selected by
 `ssh_host` in the deployment-local `resources.toml`:
 
-- **Remote mode** (`ssh_host` is an SSH host alias): Agent runs elsewhere and
+- **Remote mode** (`ssh_host` is an SSH host alias): bmd-check runs elsewhere and
   connects over SSH with the dedicated observational guest identity.
 
       SSH alias:        powerslurm-bmdguest
       Remote identity:  bmdguest
 
-  The SSH invocation is built entirely by Agent with `BatchMode=yes`, so a
+  The SSH invocation is built entirely by bmd-check with `BatchMode=yes`, so a
   missing key or unknown host fails immediately instead of prompting.
 
-- **Local mode** (`ssh_host = "local"`): Agent runs on the cluster itself, for
+- **Local mode** (`ssh_host = "local"`): bmd-check runs on the cluster itself, for
   example from a shared installation on a login node, and SSH is not used.
   The same fixed observational operations execute directly **under the Unix
   identity of the user who invoked `bmd-check`/`bmd-agent`**, with that
@@ -155,7 +155,7 @@ Prohibited operations include:
 - changing permissions;
 - altering running calculations.
 
-## 7. Agent workspace
+## 7. bmd-check workspace
 
 The agent may require writable storage for:
 
@@ -196,10 +196,10 @@ security model must not depend on the language model voluntarily
 avoiding dangerous commands.
 
 Current producer integrations invoke fixed Python modules from explicitly
-configured BMD Compute and BMDex checkouts. They do not expose a user-selected
+configured bmd-compute and bmd-store checkouts. They do not expose a user-selected
 module or arbitrary shell command. These checkouts and their configured Python
 environments are trusted code dependencies: imported module code executes with
-the operating-system privileges of the Agent caller. Agent must not be
+the operating-system privileges of the bmd-check caller. bmd-check must not be
 configured to execute untrusted third-party checkout code.
 
 Observational scheduler and file reads are a closed set of typed operations
@@ -211,12 +211,12 @@ argument vector:
 
 - in local mode it runs as an argument vector with no shell;
 - in remote mode it is shell-quoted as a whole for the remote login shell, and
-  Agent builds the `ssh` command itself, allowing only its own options
+  bmd-check builds the `ssh` command itself, allowing only its own options
   (`BatchMode=yes` first and unconditionally, `ConnectTimeout` from typed
   configuration, and a reusable session's own control-socket options).
 
 Two operations (the archive probe and the batched acquisition) need shell
-control flow. Their shell programs are fixed Agent constants; every variable
+control flow. Their shell programs are fixed bmd-check constants; every variable
 input is passed as a separate positional argument, never interpolated into
 program text. No interface accepts caller-supplied command text, a
 preconstructed command vector, or caller SSH options.
@@ -237,26 +237,26 @@ symlink, the operating system may permit access outside the lexical root.
 This limitation applies to both deployment modes, but its consequences depend
 on the mode: in remote mode a symlink is followed with `bmdguest`'s
 permissions; in local mode it is followed with the invoking user's
-permissions. A local-mode user can therefore cause Agent to read, through a
+permissions. A local-mode user can therefore cause bmd-check to read, through a
 symlink they can create beneath an allowed root, any file that user could
-already read directly; Agent grants no access beyond the invoking user's own,
+already read directly; bmd-check grants no access beyond the invoking user's own,
 but allowed roots must not be relied on to confine what that user can read.
 Choose allowed roots accordingly, and treat realpath containment as a separate
 hardening item rather than a current guarantee.
 
 Likewise, configuration values such as `access = "read_only"` and
-`access = "observational"` are enforced Agent policy declarations. They do not
+`access = "observational"` are enforced bmd-check policy declarations. They do not
 technically remove write permissions from the configured OS or SSH identity.
 
 Safe deployment therefore combines:
 
-1. Agent's fixed-purpose, action-free implementation;
+1. bmd-check's fixed-purpose, action-free implementation;
 2. correctly configured allowed roots; and
 3. least-privileged OS/SSH credentials, filesystem permissions, and ACLs for
    the identity that actually performs the reads (`bmdguest` in remote mode,
    the invoking user in local mode).
 
-Do not describe BMD Agent as a filesystem security sandbox. Server-side
+Do not describe bmd-check as a filesystem security sandbox. Server-side
 identity and permission controls remain part of the security boundary.
 
 ## 10. Least privilege
@@ -317,7 +317,7 @@ Introducing such a capability requires:
 7. clear reporting of the resulting action.
 
 The ability of the underlying operating-system account to perform an
-operation does not imply that BMD Agent is authorized to perform it.
+operation does not imply that bmd-check is authorized to perform it.
 
 ## 13. Auditability
 
@@ -372,8 +372,8 @@ The first implementation should prove that useful scientific
 observation, troubleshooting, and advice are possible before any action
 capabilities are introduced.
 
-BMD Agent does not intentionally modify calculations, submit or cancel jobs,
+bmd-check does not intentionally modify calculations, submit or cancel jobs,
 restart calculations, alter scientific inputs, delete calculation files, or
-read POTCAR contents. This statement describes Agent's implemented interfaces;
+read POTCAR contents. This statement describes bmd-check's implemented interfaces;
 it is not a claim that the configured OS identity lacks write permissions or
 that trusted producer module code is sandboxed.

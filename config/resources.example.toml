@@ -1,4 +1,4 @@
-# Example BMD Agent resource configuration.
+# Example bmd-check resource configuration.
 #
 # Copy this file to a deployment-local location and edit the values:
 #
@@ -8,27 +8,27 @@
 #   Windows:
 #     %APPDATA%\bmd-agent\resources.toml
 #
-# Or point BMD Agent at a specific file:
+# Or point bmd-check at a specific file:
 #
 #   BMD_AGENT_RESOURCES=/path/to/resources.toml
 #
-# This example is documentation only. BMD Agent never uses it as the
+# This example is documentation only. bmd-check never uses it as the
 # runtime configuration.
 #
-# Repository producer modules execute as the Agent caller. Configure only
-# trusted BMD Compute/BMDex checkouts and use least-privileged OS/SSH
-# identities. The access declarations below express Agent policy; they do not
+# Repository producer modules execute as the bmd-check caller. Configure only
+# trusted bmd-compute/bmd-store checkouts and use least-privileged OS/SSH
+# identities. The access declarations below express bmd-check policy; they do not
 # remove permissions from the underlying operating-system accounts.
 
 [repositories.bmd_compute]
-name = "BMD Compute"
-path = "/home/example/projects/bmd_compute"
+name = "bmd-compute"
+path = "/home/example/projects/bmd-compute"
 role = "compute"
 access = "read_only"
 protected = true
 live = true
 
-# Python executable from BMD Compute's own environment. BMD Agent uses this
+# Python executable from bmd-compute's own environment. bmd-check uses this
 # only to run fixed read-only producer modules from the configured checkout,
 # currently:
 #
@@ -39,14 +39,14 @@ live = true
 capability_python = "/home/example/micromamba/envs/bmd-compute/bin/python"
 
 [repositories.bmdex]
-name = "BMDex"
-path = "/home/example/projects/BMDex"
+name = "bmd-store"
+path = "/home/example/projects/bmd-store"
 role = "curated_knowledge"
 access = "read_only"
 protected = true
 live = false
 
-# Python executable from BMDex's own environment. BMD Agent uses this only
+# Python executable from bmd-store's own environment. bmd-check uses this only
 # to run fixed read-only producer modules from the configured checkout,
 # currently:
 #
@@ -59,7 +59,7 @@ capability_python = "/home/example/micromamba/envs/bmdex/bin/python"
 [clusters.powerslurm]
 name = "PowerSLURM"
 # An SSH host alias from the caller's SSH configuration (run non-interactively
-# with BatchMode=yes), or the reserved transport selector "local" when Agent
+# with BatchMode=yes), or the reserved transport selector "local" when bmd-check
 # runs on a POSIX cluster node itself: the same fixed observational operations
 # then run directly as the invoking user, without SSH (not supported on
 # Windows). "local" is not a host name. allowed_remote_roots is a lexical check
@@ -69,7 +69,7 @@ partition = "leeburton-pool"
 access = "observational"
 
 # Optional shipped reference profile. The profile records expected/observed
-# infrastructure facts, including the BMD Compute flows and logs roots used for
+# infrastructure facts, including the bmd-compute flows and logs roots used for
 # exact job_<SLURM_JOB_ID>.json run resolution. This deployment-local table and
 # allowed_remote_roots remain authoritative for acquisition and path authorization.
 deployment_profile = "power"
@@ -80,7 +80,7 @@ ssh_connect_timeout_seconds = 10
 remote_command_timeout_seconds = 20
 scheduler_accounting_timeout_seconds = 60
 
-# Absolute POSIX directories that BMD Agent may read through this SSH
+# Absolute POSIX directories that bmd-check may read through this SSH
 # identity when inspecting calculation files. User-supplied paths must
 # stay within one of these roots after lexical normalization. This is not a
 # filesystem sandbox: remote symlinks may resolve outside a lexical root if
