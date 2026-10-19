@@ -295,6 +295,7 @@ def write_stage_complete(directory: Path) -> None:
     (directory / "INCAR").write_text(INCAR_RELAX, encoding="utf-8")
     (directory / "OUTCAR").write_text(OUTCAR_RELAX_FORCES_CONVERGED, encoding="utf-8")
     (directory / "OSZICAR").write_text(OSZICAR_RELAX_TWO_STEP_SCF_CONVERGED, encoding="utf-8")
+    (directory / "CONTCAR").write_text(POSCAR, encoding="utf-8")
 
 
 def write_stage_terminated_unverified(directory: Path) -> None:

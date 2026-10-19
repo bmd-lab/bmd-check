@@ -14,9 +14,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
+import os
 
 from bmd_agent.resources.run import (
     CONVERGED,
+    JobInspection,
+    ScientificResult,
     StageTrajectoryObservation,
     assess_convergence_progress,
 )
@@ -151,6 +154,117 @@ def workflow_completion_status(
         return WORKFLOW_INCOMPLETE
 
     return WORKFLOW_UNKNOWN
+
+
+def job_stage_completion(inspection: JobInspection) -> tuple[StageCompletion, ...]:
+    """Normalize already acquired job evidence into shared stage completion records."""
+
+    scientific = _job_scientific(inspection)
+    if inspection.bmd_compute is not None:
+        trajectories = {
+            item.stage_index: item for item in inspection.bmd_compute.trajectories
+        }
+        stages: list[StageCompletion] = []
+        for stage in inspection.bmd_compute.inspection.workflow_stages:
+            trajectory = trajectories.get(stage.index)
+            started = trajectory is not None and trajectory_has_observations(trajectory)
+            stages.append(
+                StageCompletion(
+                    index=stage.index,
+                    label=_job_stage_label(stage),
+                    started=started,
+                    terminated_normally=None,
+                    convergence=stage_convergence(
+                        trajectory if started else None,
+                        electronic_fallback=same_directory_electronic_convergence(
+                            trajectory,
+                            scientific,
+                        ),
+                    ),
+                )
+            )
+        return tuple(stages)
+    if inspection.direct_vasp is not None:
+        trajectory = inspection.direct_vasp.trajectory
+        started = trajectory_has_observations(trajectory)
+        return (
+            StageCompletion(
+                index=1,
+                label="Direct VASP calculation",
+                started=started,
+                terminated_normally=None,
+                convergence=stage_convergence(
+                    trajectory if started else None,
+                    electronic_fallback=same_directory_electronic_convergence(
+                        trajectory,
+                        scientific,
+                    ),
+                ),
+            ),
+        )
+    return ()
+
+
+def trajectory_has_observations(trajectory: StageTrajectoryObservation) -> bool:
+    """Return whether a trajectory contains evidence that its stage started."""
+
+    return bool(
+        trajectory.oszicar_present
+        or trajectory.vasprun_present
+        or trajectory.outcar_present
+        or trajectory.completed_ionic_steps is not None
+        or trajectory.incomplete_electronic_iteration_count is not None
+        or trajectory.electronic_cycles
+        or trajectory.ionic_steps
+    )
+
+
+def _job_scientific(inspection: JobInspection) -> ScientificResult | None:
+    if inspection.bmd_compute is not None:
+        return inspection.bmd_compute.inspection.scientific
+    if inspection.direct_vasp is not None:
+        return inspection.direct_vasp.scientific
+    return None
+
+
+def same_directory_electronic_convergence(
+    trajectory: StageTrajectoryObservation | None,
+    scientific: ScientificResult | None,
+) -> bool | None:
+    if trajectory is None or scientific is None or scientific.electronic_convergence is None:
+        return None
+    directory = os.path.normpath(trajectory.directory)
+    for path in scientific.source_paths:
+        text = str(path)
+        if (
+            os.path.basename(text) == "vasprun.xml"
+            and os.path.normpath(os.path.dirname(text)) == directory
+        ):
+            return scientific.electronic_convergence
+    return None
+
+
+def _job_stage_label(stage: object) -> str:
+    theory = str(getattr(stage, "theory", "") or "unknown").upper()
+    stage_type = str(getattr(stage, "stage_type", "") or "calculation")
+    stage_labels = {
+        "band_structure": "Band Structure",
+        "dos": "DOS",
+        "relax": "Geometry Optimisation",
+        "static": "Static Energy",
+    }
+    text = f"{theory} {stage_labels.get(stage_type, stage_type.replace('_', ' ').title())}"
+    modifiers = tuple(getattr(stage, "modifiers", ()) or ())
+    if modifiers:
+        modifier_labels = {
+            "soc": "SOC",
+            "dft_u": "DFT+U",
+        }
+        text += " + " + " + ".join(
+            modifier_labels.get(str(item).lower(), str(item).replace("_", " ").upper())
+            for item in modifiers
+        )
+    return text
 
 
 def completion_gap_lines(

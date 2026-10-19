@@ -308,7 +308,7 @@ def test_scheduler_success_with_unconverged_first_stage_is_incomplete(tmp_path: 
     assert views[root][2] == ("INCOMPLETE", "COMPLETED")
 
 
-def test_scheduler_failure_is_still_reported_as_failed(tmp_path: Path) -> None:
+def test_scheduler_failure_is_reported_as_incomplete_by_unified_assessment(tmp_path: Path) -> None:
     root = tmp_path / "flow"
     stage_1, stage_2 = write_two_stage_workflow(root)
     write_stage_complete(stage_1)
@@ -325,7 +325,7 @@ def test_scheduler_failure_is_still_reported_as_failed(tmp_path: Path) -> None:
         )
     )
 
-    assert summary.status == "FAILED"
+    assert summary.status == "INCOMPLETE"
 
 
 @pytest.mark.parametrize("with_scheduler", [True, False])
@@ -453,6 +453,7 @@ def test_job_uses_same_directory_final_vasprun_convergence() -> None:
         result=ScientificResult(
             source_paths=(f"{quiet.directory}/vasprun.xml",),
             final_formula="Si",
+            final_energy_ev=-10.0,
             electronic_convergence=True,
         ),
     )
@@ -525,10 +526,10 @@ def test_path_completed_with_missing_exit_code_is_not_scheduler_success(tmp_path
     assert invocation_view(root, lookup)[:2] == ("COMPLETED", "COMPLETED")
 
 
-def test_job_nonzero_exit_is_failed_not_incomplete() -> None:
+def test_job_nonzero_exit_is_incomplete_in_scientific_assessment() -> None:
     job = bmd_job(scheduler_record=scheduler(state="COMPLETED", exit_code="1:0"))
 
-    assert build_job_concise_summary(job).status == "FAILED"
+    assert build_job_concise_summary(job).status == "INCOMPLETE"
 
 
 def test_job_genuinely_completed_workflow_is_completed() -> None:

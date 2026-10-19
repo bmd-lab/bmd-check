@@ -1516,6 +1516,35 @@ def _derive_local_scientific(directory: Path, submission: Mapping[str, Any] | No
             source_paths=tuple(display_paths.values()),
             error=str(exc),
         )
+    if scientific.final_energy_ev is None:
+        oszicar = directory / "OSZICAR"
+        try:
+            trajectory = parse_oszicar_trajectory(oszicar.read_bytes())
+        except Exception:
+            trajectory = None
+        if trajectory is not None and trajectory.ionic_steps:
+            final_step = trajectory.ionic_steps[-1]
+            final_energy = (
+                final_step.free_energy
+                if final_step.free_energy is not None
+                else final_step.energy_zero
+            )
+            if final_energy is not None:
+                site_count = (
+                    scientific.structure.site_count
+                    if scientific.structure is not None
+                    else None
+                )
+                scientific = replace(
+                    scientific,
+                    source_paths=tuple(
+                        dict.fromkeys((*scientific.source_paths, str(oszicar)))
+                    ),
+                    final_energy_ev=final_energy,
+                    energy_per_atom_ev=(
+                        final_energy / site_count if site_count else None
+                    ),
+                )
     if _has_malformed_xml_warning(caught):
         reason = "vasprun.xml could not be parsed completely"
         unavailable = tuple(
