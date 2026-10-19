@@ -260,6 +260,7 @@ class ScientificResult:
     final_energy_ev: float | None = None
     energy_per_atom_ev: float | None = None
     electronic_convergence: bool | None = None
+    dos_available: bool | None = None
     band_gap_ev: float | None = None
     band_kpoints: int | None = None
     bands: int | None = None
@@ -2502,6 +2503,17 @@ def parse_vasp_output_files(
     band_gap = None
     band_kpoints = None
     bands = None
+    dos_available = None
+    if _workflow_has_stage(workflow_spec, "dos"):
+        if vasprun is None:
+            unavailable.append("DOS unavailable: vasprun.xml could not be parsed")
+        else:
+            try:
+                dos_available = getattr(vasprun, "complete_dos", None) is not None
+            except Exception as exc:
+                unavailable.append(f"DOS could not be derived: {exc}")
+            if dos_available is False:
+                unavailable.append("DOS unavailable: vasprun.xml did not provide complete_dos")
     band_requested = "kpoints" in local_paths or _workflow_has_stage(workflow_spec, "band_structure")
     if band_requested:
         band_structure = None
@@ -2538,6 +2550,7 @@ def parse_vasp_output_files(
         final_energy_ev=_round_float(final_energy),
         energy_per_atom_ev=_round_float(energy_per_atom),
         electronic_convergence=_bool_or_none(electronic_convergence),
+        dos_available=dos_available,
         band_gap_ev=_round_float(band_gap),
         band_kpoints=band_kpoints,
         bands=bands,

@@ -123,6 +123,7 @@ def scientific(
         final_formula=formula,
         final_energy_ev=energy,
         electronic_convergence=converged,
+        dos_available=True,
         band_gap_ev=band_gap,
         structure=StructureObservation(
             source_path="/flow/CONTCAR",
@@ -464,7 +465,7 @@ def test_historical_21906221_fixture_renders_supported_custodian_failure(capsys)
     plain = normalized(output)
 
     assert "HSE06 Static Energy + SOC" in output
-    assert "Status: FAILED" in output
+    assert "Status: INCOMPLETE" in output
     assert "Automatic frozen-job protection intervened 5 times" in plain
     assert "after 6 hours passed without new VASP output" in plain
     assert (
@@ -585,7 +586,7 @@ def test_established_oom_is_explained_without_changing_termination_logic() -> No
 
     output = rendered_job(job)
 
-    assert "Status: FAILED" in output
+    assert "Status: INCOMPLETE" in output
     assert "SLURM reported that the job stopped because it ran out of memory." in output
     assert "Evidence indicates an out-of-memory failure." in output
 
@@ -727,7 +728,7 @@ def test_manual_direct_vasp_and_partial_outputs_remain_neutral() -> None:
     output = render_concise_summary(build_job_concise_summary(job))
 
     assert "Direct VASP calculation" in output
-    assert "Status: FAILED" in output
+    assert "Status: INCOMPLETE" in output
     assert "3 observed iterations" in output
     assert "Agent could not determine the cause" in output
     assert (
@@ -772,7 +773,7 @@ def test_failed_multi_stage_summary_focuses_on_active_stage() -> None:
     output = rendered_job(job)
 
     assert "Stage 1  COMPLETED" in output
-    assert "Stage 2  FAILED" in output
+    assert "Stage 2  INCOMPLETE" in output
     assert "Stage 3  NOT STARTED" in output
     assert "incomplete electronic cycle contains 7 observed iterations" in output
     assert "before the calculation was interrupted" not in output

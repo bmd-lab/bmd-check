@@ -33,6 +33,11 @@ from bmd_agent.resources.bmdex import (
     enrich_job_with_bmdex_domain_context,
     enrich_lifecycle_with_bmdex_domain_context,
 )
+from bmd_agent.resources.assessment import (
+    build_lifecycle_completion_assessment,
+    render_completion_assessment,
+    serialize_completion_assessment,
+)
 from bmd_agent.resources.compute import (
     COMPUTE_POLICY_NOT_CONFIGURED,
     POLICY_ALIGNMENT_DIFFERENT,
@@ -310,6 +315,61 @@ def show_current_directory(
             ),
             end="",
         )
+    return 0
+
+
+def show_completion_assessment(
+    directory: Path | str,
+    *,
+    output_format: str = "human",
+    registry: ResourceRegistry | None = None,
+) -> int:
+    """Assess scientific completion for one local calculation or workflow root."""
+
+    target = Path(directory).expanduser()
+    if not target.exists():
+        print(f"Calculation path does not exist: {target}")
+        return 2
+
+    scheduler_lookup = None
+    if registry is None:
+        try:
+            registry = load_resources()
+        except ConfigurationError:
+            registry = None
+    if registry is not None:
+        try:
+            cluster = powerslurm_cluster(registry)
+        except ConfigurationError:
+            cluster = None
+        if cluster is not None:
+            scheduler_lookup = lambda job_id: get_job_accounting(
+                cluster.ssh_host,
+                job_id,
+                timeout=cluster.scheduler_accounting_timeout_seconds,
+                ssh_connect_timeout=cluster.ssh_connect_timeout_seconds,
+            )
+
+    analysis = analyze_calculation_directory(target, scheduler_lookup=scheduler_lookup)
+    if analysis.bmd_workflow is not None:
+        workflow_root = analysis.bmd_workflow.workflow_root
+        if analysis.directory != workflow_root:
+            analysis = analyze_calculation_directory(
+                workflow_root,
+                scheduler_lookup=scheduler_lookup,
+            )
+    assessment = build_lifecycle_completion_assessment(analysis)
+    if output_format == "json":
+        print(
+            json.dumps(
+                serialize_completion_assessment(assessment),
+                indent=2,
+                sort_keys=True,
+                allow_nan=False,
+            )
+        )
+    else:
+        print(render_completion_assessment(assessment), end="")
     return 0
 
 
@@ -2529,6 +2589,24 @@ def _main(argv: list[str] | None) -> int:
 
             return show_diagnose_run(argv[1])
 
+        if command == "assess":
+            if len(argv) not in {3, 5} or argv[1] != "completion":
+                print(
+                    f"Usage: {_command_name()} assess completion <RUN_ROOT> "
+                    "[--format json]"
+                )
+                return 2
+            output_format = "human"
+            if len(argv) == 5:
+                if argv[3:] != ["--format", "json"]:
+                    print(
+                        f"Usage: {_command_name()} assess completion <RUN_ROOT> "
+                        "[--format json]"
+                    )
+                    return 2
+                output_format = "json"
+            return show_completion_assessment(argv[2], output_format=output_format)
+
         if _is_positive_decimal_job_id(command):
             options = _parse_job_options(argv[1:], allow_trajectory_json=False)
             if options is None:
@@ -2588,6 +2666,7 @@ def _print_help() -> None:
     print("  inspect-run <remote-flow-root>")
     print("  compare-runs <flow-a> <flow-b> [<flow-c> ...]")
     print("  diagnose-run <remote-flow-root>")
+    print("  assess completion <RUN_ROOT> [--format json]")
 
 
 def _is_positive_decimal_job_id(target: str) -> bool:
