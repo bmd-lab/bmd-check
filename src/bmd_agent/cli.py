@@ -38,6 +38,13 @@ from bmd_agent.resources.assessment import (
     render_completion_assessment,
     serialize_completion_assessment,
 )
+from bmd_agent.resources.electronic_character import (
+    StageSelectionError,
+    assess_electronic_character,
+    electronic_character_input_from_lifecycle,
+    render_electronic_character_assessment,
+    serialize_electronic_character_assessment,
+)
 from bmd_agent.resources.compute import (
     COMPUTE_POLICY_NOT_CONFIGURED,
     POLICY_ALIGNMENT_DIFFERENT,
@@ -371,6 +378,75 @@ def show_completion_assessment(
     else:
         print(render_completion_assessment(assessment), end="")
     return 0
+
+
+def show_electronic_character_assessment(
+    directory: Path | str,
+    *,
+    stage_index: int | None = None,
+    output_format: str = "human",
+) -> int:
+    """Assess the electronic character of one stage of a local calculation.
+
+    Reads local evidence only: no scheduler lookup, remote access or writes.
+    """
+
+    target = Path(directory).expanduser()
+    if not target.exists():
+        print(f"Calculation path does not exist: {target}")
+        return 2
+
+    analysis = analyze_calculation_directory(target)
+    if analysis.bmd_workflow is not None:
+        workflow_root = analysis.bmd_workflow.workflow_root
+        if analysis.directory != workflow_root:
+            analysis = analyze_calculation_directory(workflow_root)
+    try:
+        evidence = electronic_character_input_from_lifecycle(
+            analysis,
+            stage_index=stage_index,
+        )
+    except StageSelectionError as exc:
+        print(f"Stage selection failed: {exc}.")
+        return 2
+    assessment = assess_electronic_character(evidence)
+    if output_format == "json":
+        print(
+            json.dumps(
+                serialize_electronic_character_assessment(assessment),
+                indent=2,
+                sort_keys=True,
+                allow_nan=False,
+            )
+        )
+    else:
+        print(render_electronic_character_assessment(assessment), end="")
+    return 0
+
+
+def _parse_electronic_character_args(args: list[str]) -> tuple[str, int | None, str] | None:
+    """Parse ``RUN_ROOT [--stage-index N] [--format json]`` (options in any order)."""
+
+    if not args or args[0].startswith("-"):
+        return None
+    root = args[0]
+    stage_index: int | None = None
+    output_format: str | None = None
+    rest = args[1:]
+    while rest:
+        if len(rest) < 2:
+            return None
+        option, value = rest[0], rest[1]
+        rest = rest[2:]
+        if option == "--stage-index" and stage_index is None:
+            if not value.isdecimal() or not value.isascii() or int(value) < 1:
+                return None
+            stage_index = int(value)
+        elif option == "--format" and output_format is None and value == "json":
+            output_format = "json"
+        else:
+            return None
+    return root, stage_index, output_format or "human"
 
 
 def print_lifecycle_analysis(
@@ -2589,6 +2665,21 @@ def _main(argv: list[str] | None) -> int:
 
             return show_diagnose_run(argv[1])
 
+        if command == "assess" and len(argv) > 1 and argv[1] == "electronic-character":
+            parsed = _parse_electronic_character_args(argv[2:])
+            if parsed is None:
+                print(
+                    f"Usage: {_command_name()} assess electronic-character <RUN_ROOT> "
+                    "[--stage-index N] [--format json]"
+                )
+                return 2
+            root, stage_index, output_format = parsed
+            return show_electronic_character_assessment(
+                root,
+                stage_index=stage_index,
+                output_format=output_format,
+            )
+
         if command == "assess":
             if len(argv) not in {3, 5} or argv[1] != "completion":
                 print(
@@ -2667,6 +2758,7 @@ def _print_help() -> None:
     print("  compare-runs <flow-a> <flow-b> [<flow-c> ...]")
     print("  diagnose-run <remote-flow-root>")
     print("  assess completion <RUN_ROOT> [--format json]")
+    print("  assess electronic-character <RUN_ROOT> [--stage-index N] [--format json]")
 
 
 def _is_positive_decimal_job_id(target: str) -> bool:
