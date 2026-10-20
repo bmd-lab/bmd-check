@@ -1,0 +1,18 @@
+{{TAGDEF|MSDGW_SEED|[integer]|2}}
+
+Description: Seed for pseudo orbitals used by mixed stochastic-deterministic compression algorithm.{{cite|altman:prl:2024}}
+{{Available|6.6.0}}
+----
+When set in combination with {{TAG|MSDGW_F}}, {{TAG|MSDGW_SEED}} changes the random phases of the stochastic orbitals determined by the compression algorithm. {{TAG|MSDGW_NXI}} stochastic orbitals <math>\lbrace |\xi_1\rangle, \cdots,|\xi_{N_\xi}\rangle \rbrace </math> are determined from the original orbitals <math>\lbrace|\phi_1\rangle,\cdots,|\phi_N\rangle\rbrace</math> by drawing <math>N_\xi \times N</math> pseudo numbers <math>0\le \alpha_{i n}< 1</math> and forming the linear combinations <math>
+|\xi_i \rangle = \sum_{n=1}^{N} e^{i 2\pi \alpha_{in}}|\phi_n\rangle
+</math>.
+
+== Related tags and articles==
+{{TAG|MSDGW_NXI}},
+{{TAG|MSDGW_F}},
+{{TAG|MSDGW_NP}}
+
+== References ==
+<references/>
+----
+[[Category:INCAR]][[Category:GW]][[Category:Constrained-random-phase_approximation]]

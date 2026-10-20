@@ -1,0 +1,100 @@
+''<u>Exercise :</u>'' Determine the <sup>27</sup>Al C<sub>q</sub> value and the Al and F shieldings.
+
+&alpha;-AlF<sub>3</sub> crystallizes in the trigonal R -3c space group.
+
+a = b = 4.9305 &Aring;; c = 12.4462 &Aring;
+
+&alpha; = &beta; = 90°; &gamma; = 120°
+
+The unit cell contains two independent atoms (1 Al and 1 F)  with 6 formula units (AlF<sub>3</sub>) per unit cell (Z=6). AlF<sub>6</sub> octahedron units are linked together by corner sharing.
+As the conventional unit cell is non-primitive, the primitive rhombohedral one is used for the calculation. It saves a lot of computational time !
+
+We suggest you to use vesta for generation the POSCAR file from the AlF3.cif file. In the standard export procedure, the POSCAR file is generated with the conventional unit cell (non primitive R-cell with 24 atoms inside). Ask VESTA to reduce to unit cell to the primitive one. You will then have only 8 atoms in the POSCAR file.
+
+In this exercise one wants first to calculate the EFG tensor components of <sup>27</sup>Al.
+This is very fast task calculated at the end of the first SCF calculation (ground state property).
+The experimental values for the C<sub>q</sub> is 0.21 MHz. The nuclear quadrupolar momentum used to transform EFG in C<sub>q</sub> is Q = 14.66 10<sup>-30</sup> m<sup>2</sup>
+(see the paper of Sadoc ''et al.'' (http://www.sciencedirect.com/science/article/pii/S0926204014000022)
+(Flurine has a 1/2 nuclear spin, so Q is zero)
+
+In a second step one wants to calculate the shielding parameters for Al and F. This is done using the linear response using the GIPAW formalism.
+As the calculation is quite time consuming, only very few k-points and small ENCUT are used with standard PAW data sets.
+The calculated shielding tensors components can be compared to the ones obtained by Sadoc ''et al.''
+
+
+*{{FILE|INCAR}}
+
+  {{TAGBL|SYSTEM}}       =  Al F3
+  {{TAGBL|GGA}}          = PE
+  {{TAGBL|ISTART}}       = 1
+  {{TAGBL|ICHARG}}       = 0
+  {{TAGBL|INIWAV}}       = 1
+  {{TAGBL|LREAL}}        =  AUTO
+  {{TAGBL|ISYM}}         = 2
+  {{TAGBL|ISPIN}}        = 1
+
+Ionic minimisation
+  {{TAGBL|NSW}}          = 0
+  {{TAGBL|ISIF}}         = 2
+  {{TAGBL|IBRION}}       = 2
+#  {{TAGBL|EDIFFG}}       = -2E-2
+  {{TAGBL|POTIM}}        = 0.1
+
+Electronic minimisation
+  {{TAGBL|IALGO}}        = 38
+  {{TAGBL|LWAVE}}        = .TRUE.
+  {{TAGBL|EMIN}}         =   -20.0
+  {{TAGBL|EMAX}}         =   10.0
+  {{TAGBL|NEDOS}}        = 1601
+
+EFG Calculation
+  {{TAGBL|LEFG}}         = .TRUE.
+  {{TAGBL|QUAD_EFG}}     = 146.6 0.0
+
+Chemical Shift
+  {{TAGBL|PREC}}         = Normal    # nice
+  {{TAGBL|ENCUT}}        = 400.0      # typically higher cutoffs than usual are needed
+  {{TAGBL|ISMEAR}} = 0; SIGMA= 0.1 # no fancy smearings, SIGMA sufficiently small
+  {{TAGBL|EDIFF}}        = 1E-9      # you'd need much smaller EDIFFs.
+  {{TAGBL|LCHIMAG}}      = .TRUE.   # to switch on linear response for chemical shifts
+  {{TAGBL|DQ}}           = 0.001         # often the default is sufficient
+  {{TAGBL|ICHIBARE}}     = 1       # often the default is sufficient
+  {{TAGBL|LNMR_SYM_RED}} = .TRUE. # be on the safe side
+  {{TAGBL|NLSPLINE}}     = .TRUE.  # only needed if LREAL is NOT set.
+  {{TAGBL|LREAL}}        = A          # helps for speed for large systems, not needed
+  {{TAGBL|NBANDS}}       = 25       # to safe memory, ??? = NELECT/2
+
+
+*{{TAG|KPOINTS}}
+<pre>
+automatic mesh
+0
+Auto
+20
+</pre>
+
+*{{TAG|POSCAR}}
+<pre>
+Al1 F3
+1.0
+        4.9305000305         0.0000000000         0.0000000000
+        2.4652500153         4.2699382798         0.0000000000
+        2.4652650832         1.4233214594         4.1486879977
+   Al    F
+    2    6
+Direct
+     0.000000000         0.500000000         0.000000000
+     0.500000000         0.000000000         0.500000000
+     0.177499995         0.250000000         0.750000000
+     0.822499990         0.750000000         0.250000000
+     0.677500010         0.322499990         0.250000000
+     0.322499990         0.677500010         0.750000000
+     0.250000000         0.177499995         0.250000000
+     0.750000000         0.822499990         0.750000000
+</pre>
+
+== Download ==
+[[Media:AlF3_NMR.tgz| AlF3_NMR.tgz]]
+----
+
+[[Category:Examples]]

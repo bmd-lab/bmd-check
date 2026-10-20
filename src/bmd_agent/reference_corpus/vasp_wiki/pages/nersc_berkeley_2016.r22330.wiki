@@ -1,0 +1,111 @@
+== Lectures ==
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_Basics.pdf DFT, PW, and PAW]: "VASP: The basics. DFT, plane waves, PAW, ...". Video: [http://www.youtube.com/watch?v=vJkNv095Aj8&t=3s Part1] and [http://www.youtube.com/watch?v=dVguc4W1hrQ&t=180s Part2]
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_Hybrids.pdf Hybrid functionals]: "VASP: Hybrid functionals". [http://www.youtube.com/watch?v=OQhRYzWAGfk&t=20s Video] 
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_Dielectric.pdf Dielectric properties]: "VASP: Dielectric response. Perturbation theory, linear response, and finite electric fields". [http://www.youtube.com/watch?v=rnXnqDvaSNo&t=18s Video]
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_RPA.pdf Beyond DFT: RPA]: "VASP: beyond DFT. The Random-Phase-Approximation". [http://www.youtube.com/watch?v=7Vt3s8WWGCU&t=5s Video]
+
+== Tutorials ==
+
+*[http://www.vasp.at/vasp-workshop/tutorials/VASP_tutorial_AtomsMoleculesBulk.pdf From Atoms to Bulk systems]: A description of the examples "Atoms and molecules" and "Simple bulk systems".
+*[http://www.vasp.at/vasp-workshop/tutorials/VASP_tutorial_SurfaceScience.pdf Surface Science]: A description of the examples "A bit of surface science".
+*[http://www.vasp.at/vasp-workshop/tutorials/VASP_tutorial_DielectricsRPA.pdf Dielectric properties and RPA]: A description of the examples "Dielectric properties and RPA".
+
+== Exercises ==
+
+[[NERSC_Berkeley_2016_HOWTO|HOWTO: running the exercises]]
+
+=== Atoms and molecules ===
+
+[[O atom]]
+
+[[O atom spinpolarized]]
+
+[[O atom spinpolarized low symmetry]]
+
+[[O dimer]]
+
+[[CO]]
+
+[[CO vibration]]
+
+[[CO partial DOS]]
+
+[[H2O]]
+
+[[H2O vibration]]
+
+[[H2O molecular dynamics]]
+
+=== Simple bulk systems ===
+
+[[fcc Si]]
+
+[[fcc Si DOS]]
+
+[[fcc Si bandstructure]]
+
+[[cd Si]]
+
+[[cd Si volume relaxation]]
+
+[[cd Si relaxation]]
+
+[[fcc Ni]]
+
+[[graphite TS binding energy]]
+
+[[graphite MBD binding energy]]
+
+[[graphite interlayer distance]]
+
+=== A bit of surface science ===
+
+[[Ni 100 surface relaxation]]
+
+[[Ni 100 surface DOS]]
+
+[[Ni 100 surface bandstructure]]
+
+[[Ni 111 surface relaxation]]
+
+[[CO on Ni 111 surface]]
+
+[[Ni 111 surface high precision]]
+
+[[partial DOS of CO on Ni 111 surface]]
+
+[[vibrational frequencies of CO on Ni 111 surface]]
+
+[[STM of graphite]]
+
+[[STM of graphene]]
+
+=== Hybrid functionals ===
+
+[[bandgap of Si using different DFT+HF methods]]
+
+[[fcc Ni DOS with hybrid functional]]
+
+[[Si HSE bandstructure]]
+
+=== Dielectric properties and RPA ===
+
+[[dielectric properties of SiC]]
+
+[[bandgap of Si in GW]]
+
+[[equilibrium volume of Si in the RPA]]
+
+[[bandstructure of SrVO3 in GW]]
+
+[[dielectric properties of Si using BSE]]
+
+[[model BSE calculation on Si]]
+
+----
+
+[[Category:VASP]][[Category:Workshops]]

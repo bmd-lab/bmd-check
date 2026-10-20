@@ -1,0 +1,306 @@
+As of VASP.6.1.0, each release contains a testsuite for validation.
+{{NB|warning|VASP.6.1.0, VASP.6.1.1, and VASP.6.1.2 have a potentially serious issue related to the test suite. Please read about it [[Validation_tests#Known_issues| here]].}}
+
+== Testsuite ==
+
+The VASP testsuite is located in `root/testsuite` where `root` is the
+root directory of the build system.
+
+                         vasp.X.X.X (root directory)
+                                  |
+          ----------------------------------------------
+         |              |            |          |       |
+        arch           bin       testsuite     build    src
+                                     |
+                      ------------------------------------------
+                     |      |         |         |        |      |
+                   tests  README.md  tools   POTCARS  runtest makefile
+                     |           
+            ------------------   
+           |      |           |   
+         test1  test2  ...  testN
+
+;testsuite/
+: Testsuite root directory. Holds several subdirectories and the main bash-script <code>runtest</code> that runs the tests and validates the results.
+
+;testsuite/tests
+: Holds a whole bunch of subdirectories that in turn contain the input files ({{FILE|INCAR}}<tt>.?.*</tt>, {{FILE|KPOINTS}}, and {{FILE|POSCAR}}), and reference output ({{FILE|OUTCAR}}<tt>.ref</tt>, {{FILE|OSZICAR}}<tt>.ref</tt> etc.) for the test calculations.
+
+;testsuite/POTCARS
+: Holds the {{FILE|POTCAR}} files (potentials), one for each individual test calculation. The naming convention for these files is:
+: <pre>POTCAR.name-of-test-subdirectory</pre>
+
+;testsuite/tools
+: Contains a bash-script (<code>call_compare</code>) and a Fortran source file (<tt>compare_numbertable_new.f90</tt>). The latter is compiled as:
+: <pre>$(FC) -o compare_numbertable_new compare_numbertable_new.f90</pre>
+: where the <code>$(FC)</code> is the Fortran compiler binary path that has to be set in <tt>root/makefile.include</tt> (see the [[Installing_VASP.6.X.X#Compiler_variables | compiler variables section of Installing VASP]]).
+
+;testsuite/runtest
+: Main execution script that orchestrates which tests are executed based on set environment variables.
+
+;testsuite/makefile
+: Autoconf makefile containing some simple rules that either compile <tt>compare_numbertable_new.f90</tt> (<code>make numbertable</code>), execute a small selection of tests (<code>make test</code>) or execute all test (<code>make test_all</code>).
+
+
+== Running the tests ==
+
+=== Run the tests with <code>make</code> (recommended) ===
+----
+After building the <code>vasp_std</code>, <code>vasp_gam</code>, and <code>vasp_ncl</code> executables (e.g. by means of <code>make all</code>), you can test your build by means of:
+
+ make test
+
+(either in <tt>root</tt> or <tt>root/testsuite</tt>).
+The above will run a subset of tests from the testsuite (the so-called <tt>FAST</tt> category of tests) that will take roughly 1.5 hours to complete on 4 cores.
+
+The full testsuite may be executed by means of:
+
+ make test_all
+
+The output of the tests (<tt>stdout+stderr</tt>) is written to <tt>root/testsuite/testsuite.log</tt>.
+
+Tests that fail write an <tt>ERROR</tt> to <tt>root/testsuite/testsuite.log</tt> and the tests that were not passed successfully will be listed at the end of this file (and <code>make</code> will exit in error).
+
+To clean up after running the testsuite, execute:
+
+ make cleantest
+
+in <tt>root/testsuite</tt>.
+
+
+=== Configuring the testsuite manually ===
+----
+Configured the testsuite by setting several environment variables (with the naming convention: <code>VASP_TESTSUITE_*</code>).
+
+* <code>VASP_TESTSUITE_EXE_STD</code>:
+: The command that runs the standard version of VASP.
+: Default:
+: <pre>VASP_TESTSUITE_EXE_STD="mpirun -np 4 root/bin/vasp_std"</pre>
+: '''N.B.''': Specify the absolute path your ''standard'' executable (e.g. <code>vasp_std</code> or <code>vasp_gpu</code>).
+
+* <code>VASP_TESTSUITE_EXE_GAM</code>:
+: The command that runs the gamma-only version of VASP.
+: Default:
+: <pre>VASP_TESTSUITE_EXE_GAM="mpirun -np 4 root/bin/vasp_gam"</pre>
+: '''N.B.''': Specify the absolute path to your ''gamma-only'' executable (e.g. <code>vasp_gam</code>).
+
+* <code>VASP_TESTSUITE_EXE_NCL</code>:
+: The command that runs the non-collinear version of VASP.
+: Default:
+: <pre>VASP_TESTSUITE_EXE_NCL="mpirun -np 4 root/bin/vasp_ncl"</pre>
+: '''N.B.''': Specify the absolute path to your ''non-collinear'' executable (e.g. <code>vasp_ncl</code> or <code>vasp_gpu_ncl</code>).
+
+* <code>VASP_TESTSUITE_CUDA</code>:
+: Set <code>VASP_TESTSUITE_CUDA=Y</code> to exclude all tests that can not be executed with the CUDA-GPU port of VASP.
+: Default:
+: <pre>VASP_TESTSUITE_CUDA=</pre>
+
+* <code>VASP_TESTSUITE_INCAR_PREPEND</code>:
+: Additional INCAR tags used for every execution of VASP in the testsuite.
+: Default:
+: <pre>VASP_TESTSUITE_INCAR_PREPEND=</pre>
+
+* <code>VASP_TESTSUITE_TESTS</code>:
+: Selection of tests to be executed.
+: Default:
+: <pre>VASP_TESTSUITE_TESTS=</pre>
+: '''N.B.''': A convenient way to execute a specific test is to set <code>VASP_TESTSUITE_TESTS</code> to a particular test, e.g. by means of:
+: <pre>export VASP_TESTSUITE_TESTS="bulk_GaAs_ACFDT"</pre>
+: and to run <code>make test</code> from the <tt>root</tt> or <tt>root/testsuite</tt> directory.
+
+* <code>VASP_TESTSUITE_SKIP_TESTS</code>:
+: Selection of tests to be skipped.
+: Default:
+: <pre>VASP_TESTSUITE_SKIP_TESTS=</pre>
+
+* <code>VASP_TESTSUITE_POTENTIALS</code>:
+: Path to the POTCAR files.
+: Default:
+: <pre>VASP_TESTSUITE_POTENTIALS=root/testsuite/POTCARS</pre>
+
+
+==== Categories ====
+
+A variety of environment variables can be set to run or exclude tests belonging to specific categories.  
+Default: not set
+
+For instance:
+
+* <code>VASP_TESTSUITE_SKIP_LREAL</code>:
+: Skips all tests that use the real space PAW projection scheme ({{TAG|LREAL}}<tt>/=F</tt>) if set to: <tt>Y</tt>, i.e.,
+: <pre>export VASP_TESTSUITE_SKIP_LREAL=Y</pre>
+
+or
+
+* <code>VASP_TESTSUITE_RUN_LREAL</code>:
+: Runs only tests that use the real space PAW projection scheme ({{TAG|LREAL}}<tt>=A</tt> or {{TAG|LREAL}}<tt>=.TRUE.</tt>) if set to: <tt>Y</tt>.
+: <pre>export VASP_TESTSUITE_RUN_LREAL=Y</pre>          
+
+The following variables may be set to skip categories of tests:
+
+* <code>VASP_TESTSUITE_SKIP_NOCUDA</code>:
+: Skip all tests that can not be excuted with the CUDA-GPU port.
+
+* <code>VASP_TESTSUITE_SKIP_HYB</code>:
+: Skip all hybrid functional tests.
+
+* <code>VASP_TESTSUITE_SKIP_GAMMA</code>:
+: Skip all tests of the gamma-only version.
+
+* <code>VASP_TESTSUITE_SKIP_NCL</code>:
+: Skip all tests of the non-collinear version.
+
+* <code>VASP_TESTSUITE_SKIP_SOC</code>:
+: Skip all tests involving Spin-Orbit Coupling.
+
+* <code>VASP_TESTSUITE_SKIP_MD</code>:
+: Skip all Molecular Dynamics tests.
+
+* <code>VASP_TESTSUITE_SKIP_TBMD</code>:
+: Skip all constrained molecular dynamics tests.
+
+* <code>VASP_TESTSUITE_SKIP_RPA</code>:
+: Skip all tests that involve the Random-Phase Approximation (GW and ACFDT).
+
+* <code>VASP_TESTSUITE_SKIP_GW</code>:
+: Skip all GW tests.
+
+* <code>VASP_TESTSUITE_SKIP_ACFDT</code>:
+: Skip all ACFDT tests.
+
+* <code>VASP_TESTSUITE_SKIP_CRPA</code>:
+: Skip all tests of the Constrained-RPA.
+
+* <code>VASP_TESTSUITE_SKIP_BSE</code>:
+: Skip all Bethe-Salpeter-Equation tests.
+
+* <code>VASP_TESTSUITE_SKIP_NOSYM</code>:
+: Skip all tests that do not use symmetry.
+
+* <code>VASP_TESTSUITE_SKIP_LREAL</code>:
+: Skip all tests that use the real-space PAW projection scheme.
+
+* <code>VASP_TESTSUITE_SKIP_LRESP</code>:
+: Skip all linear response tests.
+
+* <code>VASP_TESTSUITE_SKIP_PEAD</code>:
+: Skip all tests that use the PEAD method.
+
+* <code>VASP_TESTSUITE_SKIP_NCORE1</code>:
+: Skip all tests that may only be executed with {{TAG|NCORE}}<tt>=1</tt>.
+
+* <code>VASP_TESTSUITE_SKIP_WAN90</code>:
+: Skip all tests that need to execute <code>wannier90</code>.
+
+
+The following variables may be set to run only tests that belong to a specific category (or categories):
+
+* <code>VASP_TESTSUITE_RUN_HYB</code>
+* <code>VASP_TESTSUITE_RUN_GAMMA</code>
+* <code>VASP_TESTSUITE_RUN_NCL</code>
+* <code>VASP_TESTSUITE_RUN_SOC</code>
+* <code>VASP_TESTSUITE_RUN_MD</code>
+* <code>VASP_TESTSUITE_RUN_TBMD</code>
+* <code>VASP_TESTSUITE_RUN_RPA</code>
+* <code>VASP_TESTSUITE_RUN_GW</code>
+* <code>VASP_TESTSUITE_RUN_ACFDT</code>
+* <code>VASP_TESTSUITE_RUN_CRPA</code>
+* <code>VASP_TESTSUITE_RUN_BSE</code>
+* <code>VASP_TESTSUITE_RUN_NOSYM</code>
+* <code>VASP_TESTSUITE_RUN_LREAL</code>
+* <code>VASP_TESTSUITE_RUN_FAST</code>
+* <code>VASP_TESTSUITE_RUN_LRESP</code>
+* <code>VASP_TESTSUITE_RUN_PEAD</code>
+* <code>VASP_TESTSUITE_RUN_NCORE1</code>
+* <code>VASP_TESTSUITE_RUN_WAN90</code>
+
+=== Directly execute the <code>runtest</code> script ===
+----
+Besides by means of <code>make</code> the testsuite may be invoked by executing
+the <tt>root/testsuite/runtest</tt> script directly.
+There are two ways to execute the <code>runtest</code> script:
+
+:1. Change into the <tt>root/testsuite</tt> directory and run the tests in the <tt>FAST</tt> category by means of:
+: <pre>./runtest -f</pre>
+: or ALL tests with
+: <pre>./runtest -a</pre>
+
+:2. Change into <tt>root/testsuite</tt>, adapt one of the example configuration files in <tt>root/testsuite</tt> and run the testsuite with:
+: <pre>./runtest your-config-file</pre>
+
+'''N.B.I''': To pipe the full output to a file (<tt>testsuite.log</tt>) add <code>> testsuite.log 2>&1</code> to the commands above.
+
+'''N.B.II''': We maintain [[Validation_tests#Configuration_templates | a small collection of configuration templates]].
+
+'''N.B.III''': When you want to run the testsuite by executing the <code>runtest</code> directly you will ''first'' have to build the <code>compare_numbertable_new</code> utility, by means of:
+
+ make numbertable
+
+(in <tt>root/testsuite</tt>).
+
+For each test that fails <code>runtest</code> writes an <tt>ERROR</tt> to <tt>stdout</tt> and the tests that were not passed successfully will be listed at the end of the run.
+
+In case of a successful run, <code>runtest</code> script will exit with error code 0 (indicates successful exit on Unix-based OS), otherwise the error code 1 is returned.
+
+
+==== Configuration templates ====
+The following configuration files are to be seen as templates to help you construct your own:
+
+<u>''General''</u>
+* [[All.conf  | all.conf ]]: runs all tests
+* [[Fast.conf | fast.conf]]: runs the <tt>FAST</tt> category of tests
+
+<u>''Running with MPI + OpenMP''</u>
+* [[Impi+omp.conf | impi+omp.conf]]: for OpenMP + Intel-MPI
+* [[Ompi+omp.conf | ompi+omp.conf]]: for OpenMP + OpenMPI
+
+<u>''To test the CUDA-GPU executables''</u>
+* [[Cuda.conf | cuda.conf]]
+
+'''N.B.''': these configuration files are sourced by the <code>runtest</code> bash-script. In principle they only set (<tt>export</tt>) some environment variables. Setting these environment variables by hand and invoking <code>make test</code> (or <code>make test_all</code>) amount to the same as running these configuration files with <code>runtest</code>.
+
+
+== The output of the tests ==
+
+If one runs the tests by means of <code>make</code>, as recommended [[Validation_tests#Run_the_tests_with_make_.28recommended.29 | above]] all output (<tt>stdout+stderr</tt>) will be written to <tt>root/testsuite/testsuite.log</tt>.
+
+Tests that fail write an <tt>ERROR</tt> to <tt>root/testsuite/testsuite.log</tt> and the tests that were not passed successfully will be listed at the end of this file (and <code>make</code> will exit in error).
+
+
+== What if tests fail ==
+
+We have successfully run the testsuite (on 1, 2, 4, 6, and 8 MPI-ranks) using executables built with [[Toolchains | various toolchains]].
+
+When you run into trouble, ''i.e.'', your testsuite runs report failing tests, we'd ask you to reproduce these errors with one of the aforementioned [[Toolchains | toolchains]] if possible.
+If your problems persist with a validated toolchain or you have no access to any of these toolchains, please submit a bug report to the [https://www.vasp.at/forum VASP-forum] and we will look into the matter.
+
+'''N.B.''': This bug report should contain all information we need to try to reproduce the problem: a list of the compilers and libraries you have used to build VASP and the logfile with the <tt>stdout+stderr</tt> output of your testsuite run. 
+Please keep the other output ({{FILE|OUTCAR}} files. etc) of your failing tests as well since we might need to inspect these in addition to the logfile in the course of trying to solve your problem.
+
+== Known issues ==
+
+The testsuite scripts in vasp.6.1.0, vasp.6.1.1 and vasp.6.1.2 releases have a potentially serious issue that can lead to loss of user data unrelated
+to vasp in the home directory!
+This issue has yet been only observed on MacOS and BSD systems, but might affect other OS as well. 
+Avoid to use
+
+ make test
+ make test_all
+ make cleantest
+
+or the use of any script called 
+
+ cleanall 
+
+on MacOS or BSD systems (and potentially other OS) until we release a fix.
+
+This script is used to clean the files produced by VASP after running the test suite.
+The <code>readlink</code> and <code>dirname</code> commands take different arguments on Linux and BSD systems including macOS.
+On BSD systems this results in the <code>$dir</code> variable becoming empty, <code>cd</code> to the home folder and removing ALL files recursively that do not match the pre-defined patterns.
+
+== Related Sections ==
+[[Installing VASP.6.X.X]]
+
+----
+
+[[Category:VASP]][[Category:Installation]]

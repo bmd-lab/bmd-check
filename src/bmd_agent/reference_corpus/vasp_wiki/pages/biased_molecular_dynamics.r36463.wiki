@@ -1,0 +1,60 @@
+''Biased molecular dynamics''' (MD) refers to advanced [[:Category:Molecular dynamics|MD-simulation methods]] that introduce a ''bias potential''. One of the most important purposes of using bias potentials is to enhance the sampling of phase space with low probability density (e.g., transition regions of chemical reactions). Depending on the type of sampling and in combination with the corresponding statistical methods one then has access to important thermodynamic quantities like, e.g., free energies. Biased molecular dynamics comes in very different flavors such as, e.g., umbrella sampling{{cite|torrie:jcp:1977}} and umbrella integration{{cite|kaestner:jcp:2005}}, to name a few. For a comprehensive description (especially about umbrella sampling), we refer the interested user to Ref. {{cite|frenkel:ap-book:2002}} written by D. Frenkel and B. Smit.
+
+The probability density for a geometric parameter &xi; of the system driven by a Hamiltonian
+:<math>
+H(q,p) = T(p) + V(q), \;
+</math>
+with ''T''(''p''), and ''V''(''q'') being kinetic, and potential energies, respectively, can be written as
+:<math>
+P(\xi_i)=\frac{\int\delta\Big(\xi(q)-\xi_i\Big) \exp\left\{-H(q,p)/k_B\,T\right\} dq\,dp}{\int  \exp\left\{-H(q,p)/k_B\,T\right\}dq\,dp} =
+\langle\delta\Big(\xi(q)-\xi_i\Big)\rangle_{H}.
+</math>
+The term <math>\langle X \rangle_H</math> stands for a thermal average of quantity ''X'' evaluated for the system driven by the Hamiltonian ''H''.
+
+If the system is modified by adding a bias potential <math>\tilde{V}(\xi)</math> acting on one or multiple selected internal coordinates of the system &xi;=&xi;(''q''), the Hamiltonian takes the form
+:<math>
+\tilde{H}(q,p) = H(q,p) + \tilde{V}(\xi),
+</math>
+and the probability density of &xi; in the biased ensemble is
+:<math>
+\tilde{P}(\xi_i)= \frac{\int  \delta\Big(\xi(q)-\xi_i\Big) \exp\left\{-\tilde{H}(q,p)/k_B\,T\right\} dq\,dp}{\int  \exp\left\{-\tilde{H}(q,p)/k_B\,T\right\}dq\,dp} =  \langle\delta\Big(\xi(q)-\xi_i\Big)\rangle_{\tilde{H}}.
+</math>
+It can be shown that the biased and unbiased averages are related via
+:<math>
+P(\xi_i)=\tilde{P}(\xi_i) \frac{\exp\left\{\tilde{V}(\xi)/k_B\,T\right\}}{\langle \exp\left\{\tilde{V}(\xi)/k_B\,T\right\} \rangle_{\tilde{H}}}.
+</math>
+More generally, an observable
+:<math>
+\langle A \rangle_{H} = \frac{\int   A(q) \exp\left\{-H(q,p)/k_B\,T\right\} dq\,dp}{\int  \exp\left\{-H(q,p)/k_B\,T\right\}dq\,dp}
+</math>
+can be expressed in terms of thermal averages within the biased ensemble as 
+:<math>
+\langle A \rangle_{H} =\frac{\langle A(q) \,\exp\left\{\tilde{V}(\xi)/k_B\,T\right\} \rangle_{\tilde{H}}}{\langle \exp\left\{\tilde{V}(\xi)/k_B\,T\right\} \rangle_{\tilde{H}}}.
+</math>
+
+One of the most popular methods using bias potentials is umbrella sampling{{cite|torrie:jcp:1977}}. This method uses a bias potential to enhance sampling of &xi; in regions with low ''P''(&xi;<sub>''i''</sub>), e.g., transition regions of chemical reactions. The correct distributions are recovered afterward using the equation for <math>\langle A \rangle_{H}</math> above.
+
+=== How to ===
+
+For a description of biased molecular dynamics see {{TAG|Biased molecular dynamics}}.
+
+* For a biased molecular dynamics run with [[Andersen thermostat]], one has to:
+#Set the standard MD-related tags: {{TAG|IBRION}}=0, {{TAG|TEBEG}}, {{TAG|POTIM}}, and {{TAG|NSW}}.
+#Choose thermostat:
+## Set {{TAG|MDALGO}}=1 (or {{TAG|MDALGO}}=11 in VASP 5.x), and choose an appropriate setting for {{TAG|ANDERSEN_PROB}}.
+## Set {{TAG|MDALGO}}=2 (or {{TAG|MDALGO}}=21 in VASP 5.x), and choose an appropriate setting for {{TAG|SMASS}}.
+#In order to avoid updating of the bias potential, set {{TAG|HILLS_BIN}}={{TAG|NSW}}.
+#Define collective variables in the {{FILE|ICONST}}-file, and set the <tt>STATUS</tt> parameter for the collective variables to 5.
+#Define the bias potential in the {{FILE|PENALTYPOT}} file if necessary.
+
+The values of all collective variables for each MD step are listed in the {{FILE|REPORT}} file. Check the lines after the string <tt>Metadynamics</tt>.
+
+== Related tags and articles ==
+{{FILE|ICONST}}, {{FILE|PENALTYPOT}}, {{TAG|HILLS_BIN}}, {{TAG|FBIAS_R0}}, {{TAG|FBIAS_A}}, {{TAG|FBIAS_D}}, {{TAG|SPRING_K}}, {{TAG|SPRING_R0}}, {{TAG|SPRING_V0}}, {{FILE|REPORT}}
+
+[[Biased molecular dynamics calculations]]
+
+== References ==
+<references/>
+
+[[Category:Advanced molecular-dynamics sampling]][[Category:Biased molecular dynamics]][[Category:Theory]]

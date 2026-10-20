@@ -1,0 +1,95 @@
+{{Template:Hybrid_functionals - Tutorial}}
+
+== Task ==
+
+Calculation of the band gap in Si using different DFT+HF schemes [[list_of_hybrid_functionals|(PBE, B3LYP, PBE0, HSE06, and HF)]].
+
+== Input ==
+
+=== {{TAG|POSCAR}} ===
+<pre>
+System: Si                             
+ 5.430 
+ 0.5 0.5 0.0
+ 0.0 0.5 0.5
+ 0.5 0.0 0.5
+   1  
+Cartesian
+0    0    0
+0.25 0.25 0.25
+</pre>
+
+=== {{TAG|INCAR}} ===
+
+ ## Better preconverge with PBE first
+ ## and use the WAVECAR file as inout for the DFT+HF calculation
+    
+ ## Selects the B3LYP hybrid functional
+ #{{TAGBL|LHFCALC}} = .TRUE. ; {{TAGBL|GGA}} = B3 ; {{TAGBL|AEXX}} = 0.2 ; {{TAGBL|AGGAX}} = 0.72 
+ #{{TAGBL|AGGAC}} = 0.81 ; {{TAGBL|ALDAC}} = 0.19
+ #{{TAGBL|ALGO}} = D ; {{TAGBL|TIME}} = 0.4 
+    
+ ## Selects the PBE0  hybrid functional
+ #{{TAGBL|LHFCALC}} = .TRUE. ; 
+ #{{TAGBL|ALGO}} = D ; {{TAGBL|TIME}} = 0.4 
+    
+ ## Selects the HSE06 hybrid functional
+ #{{TAGBL|LHFCALC}} = .TRUE. ; {{TAGBL|HFSCREEN}} = 0.2 ; 
+ #{{TAGBL|ALGO}} = D ; {{TAGBL|TIME}} = 0.4 
+    
+ ## Selects HF 
+ #{{TAGBL|LHFCALC}} = .TRUE. ; {{TAGBL|AEXX}} = 1.0 ; {{TAGBL|ALDAC}} = 0.0 ; {{TAGBL|AGGAC}} = 0
+ #{{TAGBL|ALGO}} = D ; {{TAGBL|TIME}} = 0.4 
+    
+ ## Leave this in
+ {{TAGBL|ISMEAR}} =  0
+ {{TAGBL|SIGMA}}  =  0.01
+ {{TAGBL|GGA}}    = PE
+ 
+
+=== {{TAG|KPOINTS}} ===
+<pre>
+k-points
+0
+Gamma
+  6  6  6
+  0  0  0
+</pre>
+
+=== Calculation ===
+
+*script to extract eigenvalues and calculate the bandgap
+<pre>
+homo=`awk '/NELECT/ {print $3/2}' $1`
+lumo=`awk '/NELECT/ {print $3/2+1}' $1`
+nkpt=`awk '/NKPTS/ {print $4}' $1`
+
+e1=`grep "     $homo     " $1 | head -$nkpt | sort -n -k 2 | tail -1 | awk '{print $2}'`
+e2=`grep "     $lumo     " $1 | head -$nkpt | sort -n -k 2 | head -1 | awk '{print $2}'`
+
+echo "HOMO: band:" $homo " E=" $e1
+echo "LUMO: band:" $lumo " E=" $e2
+</pre>
+:type
+ ./gap.sh OUTCAR
+
+
+*README.txt
+<pre>
+For each HF+DFT method (B3LYP, PBE0, HSE06, and HF) compute the bandgap of Si
+adopting the following procedure:
+
+i) Perform a standard PBE calculation
+ii) Perform a HF+DFT run (VASP reads in the WAVECAR from run (i)
+iii) Calculate the value of the bandgap by running the script 'gap': 
+     bandgap = min(cband) - max(vband) 
+</pre>
+
+== Download ==
+[[Media:Si hybrids gap.tgz| Si_hybrids_gap.tgz]]
+ 
+{{Template:Hybrid_functionals}}
+
+Back to the [[The_VASP_Manual|main page]].
+
+[[Category:Examples]]

@@ -1,0 +1,43 @@
+<references />
+One popular strategy to control the temperature in NVT MD is based on rescaling atomic velocities (<math>\mathbf{v}_{i}</math>) at a certain predefined frequency by a factor <math>\alpha = \sqrt{\bar{K}/K}</math> in such a way that the total kinetic energy of the system 
+
+::<math>
+K= \frac{1}{2} \sum\limits_{i=1}^{N} m_i |\mathbf{v}_{i}|^2,
+</math>
+
+is equal to the average kinetic energy  corresponding to a given temperature:
+
+::<math>
+\bar{K} = \frac{1}{2}N_f k_B T
+</math> 
+
+where <math>N_f</math> is the number of degrees of freedom (e.g., <math>N_f = 3N -3 </math> in the case of 3D periodic systems) and <math>N </math> is the number of atoms per the simulation cell. Such a method, however, suffers from several problems. First, the ensemble generated is not strictly canonical. Second, rescaling velocities creates discontinuities in trajectories. As a consequence, the method has no conserved quantity that could be used to guide the choice of simulation parameters, such as the size of the integration step. Also, the rescaling introduces artificial fast fluctuations to velocities, making the evaluation of time correlations problematic.  Finally, the trajectories generated via a naïve rescaling method often suffer from ergodicity issues, such as the flying ice-cube problem, in which kinetic energy of a part of the vibrational degrees of freedom is transferred into translations and/or rotations, violating the equipartition principle. 
+
+The canonical sampling through velocity rescaling (CSVR) proposed by Bussi et al.<ref name=":0">[https://pubs.aip.org/aip/jcp/article-abstract/126/1/014101/186581/Canonical-sampling-through-velocity-rescaling?redirected G. Bussi, D. Donadio, and M. Parrinello, ''J. Chem. Phys.'' 126, 014101 (2007)]</ref> removes most of the difficulties of the naïve rescaling approach. Here, the term <math> \bar{K} </math> is replaced by <math>K_{t} </math> obtained for each time step by propagating in time via auxiliary dynamics
+
+::<math>
+dK = (\bar{K} - K) \frac{dt}{\tau} + 2\sqrt{\frac{K\bar{K}}{N_f}} \frac{dW}{\sqrt{\tau}}
+</math>
+
+where <math>dW</math> is a Wiener noise and <math>\tau</math> determines the characteristic time scale of the CSVR thermostat. The latter is the only parameter of this thermostat and can be defined via flag  {{TAG|CSVR_PERIOD}}. Importantly, the auxiliary dynamics generates canonical distribution for kinetic energy:
+
+::<math>
+P(K_t) dK_t \propto K_t^{(N_f/2 - 1)} e^{-K_t/k_B T} dK_t
+</math>
+
+The conserved quantity of the CSVR thermostat is the effective energy <math>\tilde{H} </math> defined as:
+
+::<math>
+\tilde{H}(t) = H(t) - \int_0^{t'} (\bar{K}-K)\frac{dt'}{\tau} - 2\int_0^{t} \sqrt{\frac{K{t'}\bar{K}}{N_f}} \frac{dW(t')}{\sqrt{\tau}}
+</math>
+
+As shown by Bussi et al.<ref name=":0" />, the CSVR thermostat does not significantly affect the evaluation of dynamical properties, such as the velocity autocorrelation functions or diffusion coefficients. 
+
+==Related tags and articles==
+[[Molecular dynamics calculations|Molecular-dynamics calculations]], [[Andersen thermostat]], [[Nosé-Hoover thermostat]], [[Langevin thermostat]], [[Nosé-Hoover chain thermostat]], {{TAG|ISIF}}, {{TAG|MDALGO}}, {{TAG|CSVR_PERIOD}}
+ 
+----
+==References==
+<references/>
+
+[[Category:Molecular dynamics]][[Category:Thermostats]][[Category:Theory]]

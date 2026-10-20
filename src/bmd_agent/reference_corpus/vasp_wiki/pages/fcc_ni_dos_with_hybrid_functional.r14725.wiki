@@ -1,0 +1,60 @@
+{{Template:Hybrid_functionals - Tutorial}}
+
+== Task ==
+
+Calculate fcc Ni DOS using HSE and PBE0 (comparison with PBE).
+
+== Input ==
+
+=== {{TAG|POSCAR}} ===
+<pre>
+fcc Ni
+ 3.53
+ 0.5 0.5 0.0
+ 0.0 0.5 0.5
+ 0.5 0.0 0.5
+   1
+cartesian
+0 0 0
+</pre>
+
+=== {{TAG|INCAR}} ===
+
+ ## Plot the spin-polarized DOS of fcc Ni 
+ ## at HSE and PBE0 level, and compare with
+ ## standard PBE.
+ ## Better preconverge with PBE first!
+     
+  {{TAGBL|SYSTEM}} = fcc Ni
+  {{TAGBL|ISMEAR}} = -5
+  {{TAGBL|LORBIT}} = 11
+      
+  {{TAGBL|ISPIN}} = 2
+  {{TAGBL|MAGMOM}} = 1
+      
+ ## Selects the HSE06 hybrid functional
+ #{{TAGBL|LHFCALC}} = .TRUE. ; {{TAGBL|HFSCREEN}} = 0.2 ;
+ #{{TAGBL|ALGO}} = D ; {{TAGBL|TIME}} = 0.4 ; {{TAGBL|LSUBROT}} = .TRUE.
+      
+ ## Selects the PBE0  hybrid functional
+ #{{TAGBL|LHFCALC}} = .TRUE. ;
+ #{{TAGBL|ALGO}} = D ; {{TAGBL|TIME}} = 0.4 ; {{TAGBL|LSUBROT}} = .TRUE.
+
+
+=== {{TAG|KPOINTS}} ===
+<pre>
+k-points
+0
+Gamma
+  5  5  5
+  0  0  0
+</pre>
+
+== Calculation ==
+
+== Download ==
+[[Media:FccNi hybrid DOS.tgz| fccNi_hybrid_DOS.tgz]]
+ 
+{{Template:Hybrid_functionals}}
+
+[[Category:Examples]]

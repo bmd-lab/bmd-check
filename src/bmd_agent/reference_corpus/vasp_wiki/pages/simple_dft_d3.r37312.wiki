@@ -1,0 +1,53 @@
+Simple DFT-D3{{cite|ehlert:joss:2024}}{{cite|sdftd3_1}}{{cite|sdftd3_2}} is an external package that implements the DFT-D3 method{{cite|grimme:jcp:10}}{{cite|grimme:jcc:11}} and can be [[Makefile.include#DFT-D4 and simple-DFT-D3_.28optional.29|linked to VASP]]. DFT-D3 adds to the DFT energy expression a term that accounts for the [[:Category:Van der Waals functionals|van der Waals (vdW) interactions]], which are in principle not included in semilocal and hybrid exchange-correlation functionals. This is an approximation of the atom-pairwise type that depends only on the structure of the system, which allows for a fast computation. Since every functional has different interactions between atoms, DFT-D3 tailors its adjustable parameters to the functional.
+For more information regarding these parameters, please refer to the DFT-D3 papers{{cite|grimme:jcp:10}}{{cite|grimme:jcc:11}} and simple DFT-D3 websites.{{cite|sdftd3_1}}{{cite|sdftd3_2}}
+
+Compared to the implementation in VASP of DFT-D3 ({{TAG|IVDW}}=11 and 12, see [[DFT-D3]]), the simple DFT-D3 package has some advantages:
+*It offers more types of damping functions ({{TAG|SDFTD3_DAMPING}}).
+*Allows to activate the three-body Axilrod–Teller–Muto term ({{TAG|VDW_S9}}).
+*It has vdW parameters for elements up to lawrencium (<math>Z=103</math>), while it is up to plutonium (<math>Z=94</math>) in the VASP implementation.
+*It is computationally faster.
+{{NB|important|The use of simple DFT-D3 with VASP is available from VASP.6.6.0 onwards that needs to be compiled with -DSDFTD3.}}
+{{NB|mind| simple DFT-D3 may switch to a [https://github.com/dftd3/simple-dftd3/issues/199 smooth cutoff] by default, which will change results for periodic systems with respect to prior versions and especially compared to VASPs own implementation (see [[DFT-D3]]).}}
+== Usage ==
+
+For some of the common exchange-correlation functionals (e.g., PBE, SCAN, or HSE06) it is sufficient to set {{TAG|IVDW}}=15 and {{TAG|SDFTD3_DAMPING}} for the damping function in the {{FILE|INCAR}} file. Internally, VASP passes automatically the name of the functional to simple DFT-D3. However, for other functionals the {{TAG|SDFTD3_XC}} tag has to be used to specify the functional to simple DFT-D3 (the names are listed in the file param.f90 of the simple DFT-D3 source code).
+Subsequently, simple DFT-D3 maps the functional name to optimized settings for the adjustable parameters of the vdW interaction.
+VASP uses these parameters to compute the DFT-D3 energies, forces, and stresses in every ionic step and adds them to the corresponding DFT terms.
+As a result, you can relax structures or run [[MD|MD simulations]] with an approximate treatment of vdW interactions.
+{{NB|important|Below, we explain how to tweak the parameters of DFT-D3. Typically, you should not modify them unless you have a very good reason, e.g., because the interface is not implemented for the exchange-correlation functional you use.}}
+
+VASP allows setting the following tags in the {{FILE|INCAR}} file:
+* {{TAG|SDFTD3_DAMPING}} : type of damping function.
+* {{TAG|SDFTD3_XC}} : functional name to determine the set of vdW parameters.
+* {{TAG|VDW_S6}} : scaling of the dipole-dipole dispersion.
+* {{TAG|VDW_S8}} : scaling of the dipole-quadrupole dispersion.
+* {{TAG|VDW_SR}} : scaling of the dipole-dipole damping.
+* {{TAG|VDW_SR8}} : scaling of the dipole-quadrupole damping.
+* {{TAG|VDW_A1}} : scaling of the critical radii in the Becke-Johnson rational damping.
+* {{TAG|VDW_A2}} : offset of the critical radii in the Becke-Johnson rational damping.
+* {{TAG|VDW_BETA}} : offset for damping radius or power for the zero-damping component
+* {{TAG|VDW_S9}} : scaling of the three-body dispersion energy.
+* {{TAG|VDW_RADIUS}} : two-body interaction cutoff.
+* {{TAG|VDW_CNRADIUS}} : coordination number cutoff.
+
+== References ==
+<references/>
+
+== Related tags and articles ==
+{{TAG|IVDW}},
+{{TAG|SDFTD3_DAMPING}},
+{{TAG|SDFTD3_XC}},
+{{TAG|VDW_S6}},
+{{TAG|VDW_S8}},
+{{TAG|VDW_SR}},
+{{TAG|VDW_SR8}},
+{{TAG|VDW_A1}},
+{{TAG|VDW_A2}},
+{{TAG|VDW_BETA}},
+{{TAG|VDW_S9}},
+{{TAG|VDW_RADIUS}},
+{{TAG|VDW_CNRADIUS}},
+[[DFT-D3]],
+[[DFT-D4]]
+
+[[Category:Exchange-correlation functionals]][[Category:Van der Waals functionals]][[Category:Howto]]

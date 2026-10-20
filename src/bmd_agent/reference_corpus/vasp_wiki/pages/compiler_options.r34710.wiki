@@ -1,0 +1,87 @@
+The compiler options are specified by compiler variables that set the compiler and compiler flags. The Fortran compiler will then be invoked as:
+
+ $(FC) $(FREE) $(FFLAGS) $(OFLAG) $(INCS)
+
+= Compiler variables =
+=== FC ===
+:The command to invoke your Fortran compiler (e.g. <code>gfortran</code>, <code>ifort</code>, <code>mpif90</code>, <code>mpiifort</code>, ... ).
+
+=== FCL ===
+:The command that invokes the linker. In most cases:
+:<pre>FCL=$(FC) [+ some options]</pre>
+
+=== OFLAG ===
+:The general level of optimization (default: <code>OFLAG=-O2</code>).
+
+=== FFLAGS ===
+:Additional compiler flags. To enable debugging, for instance, the following line could be added:
+:<pre>FFLAGS+=-g </pre>
+
+=== OFLAG_IN ===
+:(default: <code>-O2</code>) In the vast majority of <code>makefile.include</code> files this variable is set:
+:<pre>OFLAG_IN=$(OFLAG)</pre>
+
+=== DEBUG ===
+:The optimization level with which the main program (main.F) will be compiled, usually:
+:<pre>DEBUG=-O0</pre>
+
+=== INCS ===
+:Use this variable to specify objects to be included in the sense of:
+:<pre>INCS=-I/path/to/directory-with-files-to-be-included</pre>
+
+=== FREE ===
+:Specify the options that your Fortran compiler needs for it to accept free-form source layout, without line-length limitation. For instance:
+:*Using Intel's Fortran compiler:
+:<pre>FREE=-free -names lowercase</pre>
+
+:*Using gfortran:
+:<pre>FREE=-ffree-form -ffree-line-length-none</pre>
+
+== MPI + OpenMP parallelization==
+To compile VASP with OpenMP support, add the following to the list of [[Installing_VASP.6.X.X#Precompiler_variables|precompiler flags]] in your <code>makefile.include</code> file:
+
+ CPP_OPTIONS += -D_OPENMP
+
+In addition, you will have to add some compiler-specific options to the command that invokes your Fortran compiler (and sometimes to the linker as well).
+
+When using an Intel toolchain (ifort + Intel MPI), for instance:
+
+ FC = mpiifort -qopenmp
+
+= Special rules =
+The current <code>src/makefile</code> contains a set of recipes to allow for the compilation of objects at different levels of optimization other than the general level specified by <code>OFLAG</code>.
+In these recipes, the compiler will be invoked as:
+ $(FC) $(FREE) $(FFLAGS_x) $(OFLAG_x) $(INCS_x) 
+
+where <code>x</code> stands for: 1, 2, 3, or IN.
+
+=== FFLAGS_x ===
+:Default: <code>FFLAGS_x=$(FFLAGS)</code>, for x=1, 2, 3, and IN.
+
+=== OFLAG_x ===
+:Default: <code>OFLAG_x=-Ox</code> (for x=1, 2, 3), and <code>OFLAG_IN=-O2</code>
+
+=== INCS_x ===
+:Default: <code>INCS_x=$(INCS)</code>, for x=1, 2, 3, and IN.
+
+The objects to be compiled in accordance with these recipes have to be specified by means of the variables: <code>OBJECTS_O1</code>, <code>OBJECTS_O2</code>, <code>OBJECTS_O3</code>, <code>OBJECTS_IN</code>
+
+Several objects are compiled at <code>-O1</code> and <code>-O2</code> by default. These lists of objects are specified in the '''/path/to/vasp.X.X.X/src/.objects''' file through the variables: <code>SOURCE_O1</code>, <code>SOURCE_O2</code>, <code>SOURCE_IN</code>.
+
+To completely overrule a default setting (for instance for the <code>-O1</code> special rules) you can use the following construct:
+ SOURCE_O1  =
+ OBJECTS_O1 = .. your list of objects ..
+
+== Related articles ==
+[[Installing VASP.6.X.X]],
+[[makefile.include]],
+[[Precompiler options]],
+[[Linking to libraries]],
+[[GPU ports of VASP]],
+[[Toolchains]],
+[[Validation tests]],
+[[Known issues]]
+
+----
+
+[[Category:VASP]][[Category:Installation]][[Category:Performance]][[Category:GPU]]

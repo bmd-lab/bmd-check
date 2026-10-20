@@ -1,0 +1,42 @@
+{{TAGDEF|DAMP_NEWTON|real number}}
+{{DEF|DAMP_NEWTON|0.8}}
+Description: Sets the damping factor applied to the RPA forces during Newton-step structure relaxation.
+----
+{{TAG|DAMP_NEWTON}} controls the step size of the Newton-step geometry update performed during
+[https://vasp.at/wiki/ACFDT/RPA_calculations Random Phase Approximation] (RPA) force calculations. The updated atomic positions are computed as:
+
+: '''x'''<sub>new</sub> = '''x'''<sub>current</sub> + DAMP_NEWTON &times; '''H'''<sup>&minus;1</sup> &middot; '''F'''<sub>RPA</sub>
+
+where '''H'''<sup>&minus;1</sup> is the inverse of the DFT Hessian (computed during the RPA force
+calculation) and '''F'''<sub>RPA</sub> are the RPA forces.{{cite|ramberger:prl:118}} The resulting updated positions are written
+to the {{TAG|CONTCAR}} file (provided {{TAG|NSW}}=0). Iterating this procedure&mdash;by copying
+{{TAG|CONTCAR}} to {{TAG|POSCAR}} and re-running&mdash;should converge the system toward its
+ground-state structure.
+{{Available|6.1.0}}
+
+==Available options==
+
+=== {{TAG|DAMP_NEWTON}}=1.0: No damping ===
+: No damping is applied; the full Newton step is taken. This is appropriate when the RPA forces
+are well-behaved and the optimization is proceeding stably.
+
+=== {{TAG|DAMP_NEWTON}}=0.8: Default damping ===
+: The default value. A mild damping factor of 0.8 is applied to the Newton step, providing a
+small degree of stabilization during the iterative relaxation without significantly slowing
+convergence.
+
+=== {{TAG|DAMP_NEWTON}}<0.8: Strong damping ===
+: Use smaller values if numerical instabilities are observed during the RPA relaxation.
+{{NB| warning | Excessively small values will slow convergence considerably. Reduce {{TAG|DAMP_NEWTON}}
+only when large or erratic RPA forces are encountered.|:}}
+
+== Related tags and articles ==
+{{TAG|CONTCAR}},
+{{TAG|POSCAR}},
+{{TAG|NSW}},
+{{TAG|IBRION}}
+{{sc|DAMP_NEWTON|HowTo|Workflows that use RPA force relaxation}}
+
+== References ==
+<references/>
+<!-- [[Category:INCAR tag]][[Category:RPA]][[Category:Ionic Relaxation]] -->

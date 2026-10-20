@@ -1,0 +1,68 @@
+The machine-learned force fields (MLFF) feature of {{VASP}} allows you to generate, improve, modify and apply force fields based on machine learning techniques for your system of interest. Although there are many tunable parameters, i.e. MLFF-related {{FILE|INCAR}} tags, the default values have been carefully selected to simplify the initial creation of an MLFF. Hence, we hope that only minimal additional effort is required to get started with this feature. Nevertheless, because machine learning involves multiple steps, e.g., at a minimum separate training and application stages, this page tries to explain the basic tags controlling the corresponding modes of operation. If you are already familiar with the basic usage of the MLFF feature, you may want to have a closer look at the [[Best practices for machine-learned force fields|best practices page]] which offers more in-depth advice for tuning MLFF settings. If you need more information about the theory and algorithms please visit the [[Machine learning force field: Theory|MLFF theory page]].
+
+== Step-by-step instructions ==
+
+On-the-fly training is based on molecular-dynamics (MD) simulations to sample training structures. Piece by piece a data set is automatically assembled and used to generate an MLFF whenever feasible. Conversely, at each time step the current force field predicts energy, forces and the corresponding Bayesian error estimations. Simply put, if the error is above a certain threshold another ab-initio calculation is performed and the reference energy and forces are added to the training data set. In the opposite case, the ab-initio step is omitted and the system is propagated via MLFF predictions. As the force field gets better along the trajectory many ab-initio steps can be avoided and the MD simulation is significantly accelerated. Ultimately, the on-the-fly training results in an MLFF which is ready for production, i.e., running an MD simulation in prediction-only mode. 
+{{NB|warning|When compiling with shared memory MPI support (-Duse_shmem), it is utterly important to pin the MPI ranks to the physical cores of the node. For guidance on how to understand the hardware topology of your system and how to correctly set up rank pinning accordingly, refer to [[Optimizing the parallelization#Understanding the hardware|here]].}}
+
+The following steps outline the path from start to production run:
+
+''' Step 1: Prepare a molecular dynamics run '''
+
+Prepare an [[:Category:Calculation setup|ab-initio]] [[:Category:Molecular dynamics|MD]] run with your desired {{FILE|POSCAR}} starting configuration and an appropriate setup in {{FILE|INCAR}}, {{FILE|KPOINTS}} and {{FILE|POTCAR}} files.
+
+''' Step 2: Start on-the-fly training from scratch '''
+
+The MLFF method can be configured with a lot of [[#Category:Machine-learned force fields|INCAR tags]] which are easily recognized from their prefix <code>ML_</code>. In general, to enable any MLFF feature the following {{FILE|INCAR}} tag needs to be set:
+ {{TAGBL|ML_LMLFF}} = .TRUE.
+If this tag is not set to <code>.TRUE.</code> other MLFF-related {{FILE|INCAR}} tags are completely ignored and {{VASP}} will perform regular ab-initio calculations. Furthermore, to start on-the-fly training we additionally need to set the {{TAG|ML_MODE}} "super"-tag:
+ {{TAGBL|ML_MODE}} = train
+When executed in this <code>train</code> mode {{VASP}} will automatically perform ab-initio calculation whenever necessary and otherwise rely on the predictions of the MLFF. The usual output files, e.g., {{FILE|OUTCAR}}, {{FILE|XDATCAR}}, will be created along the MD trajectory. In addition, MLFF-related files will be written to disk, the most important ones being:
+* {{FILE|ML_LOGFILE}} The log file for all MLFF-related details; training status, current errors and other important quantities can be extracted from here.
+* {{FILE|ML_ABN}} This file contains the collected training structures and a list of selected local reference configurations.
+* {{FILE|ML_FFN}} A binary file containing the current MLFF.
+All three files are repeatedly updated during the MD simulation. After {{TAG|NSW}} time steps are carried out the {{FILE|ML_ABN}} and {{FILE|ML_FFN}} file contain the complete training data set and the final MLFF, respectively. Training errors can be found in {{FILE|ML_LOGFILE}} by searching for lines starting with <code>ERR</code>.
+
+''' Step 3 (optional): Continue on-the-fly training from existing training database '''
+
+In principle, step 2 above may yield a force field ready for further processing and application. However, most of the time additional on-the-fly training iterations are necessary. For example, to extend the training database with structures at higher temperatures or different densities. Or, a force field is required to capture different atom type compositions or phases, e.g., a liquid and multiple solid phases. This can be achieved by on-the-fly continuation runs: at the beginning a force field is generated from the previous training data and - if applicable - used for predictions in the MD run. Like in step 2, the force field is trained along the trajectory. However, it also retains its applicability to the structures of the previous on-the-fly run. Finally, the continuation training will result in an MLFF capable of predicting structures of both runs. To continue on-the-fly training first set up your new starting {{FILE|POSCAR}} structure, e.g., by copying from the {{FILE|CONTCAR}} file. The new structure may share some atom types with the previous run but this is not a requirement. It is also possible to continue training with completely different atom types in the {{FILE|POSCAR}} file (remember to set up your {{FILE|POTCAR}} accordingly). The only other action required is to copy the existing database to the {{FILE|ML_AB}} file:
+ cp ML_ABN ML_AB
+Leave <code>{{TAG|ML_MODE}} = train</code> unchanged and restart {{VASP}}. The log file will contain a section describing the existing data set and after initial generation of a force field the regular on-the-fly procedure continues. In the end, the resulting {{FILE|ML_ABN}} will contain the training structures from both on-the-fly runs. Similarly, the {{FILE|ML_FFN}} file is a combined force field. In the presence of an {{FILE|ML_AB}} file the <code>train</code> mode will always perform a continuation run. If you would like to start from scratch just remove the {{FILE|ML_AB}} file from the execution directory. {{NB|tip|Apply this strategy repeatedly in order to systematically improve your MLFF, e.g., first train on water only, then on sodium chloride and finally, train on the combination of both.}}
+
+''' Step 4: Refit for fast prediction mode ''' (available as of {{VASP}} 6.4.0)
+
+When on-the-fly training succeeded and the result matches your expectations with respect to applicability and residual errors there is one final step required before the force field should be applied in prediction-only MD runs: refitting for fast prediction mode. Copy once again the final data set to {{FILE|ML_AB}}:
+ cp ML_ABN ML_AB
+Also, set in the {{FILE|INCAR}} file:
+ {{TAGBL|ML_MODE}} = refit
+Running {{VASP}} will create a new {{FILE|ML_FFN}} which finally can be used for production. {{NB|important|Although it is technically possible to continue directly with step 5 given a {{FILE|ML_FFN}} file from steps 2 or 3 it is strongly discouraged. Without the refitting step {{VASP}} cannot enable the fast prediction mode which comes with speedup factor of approximately 20 to 100. You can check the {{FILE|ML_FFN}} ASCII [[ML_FFN#Fast_prediction_mode|header]] to be sure whether the contained force field supports fast prediction.}} 
+
+''' Step 5: Applying the machine-learned force field in production runs '''
+
+The MLFF obtained from step 4 is now ready to be applied in the prediction-only mode. First, copy the {{FILE|ML_FFN}} file:
+ cp {{FILE|ML_FFN}} {{FILE|ML_FF}}
+In the {{FILE|INCAR}} file set
+ {{TAGBL|ML_MODE}} = run
+With this choice {{VASP}} will only use the predictions from the MLFF, no ab-initio calculations are performed. The execution time per time step will be orders of magnitude lower if compared with corresponding ab-initio runs. {{NB|tip|The MLFF can be transferred to larger system sizes, i.e., you may duplicate your simulation box to benefit from improved statistics. Because the method scales linearly with the number of atoms you can easily estimate the impact on computational demand.}} {{NB|warning|Please have a look at a [[Known issues|known issue]] (from date 2023-05-17) if you intend to use triclinic geometries with small or large lattice angles.}} Usually, VASP machine-learned force field files {{FILE|ML_FFN}} are backward compatible, i.e., files generated by an older version of {{VASP}} can still be used with newer {{VASP}} binaries (for details check [[ML_FFN#File header|the ML_FFN file header]]).
+
+== Advice ==
+
+On-the-fly learning can be significantly more involved than, e.g., a single-point electronic calculation, because it combines multiple features of {{VASP}}. Each part requires a proper setup via the available {{FILE|INCAR}} tags. A misconfiguration corresponding to one part of the calculation may have severe effects on the quality of the resulting MLFF. In the worst case, successful training may even be impossible. To be more specific, on-the-fly learning requires control over the following aspects:
+* '''Consistent convergence'''
+:It is required that all ab-initio reference data collected via on-the-fly training is consistent and well-converged with respect to the [[:Category:Electronic minimization|single-point electronic calculation setup]]. Mind different temperatures and densities targeted in MD runs. A MLFF can only reproduce a single potential energy landscape! 
+* '''Correct setup of [[:Category:Molecular dynamics|molecular dynamics simulations]]'''
+:Consider the choice of thermodynamic ensembles, thermostat and barostat settings and an appropriate time step.
+* '''Proper setup of machine-learned force field parameters'''
+:Mind system-dependent parameters like the cutoff radius or atomic environment descriptor resolution.
+* '''Control over data set generation via on-the-fly learning'''
+:Monitor and control how much ab-initio reference data is harvested via automatic Bayesian threshold determination and sparsification.
+* '''Quality control'''
+:Establish reasonable expectations regarding residual training errors. Benchmark the quality of resulting force fields by comparison of predictions with known quantities (from ab-initio).
+{{NB|tip|Begin by thoroughly familiarizing yourself with pure ab-initio calculations for your system before attempting to generate a MLFF from scratch. Once you are confident in controlling the convergence, proceed to run a brief MD simulation without machine learning assistance. Validate whether the results align with expected values regarding conservation principles and so forth. Only then, move forward with the machine learning aspects of the calculation.}}
+
+== Parallelization ==
+
+At present, {{VASP}} provides only MPI-based parallelization for the MLFF feature. Therefore, any operational mode relying exclusively on MLFF code - such as predictive MD simulations ({{TAG|ML_MODE}} = <code>run</code>) and local reference configuration selection ({{TAG|ML_MODE}} = <code>select</code>) - cannot leverage alternative forms of parallelization like [[GPU ports of VASP|offloading to GPUs]] or [[Combining MPI and OpenMP|an MPI/OpenMP hybrid approach]]. Conversely, a usual on-the-fly training involves both MLFF generation and ab-initio computations. When the latter component predominates in terms of computational demand, utilizing non-MPI parallelization remains practical.
+
+[[Category:Machine-learned force fields]]
+[[Category:Howto]]

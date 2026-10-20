@@ -1,0 +1,82 @@
+{{Template:optics_dielectric - Tutorial}}
+
+== Task ==
+
+Calculation of the static and frequency dependent dielectric properties of Si.
+Please have a look at the example on [[Dielectric_properties_of_SiC|calculation of the static and frequency dependent dielectric properties of SiC]] first.
+The same procedures apply to this example.
+
+== Input ==
+
+=== {{TAG|POSCAR}} ===
+ system Si
+ 5.430
+ 0.5 0.5 0.0
+ 0.0 0.5 0.5
+ 0.5 0.0 0.5
+ 2
+ cart
+ 0.00 0.00 0.00
+ 0.25 0.25 0.25
+
+=== {{TAG|INCAR}} ===
+
+*{{TAG|INCAR}} file for the static calculation:
+ ## Static dielectric properties by means of DFPT
+ #{{TAGBL|NBANDS}} = 4
+ #{{TAGBL|EDIFF}} = 1E-6
+ #{{TAGBL|LEPSILON}} = .TRUE.
+ ## try to add this to the DFPT calculation
+ #{{TAGBL|LPEAD}} = .TRUE.
+ ## to get the ionic contributions to the
+ ## static dielectric properties from
+ ## perturbation theory
+ #{{TAGBL|IBRION}} = 8
+         
+ ## Static dielectric properties by means of PEAD
+ #{{TAGBL|EDIFF}} = 1E-8      # finite field requires very tight convergence
+ #{{TAGBL|LCALCEPS}} = .TRUE.
+ #{{TAGBL|NELM}} = 100
+         
+ ## Leave this in
+ {{TAGBL|ISMEAR}} = 0
+ {{TAGBL|SIGMA}} = 0.01
+ {{TAGBL|GGA}} = PE
+
+
+*{{TAG|INCAR}} for the frequency dependent calculation:
+ ## Frequency dependent dielectric tensor without
+ ## local field effects
+ #{{TAGBL|ALGO}} = Exact
+ #{{TAGBL|NBANDS}}  = 64
+ #{{TAGBL|LOPTICS}} = .TRUE. ; {{TAGBL|CSHIFT}} = 0.1
+ #{{TAGBL|NEDOS}} = 2000
+ ## and you might try with the following
+ #{{TAGBL|LPEAD}} = .TRUE.
+     
+ ## Frequency dependent dielectric tensor with and
+ ## without local field effects in RPA and due to
+ ## changes in the DFT xc-potential
+ ## N.B.: beware one first has to have done a
+ ## calculation with {{TAGBL|LOPTICS}} = .TRUE. (see above)
+ #{{TAGBL|ALGO}} = CHI ; {{TAGBL|LSPECTRAL}} = .FALSE.
+ #{{TAGBL|LRPA}} = .FALSE.
+ ## be sure to take the same number of bands as for
+ ## the {{TAGBL|LOPTICS}} = .TRUE. calculation, otherwise the
+ ## {{TAGBL|WAVEDER}} file is not read correctly
+ # {{TAGBL|NBANDS}} = 64
+     
+ ## Leave this in
+ {{TAGBL|ISMEAR}} = 0
+ {{TAGBL|SIGMA}} = 0.01
+ {{TAGBL|GGA}} = PE
+
+== Calculation ==
+
+
+== Download ==
+[[Media:Si_dielectric.tgz| Si_dielectric.tgz]]
+ 
+{{Template:optics_dielectric}}
+
+[[Category:Examples]]

@@ -1,0 +1,33 @@
+The {{FILE|POT}} file contains the total local potential (in eV), including the PAW augmentation part. It is written for optimized-effective-potential (OEP)-type calculations — such as the local Hartree-Fock and EXX-OEP methods, when {{TAG|LVTOT|True}}, and it stores the local potential as the restart quantity for such calculations.
+
+As of VASP 6.6.0, {{TAG|LVTOT|True}} together with {{TAG|LH5|True}} writes the content of the {{FILE|POT}} file to the restart file {{FILE|vaspwave.h5}} instead. When restarting, a legacy {{FILE|POT}} file is used in preference to {{FILE|vaspwave.h5}} if both are present.
+{{NB|tip|If you are interested in the local potential as a quantity (and not in restarting a calculation), use the {{FILE|LOCPOT}} file and/or the {{TAG|WRT_POTENTIAL}} tag instead.}}
+
+== Format ==
+The {{FILE|POT}} file uses the same block format as the {{FILE|CHGCAR}} file, with the potential (in eV) in place of the charge density. Each block consists of:
+* Structure in {{FILE|POSCAR}} format
+* FFT-grid dimensions {{TAG|NGXF}}, {{TAG|NGYF}}, {{TAG|NGZF}}
+* The local potential on the FFT grid, written with multiple real numbers per line (data runs fastest over NX, slowest over NZ, as for {{FILE|CHGCAR}})
+* The PAW augmentation part
+
+Unlike {{FILE|CHGCAR}}, which stores the charge density and magnetization, the potential is written in the following spin representation:
+* Non-spin-polarized calculations: a single block with the total local potential.
+* Collinear spin-polarized calculations ({{TAG|ISPIN|2}}): two blocks, the spin-up and spin-down potentials.
+* Noncollinear calculations ({{TAG|LNONCOLLINEAR|True}}): the (density, magnetization) representation, i.e., the scalar potential and the three components of the magnetic field, in the spinor basis set by {{TAG|SAXIS}}.
+
+Each potential block is followed by its corresponding PAW augmentation part.
+{{NB|warning|The augmentation occupancies are written up to the ''l''-quantum number set by {{TAG|LMAXMIX}}. See {{TAG|LMAXMIX}} for the consequences of restarting without the appropriate one-center occupancies.}}
+
+== Related tags and articles ==
+[[Restart and output files cheat sheet]]
+
+{{FILE|CHGCAR}},
+{{FILE|LOCPOT}},
+{{FILE|vaspwave.h5}},
+{{TAG|LVTOT}},
+{{TAG|LVHAR}},
+{{TAG|WRT_POTENTIAL}},
+{{TAG|LH5}},
+{{TAG|LMAXMIX}}
+
+[[Category:Files]][[Category:Output files]][[Category:Potential]]

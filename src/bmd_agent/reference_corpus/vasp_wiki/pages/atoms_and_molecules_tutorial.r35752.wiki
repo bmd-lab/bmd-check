@@ -1,0 +1,18 @@
+{{Template:At_and_mol - Tutorial}}
+
+The tutorial is made of the following parts:
+<div style="background:var(--vdefault-bg); border:solid 1px var(--vlines); padding:0.5em 1em; margin-right:14em;">
+# [[O atom|O atom]]
+# [[O atom spinpolarized|O atom spinpolarized]]
+# [[O atom spinpolarized low symmetry|O atom spinpolarized low symmetry]]
+# [[O_dimer|O dimer]]
+# [[CO|CO]]
+# [[CO_vibration|CO vibration]]
+# [[CO_partial_DOS|CO partial DOS]]
+# [[H2O|H2O]]
+# [[H2O_vibration|H2O vibration]]
+# [[H2O_molecular_dynamics|H2O molecular dynamics]]
+# [[At_and_mol_further|Further things to try]]
+</div>
+
+[[Category:Tutorials]]

@@ -1,0 +1,259 @@
+Description: Bandstructure for Si within DFT+HF 
+
+Bandstructure in VASP can be obtained following three different procedures. The standard procedure (procedure 1),
+ 
+applicable at PBE level, is also described in [[Fcc Si bandstructure|Fcc Si bandstructure example]].
+
+Within Hybrid functional theory it is possible to plot bandstructure using procedure 2 or 3.
+
+== Procedure 1: Standard procedure (suitable for DFT calculations)==
+Only possible within DFT. Described in [[Fcc Si bandstructure|Fcc Si bandstructure example]]:
+
+=== Standard self-consistent (SC) run ===
+
+*{{TAG|POSCAR}}
+<pre>
+system Si
+5.430
+0.5 0.5 0.0
+0.0 0.5 0.5
+0.5 0.0 0.5
+2
+cart
+0.00 0.00 0.00
+0.25 0.25 0.25
+</pre>
+
+*{{TAG|INCAR}} (see INCAR.dft)
+
+ {{TAGBL|ISMEAR}} =  0
+ {{TAGBL|SIGMA}}  =  0.01
+ {{TAGBL|NBANDS}} = 8
+
+*{{TAG|KPOINTS}} (see KPOINTS.6)
+<pre>
+6x6x6
+ 0
+G
+ 6 6 6
+ 0 0 0
+</pre>
+
+=== Non-SC calculation ({{TAGBL|ICHARG}}=11) ===
+
+Use preconverged {{TAG|CHGCAR}} file and a suitable {{TAG|KPOINTS}} file
+
+*{{TAG|INCAR}}
+
+ {{TAGBL|ISMEAR}} =  0
+ {{TAGBL|SIGMA}}  =  0.01
+ {{TAGBL|NBANDS}} = 8
+     
+ {{TAGBL|ICHARG}} = 11 #read charge from {{TAGBL|CHGCAR}} and keep fixed
+ {{TAGBL|LORBIT}} = 11
+
+*{{TAG|KPOINTS}} (see KPOINTS_PBE_bands)
+ k-points for bandstructure L-G-X-U K-G
+  10
+ line
+ reciprocal
+   0.50000  0.50000  0.50000    1
+   0.00000  0.00000  0.00000    1
+ 
+   0.00000  0.00000  0.00000    1
+   0.00000  0.50000  0.50000    1
+ 
+   0.00000  0.50000  0.50000    1
+   0.25000  0.62500  0.62500    1
+ 
+   0.37500  0.7500   0.37500    1
+   0.00000  0.00000  0.00000    1
+
+=== Plot using p4v ===
+
+P4VASP: [http://www.p4vasp.at p4v]
+
+== Procedure 2: 0-weight (Fake) SC procedure (works DFT & hybrid functionals) ==
+
+This procedure can be applied to compute bandstructure at hybrid functionals and DFT level
+(see the <tt>HSE_bandstructure.sh</tt> script).
+
+=== Standard DFT run ===
+Just as before
+
+*{{TAG|INCAR}} (see INCAR.dft)
+ {{TAGBL|ISMEAR}} =  0
+ {{TAGBL|SIGMA}}  =  0.01
+ {{TAGBL|NBANDS}} = 8
+
+*{{TAG|KPOINTS}} (see KPOINST.6)
+<pre>
+6x6x6
+ 0
+G
+ 6 6 6
+ 0 0 0
+</pre>
+
+=== Hybrid calculation using a suitably modified KPOINTS file ===
+
+*{{TAG|INCAR}} (see INCAR.hse)
+ {{TAGBL|ISMEAR}} =  0
+ {{TAGBL|SIGMA}}  =  0.01
+     
+ {{TAGBL|LHFCALC}} = .TRUE. ; {{TAGBL|HFSCREEN}} = 0.2 ; {{TAGBL|AEXX}} = 0.25
+ {{TAGBL|ALGO}} = D ; {{TAGBL|TIME}} = 0.4 ; {{TAGBL|LDIAG}} = .TRUE. 
+     
+ {{TAGBL|EDIFF}} = 1.E-6
+     
+ {{TAGBL|NBANDS}} = 8
+
+*{{TAG|KPOINTS}} (see KPOINTS_HSE_bands.6 and README.txt)
+<pre>
+Automatically generated mesh
+      26
+Reciprocal lattice
+    0.00000000000000    0.00000000000000    0.00000000000000             1
+    0.16666666666667    0.00000000000000    0.00000000000000             8
+    0.33333333333333    0.00000000000000    0.00000000000000             8
+    0.50000000000000    0.00000000000000    0.00000000000000             4
+    0.16666666666667    0.16666666666667    0.00000000000000             6
+    0.33333333333333    0.16666666666667    0.00000000000000            24
+    0.50000000000000    0.16666666666667    0.00000000000000            24
+   -0.33333333333333    0.16666666666667    0.00000000000000            24
+   -0.16666666666667    0.16666666666667    0.00000000000000            12
+    0.33333333333333    0.33333333333333    0.00000000000000             6
+    0.50000000000000    0.33333333333333    0.00000000000000            24
+   -0.33333333333333    0.33333333333333    0.00000000000000            12
+    0.50000000000000    0.50000000000000    0.00000000000000             3
+    0.50000000000000    0.33333333333333    0.16666666666667            24
+   -0.33333333333333    0.33333333333333    0.16666666666667            24
+   -0.33333333333333    0.50000000000000    0.16666666666667            12
+0.00000000 0.00000000 0.00000000 0.000
+0.00000000 0.05555556 0.05555556 0.000
+0.00000000 0.11111111 0.11111111 0.000
+0.00000000 0.16666667 0.16666667 0.000
+0.00000000 0.22222222 0.22222222 0.000
+0.00000000 0.27777778 0.27777778 0.000
+0.00000000 0.33333333 0.33333333 0.000
+0.00000000 0.38888889 0.38888889 0.000
+0.00000000 0.44444444 0.44444444 0.000
+0.00000000 0.50000000 0.50000000 0.000
+</pre>
+
+Please note that step two requires a WAVECAR obtained from a standard DFT run (not an HSE calculation),
+otherwise the resulting conduction bands often have a zig-zag structure. 
+
+
+=== Plot using p4v ===
+
+P4VASP: [http://www.p4vasp.at p4v]
+
+'''Mind''': Zoom in on the right-side part of the bandstructure plot.
+
+== Procedure 3: VASP2WANNIER90 (works for DFT, hybrid functionals, and GW)==
+Wannier function interpolation using the VASP2WANNIER90 interface: 
+this procedure is applicable to DFT, hybrid functionals, and GW bandstructure calculations.
+Here we apply it for a hybrid functional.
+For GW see the [[Bandstructure of Si in GW (VASP2WANNIER90)]] and [[bandstructure of SrVO3 in GW]] examples.
+
+To see a summary of the workflow below, have a look at the <tt>HSE_bandstructure_with_wannier90.sh</tt>.
+
+=== Standard DFT run ===
+Just as before
+
+*{{TAG|INCAR}} (see INCAR.dft)
+ {{TAGBL|ISMEAR}} =  0
+ {{TAGBL|SIGMA}}  =  0.01
+ {{TAGBL|NBANDS}} = 8
+
+*{{TAG|KPOINTS}} (see KPOINST.6)
+<pre>
+6x6x6
+ 0
+G
+ 6 6 6
+ 0 0 0
+</pre>
+
+=== Increase the number of states to 24 ===
+This step is optional.
+
+*{{TAG|INCAR}} (see INCAR.diag)
+ {{TAGBL|ISMEAR}} =  0
+ {{TAGBL|SIGMA}}  =  0.01
+      
+ {{TAGBL|ALGO}} = Exact
+ {{TAGBL|NELM}} = 1
+      
+ {{TAGBL|NBANDS}} = 24
+
+=== HSE + LWANNIER90 run ===
+Run the hybrid functional calculation and call <tt>wannier90</tt> (see [[LWANNIER90_RUN]]).
+.
+
+*{{TAG|INCAR}} (see INCAR.hse_with_wannier90)
+ {{TAGBL|ISMEAR}} =  0
+ {{TAGBL|SIGMA}}  =  0.01
+      
+ {{TAGBL|LHFCALC}} = .TRUE. ; {{TAGBL|HFSCREEN}} = 0.2 ; {{TAGBL|AEXX}} = 0.25
+ {{TAGBL|ALGO}} = D ; {{TAGBL|TIME}} = 0.4 ; {{TAGBL|LDIAG}} = .TRUE. 
+ {{TAGBL|NKRED}} = 2
+     
+ {{TAGBL|EDIFF}} = 1.E-6
+     
+ {{TAGBL|NBANDS}} = 24
+     
+ {{TAGBL|LWANNIER90_RUN}} = .TRUE.
+
+You will have to provide some instructions for <tt>wannier90</tt> as well:
+
+*wannier90.win (see wannier90.win_start)
+<pre>
+num_wann=18
+num_bands=24
+
+Begin Projections
+Si:s ; p ; d
+End Projections
+
+#dis_froz_max=9
+dis_num_iter=100
+
+#guiding_centres=true
+
+bands_plot      =  true
+begin kpoint_path
+L 0.50000  0.50000 0.5000 G 0.00000  0.00000 0.0000
+G 0.00000  0.00000 0.0000 X 0.50000  0.00000 0.5000
+X 0.50000  0.00000 0.5000 K 0.37500 -0.37500 0.0000
+K 0.37500 -0.37500 0.0000 G 0.00000  0.00000 0.0000
+end kpoint_path
+bands_num_points 40
+bands_plot_format gnuplot xmgrace
+</pre>
+
+
+'''Mind''': If the wannier90.win file does not exist VASP will create a default wannier90.win compatible with
+the POSCAR and INCAR files, which needs to be suitably modified by including the proper instruction required 
+to generate the maximally localized wannier functions (refer to the [http://www.wannier.org/doc/user_guide.pdf WANNIER90 manual]).
+
+=== Plot bandstructure (Wannier interpolation) using XMGRACE or GNUPLOT===
+
+If all went well, <tt>wannier90</tt> will have generated the following bandstructure files which can be visualized using xmgrace or gnuplot:
+
+*wannier90_band.agr
+ xmgrace ./wannier90_band.agr
+
+*wannier90_band.dat
+
+*wannier90_band.gnu
+ gnuplot -persist ./wannier90_band.gnu
+
+:'''N.B.:''' Most modern versions of <tt>gnuplot</tt> will respond with an error message unless you remove the first line of <tt>wannier90_band.gnu</tt> (some deprecated syntax issue).
+
+== Download ==
+[[Media:Si_HSE_band.tgz| Si_HSE_band.tgz]]
+----
+
+[[Category:Examples]]

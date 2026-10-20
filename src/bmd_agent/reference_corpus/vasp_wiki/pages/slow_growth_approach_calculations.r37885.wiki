@@ -1,0 +1,31 @@
+== Andersen thermostat ==
+
+* For a slow-growth simulation, one has to perform a calculation very similar to {{TAG|Constrained molecular dynamics}} but additionally the transformation velocity-related {{TAG|INCREM}}-tag for each geometric parameter with <tt>STATUS=0</tt> has to be specified. For a slow-growth approach run with Andersen thermostat, one has to:
+#Set the standard MD-related tags: {{TAG|IBRION}}=0, {{TAG|TEBEG}}, {{TAG|POTIM}}, and {{TAG|NSW}}
+#Set {{TAG|MDALGO}}=1, and choose an appropriate setting for {{TAG|ANDERSEN_PROB}}
+#Define geometric constraints in the {{FILE|ICONST}} file, and set the '''STATUS''' parameter for the constrained coordinates to 0
+#When the free-energy gradient is to be computed, set {{TAG|LBLUEOUT}}=.TRUE.
+
+<ol start="5">
+<li>Specify the transformation velocity-related {{TAG|INCREM}}-tag for each geometric parameter with <tt>STATUS=0</tt>.</li>
+</ol>
+
+== Nose-Hoover thermostat ==
+* For a slow-growth approach run with Nose-Hoover thermostat, one has to:
+#Set the standard MD-related tags: {{TAG|IBRION}}=0, {{TAG|TEBEG}}, {{TAG|POTIM}}, and {{TAG|NSW}}
+#Set {{TAG|MDALGO}}=2, and choose an appropriate setting for {{TAG|SMASS}}
+#Define geometric constraints in the {{FILE|ICONST}}-file, and set the <tt>STATUS</tt> parameter for the constrained coordinates to 0
+#When the free-energy gradient is to be computed, set {{TAG|LBLUEOUT}}=.TRUE.
+<ol start="5">
+<li>Specify the transformation velocity-related {{TAG|INCREM}}-tag for each geometric parameter with <tt>STATUS=0</tt></li>
+</ol>
+
+
+VASP can handle multiple (even redundant) constraints. Note, however, that a too large number of constraints can cause problems with the stability of the [[Constrained molecular dynamics#SHAKE|SHAKE algorithm]]. In problematic cases, it is recommended to use a looser convergence criterion (see {{TAG|SHAKETOL}}) and to allow a larger number of iterations (see {{TAG|SHAKEMAXITER}}) in the [[Constrained molecular dynamics#SHAKE|SHAKE algorithm]]. Hard constraints may also be used in [[Metadynamics|metadynamics simulations]] (see {{TAG|MDALGO}}=11 {{!}} 21). Information about the constraints is written onto the {{FILE|REPORT}}-file: check the lines following the string: <tt>Const_coord</tt>
+
+== Related tags and articles ==
+{{FILE|ICONST}}, {{TAG|INCREM}}, {{TAG|SHAKEMAXITER}}, {{TAG|SHAKETOL}}, {{TAG|SHAKETOLSOFT}}, {{TAG|LBLUEOUT}}, {{FILE|REPORT}}
+
+[[Slow-growth approach]]
+
+[[Category:Advanced molecular-dynamics sampling]][[Category:Howto]]

@@ -1,0 +1,24 @@
+The zero-temperature formalism of many-body perturbation theory breaks down for metals (systems with zero energy band-gap) as pointed out by Kohn and Luttinger.{{cite|KohnLuttinger:PR:1960}} This conundrum is lifted by considering diagrammatic perturbation theory at finite temperature <math>T>0</math>, which may be understood by an analytical continuation of the real-time <math>t</math> to the imaginary time axis <math>-i\tau</math>. Matsubara has shown that this Wick rotation in time <math>t\to-i\tau</math> reveals an intriguing connection to the inverse temperature <math>\beta=1/T</math> of the system.{{cite|Matsubara:PTP:1955}}   
+More precisely, Matsubara has shown that all terms in perturbation theory at finite temperature can be expressed as integrals of imaginary time quantities (such as the polarizability <math>\chi(-i\tau)</math>) over the fundamental interval <math>-\beta\le\tau\le\beta</math>. 
+
+As a consequence, one decomposes imaginary time quantities into a Fourier series with period <math>\beta</math>
+that determines the spacing of the Fourier modes. For instance the imaginary polarizability can be written as
+
+<math>
+\chi(-i\tau)=\frac1\beta\sum_{m=-\infty}^\infty \tilde \chi(i\nu_m)e^{-i\nu_m\tau},\quad \nu_m=\frac{2m}\beta\pi
+</math>
+
+and the corresponding random-phase approximation of the correlation energy at finite temperature becomes a series over (in this case, bosonic) Matsubara frequencies
+
+<math>
+\Omega_c^{\rm RPA}=\frac12\frac1\beta \sum_{m=-\infty}^\infty {\rm Tr}\left\lbrace
+\ln\left[ 1 -\tilde \chi(i\nu_m) V
+\right] -\tilde \chi(i\nu_m) V
+\right\rbrace,\quad \nu_m=\frac{2m}\beta\pi
+</math>
+
+The Matsubara formalism has the advantage that all contributions to the Green's function and the polarizability are mathematically well-defined, including contributions from states close to the chemical potential <math>\epsilon_{n{\bf k}}\approx \mu</math>, such that Matsubara series also converge for metallic systems.
+
+Although formally convenient, the Matsubara series converges poorly with the number of considered terms in practice. VASP, therefore, uses a compressed representation of the Fourier modes by employing the Minimax-Isometry method.{{cite|Kaltak:PRB:2020}} This approach converges exponentially with the number of considered frequency points. 
+
+[[Category:Theory]][[Category:Low-scaling GW and RPA]][[Category:Many-body perturbation theory]]

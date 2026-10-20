@@ -10,8 +10,10 @@ from __future__ import annotations
 import ast
 import fnmatch
 import inspect
+import json
 import os
 from pathlib import Path
+import shutil
 import socket
 import subprocess
 import sys
@@ -119,7 +121,8 @@ def test_loading_imports_no_network_or_process_modules() -> None:
         "before = set(sys.modules)\n"
         "from bmd_agent import vasp_wiki_corpus as c\n"
         "result = c.load_vasp_wiki_corpus()\n"
-        "assert result.reason == 'unpopulated', result\n"
+        "assert isinstance(result, c.VaspWikiCorpus), result\n"
+        "assert all(page.read_wikitext() is not None for page in result.pages)\n"
         "new = set(sys.modules) - before\n"
         "bad = {m for m in new if m.split('.')[0] in {'socket', 'ssl', 'http', 'subprocess', 'urllib3',"
         " 'requests', 'pickle', 'yaml', 'ctypes', 'multiprocessing'} or m in {'urllib.request', 'urllib.error'}}\n"
@@ -143,7 +146,9 @@ def test_loading_works_with_network_and_subprocesses_disabled(monkeypatch) -> No
     monkeypatch.setattr(subprocess, "Popen", refuse)
     monkeypatch.setattr(subprocess, "run", refuse)
     monkeypatch.setattr(os, "system", refuse)
-    assert corpus.load_vasp_wiki_corpus().reason == corpus.UNAVAILABLE_UNPOPULATED
+    packaged = corpus.load_vasp_wiki_corpus()
+    assert isinstance(packaged, corpus.VaspWikiCorpus), packaged
+    assert all(isinstance(page.read_wikitext(), str) for page in packaged.pages)
     synthetic = corpus.load_vasp_wiki_corpus(FIXTURE, policy=SYNTHETIC_POLICY)
     assert isinstance(synthetic, corpus.VaspWikiCorpus)
     assert all(page.read_wikitext() for page in synthetic.pages)
@@ -179,6 +184,60 @@ def test_package_data_covers_every_corpus_file_including_future_pages() -> None:
     ]
     for candidate in candidates:
         assert any(fnmatch.fnmatchcase(candidate, pattern) for pattern in globs), candidate
+
+
+def _git_ignored(paths: list[str], ignorecase: str) -> set[str]:
+    """Paths that the repository's ignore rules match, as Git sees them.
+
+    Paths travel NUL-delimited in binary mode (``-z``), so no platform newline
+    translation can alter them (text mode on Windows would append CR).
+    """
+
+    if shutil.which("git") is None or not (REPO / ".git").exists():
+        pytest.skip("not a git checkout")
+    completed = subprocess.run(
+        ["git", "-c", f"core.ignorecase={ignorecase}", "check-ignore", "--no-index", "--stdin", "-z"],
+        cwd=REPO,
+        input=b"".join(path.encode("utf-8") + b"\0" for path in paths),
+        capture_output=True,
+        timeout=60,
+    )
+    assert completed.returncode in (0, 1), completed.stderr.decode("utf-8", "replace")
+    return {item.decode("utf-8") for item in completed.stdout.split(b"\0") if item}
+
+
+@pytest.mark.parametrize("ignorecase", ["true", "false"])
+def test_no_corpus_file_is_ignored_by_git(ignorecase: str) -> None:
+    """Every corpus file must be committable, including on case-insensitive
+    checkouts where the POTCAR ignore rules would match ``pages/potcar.*``."""
+
+    paths = sorted(path.relative_to(REPO).as_posix() for path in PACKAGED.rglob("*") if path.is_file())
+    pages = [path for path in paths if "/pages/" in path]
+    manifest = json.loads((PACKAGED / "manifest.json").read_text("ascii"))
+    assert len(pages) == len(manifest["pages"])
+    assert "src/bmd_agent/reference_corpus/vasp_wiki/pages/potcar.r33125.wiki" in pages
+    assert _git_ignored(paths, ignorecase) == set()
+
+
+@pytest.mark.parametrize("ignorecase", ["true", "false"])
+def test_potcar_data_and_corpus_staging_stay_ignored(ignorecase: str) -> None:
+    probes = [
+        "POTCAR",
+        "POTCAR.gz",
+        "calculations/Si/POTCAR",
+        "calculations/Si/POTCAR.Si",
+        "tests/POTCAR.bak",
+        "src/bmd_agent/reference_corpus/vasp_wiki/POTCAR",
+        "src/bmd_agent/reference_corpus/vasp_wiki/pages/POTCAR",
+        "src/bmd_agent/reference_corpus/vasp_wiki/pages/POTCAR.gz",
+        "corpus-staging/vasp-wiki-full/manifest.json",
+        "corpus-staging/vasp-wiki-full/pages/potcar.r33125.wiki",
+        "corpus-staging/cache/" + "0" * 64 + ".body",
+    ]
+    assert _git_ignored(probes, ignorecase) == set(probes)
+    if ignorecase == "true":
+        assert _git_ignored(["calculations/Si/potcar"], ignorecase) == {"calculations/Si/potcar"}
+    assert _git_ignored(["calculations/Si/POTCAR.spec"], ignorecase) == set()
 
 
 def test_maintainer_tool_is_outside_the_installed_package() -> None:

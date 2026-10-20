@@ -1,0 +1,8 @@
+For [[:Category:Band structure|band-structure calculations]] with {{TAG|METAGGA}} functionals, follow the same procedure as for [[Band-structure_calculation_using_hybrid_functionals|band-structure calculations using hybrid functionals]]. The reason is that a regular k mesh has to be provided in order to compute the kinetic-energy density.
+
+==Related tags and articles==
+{{FILE| KPOINTS}}, {{FILE| KPOINTS_OPT}}, [[Band-structure calculation using hybrid functionals]]
+
+== References ==
+
+[[Category:Exchange-correlation_functionals]][[Category:Band structure]][[Category:Howto]][[Category:Crystal momentum]]

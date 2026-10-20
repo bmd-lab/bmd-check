@@ -1,0 +1,65 @@
+== Lectures ==
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_Basics1.pdf DFT, PW, and PAW]: "VASP: The basics(1). DFT, plane waves, PAW, ...".
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_Basics2.pdf electronic convergence, BZ sampling]: "VASP: The basics(2). electronic convergence, BZ sampling ...".
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_Hybrids.pdf Hybrid functionals]: "VASP: Hybrid functionals".
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_Dielectric.pdf Dielectric properties]: "VASP: Dielectric response. Perturbation theory, linear response, and finite electric fields".
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_RPA_Kaltak.pdf Beyond DFT: RPA]: "VASP: beyond DFT. The Random-Phase-Approximation".
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_HPC.pdf Performance]: "VASP: running on HPC resources".
+
+== Environment Setup ==
+After login, open a Terminal and enter following command
+ source ~/data/bin/setup_environments.sh 
+The job scripts found in the tutorial files (job.sh, doall.sh, etc) work only if the environment variables "vasp_std, vasp_gam, vasp_ncl" are defined. This is done via
+ export vasp_std="mpirun -np 2 /home/notebook/data/bin/vasp_std"
+ export vasp_gam="mpirun -np 2 /home/notebook/data/bin/vasp_gam"
+ export vasp_ncl="mpirun -np 2 /home/notebook/data/bin/vasp_ncl"
+
+== Tutorials ==
+
+For the beginners: [[Input_and_Output_-_a_short_Intro| A short introduction to the common Input and Output files.]]
+
+*[[Atoms_and_Molecules_-_Tutorial|Atoms and Molecules]]
+*[[Bulk_Systems_-_Tutorial|Simple Bulk Systems]]
+*[[Surface_Science_-_Tutorial|A bit of Surface Science]]
+*[[Hybrid_functionals_-_Tutorial|Hybrid Functionals]]
+*[[Optical_properties_and_dielectric_response_-_Tutorial|Optical Properties and Dielectric Response]]
+*[[GW_and_ACFDT_-_Tutorial|The Random-Phase-Approximation: GW and ACFDT]]
+*[[BSE_-_Tutorial|The Bethe-Salpeter equation]]
+*[[Magnetism_-_Tutorial|Magnetism]]
+
+== Further Examples ==
+==== Nudge Elastic Band Method and (constrained) Molecular Dynamics ====
+
+*[[Liquid Si - Standard MD]]
+
+*[[Transition State Search of Ammonia]]
+
+*[[Adsorption of H2O on TiO2]]
+
+==== Magnetism in NiO ====
+
+*[[NiO GGA]]
+
+*[[NiO GGA+U]]
+
+*[[NiO HSE06]]
+
+*[[Estimation of J magnetic coupling]]
+
+*[[Including the Spin-Orbit Coupling]]
+
+*[[Determining the Magnetic Anisotropy]]
+
+*[[Constraining the local magnetic moments]]
+
+==== NMR calculations ====
+
+*[[alpha-SiO2]]
+
+*[[alpha-AlF3]]

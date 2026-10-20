@@ -1,0 +1,57 @@
+The many-body dispersion energy method (MBD@rsSCS) of Tkatchenko et al.,{{cite|tkatchenko:prl:12}}{{cite|ambrosetti:jcp:14}} invoked by setting {{TAG|IVDW}}=202, is based on the random-phase expression for the correlation energy
+
+:<math> E_c = \int_{0}^{\infty} \frac{d\omega}{2\pi} \mathrm{Tr}\left\{\mathrm{ln} (1-v\chi_0(i\omega))+v\chi_0(i\omega) \right\} </math>
+
+whereby the response function <math>\chi_0</math> is approximated by a sum of atomic contributions represented by quantum harmonic oscillators. The expression for the dispersion energy used in the VASP k-space implementation of the MBD@rsSCS method (see reference {{cite|bucko:jpcm:16}} for details) is as follows:
+
+:<math>E_{\mathrm{disp}} = -\int_{\mathrm{FBZ}}\frac{d{\mathbf{k}}}{v_{\mathrm{FBZ}}} \int_0^{\infty} {\frac{d\omega}{2\pi}} \, {\mathrm{Tr}}\left \{ \mathrm{ln} \left ({\mathbf{1}}-{\mathbf{A}}^{(0)}_{LR}(\omega) {\mathbf{T}}_{LR}({\mathbf{k}}) \right ) \right \} </math>
+
+where <math>{\mathbf{A}}_{LR}</math> is the frequency-dependent polarizability matrix and <math>\mathbf{T}_{LR}</math> is the long-range interaction tensor, which describes the interaction of the screened polarizabilities
+embedded in the system in a given geometrical arrangement. The components of <math>\mathbf{A}_{LR}</math> are obtained using an atoms-in-molecule approach as employed in the pairwise {{TAG|Tkatchenko-Scheffler method}} (see
+references {{cite|ambrosetti:jcp:14}}{{cite|bucko:jpcm:16}} for details).
+
+Details of the implementation of the MBD@rsSCS method in VASP are presented in reference {{cite|bucko:jpcm:16}}.
+
+== Usage ==
+The input reference data for non-interacting atoms can be optionally defined via the parameters {{TAG|VDW_ALPHA}}, {{TAG|VDW_C6}}, and {{TAG|VDW_R0}}
+(described by the {{TAG|Tkatchenko-Scheffler method}}). This method has one free parameter (<math>\beta</math>) that must be adjusted for each exchange-correlation functional. The default value of <math>\beta</math>=0.83 corresponds to the PBE functional ({{TAG|GGA}}{{=}}PE). If another functional is used, the value of <math>\beta</math> must be specified via {{TAG|VDW_SR}} in the {{TAG|INCAR}} file.
+
+The following optional parameters can be user-defined (the given values are the default ones):
+
+*{{TAG|VDW_SR}}=0.83 : scaling parameter <math>\beta</math>
+*{{TAG|LVDWEXPANSION}}=.FALSE. : writes the two- to six-body contributions to the  MBD dispersion energy in the {{TAG|OUTCAR}} ({{TAG|LVDWEXPANSION}}=''.TRUE.'')
+*{{TAG|LSCSGRAD}}=.TRUE. : compute gradients (or not)
+*{{TAG|VDW_ALPHA}}, {{TAG|VDW_C6}}, {{TAG|VDW_R0}} : atomic reference (see also {{TAG|Tkatchenko-Scheffler method}}) 
+*{{TAG|ITIM}}=-1: if set to +1, apply eigenvalue remapping to avoid unphysical cases where the eigenvalues of the matrix 
+<math>\left(1-\mathbf{A}^{(0)}_{LR}(\omega) {\mathbf{T}}_{LR}({\mathbf{k}})\right) </math>are non-positive, see reference<ref>[https://pubs.acs.org/doi/abs/10.1021/acs.jctc.6b00925 T. Gould, S. Lebègue, J. G. Ángyán, and T. Bučko, J. Chem. Theory Comput. 12, 5920 (2016).]</ref> for details
+
+{{NB|mind|
+*This method requires the use of {{TAG|POTCAR}} files from the PAW dataset version 52 or later.
+*The input reference data for non-interacting atoms are available only for elements of the first six rows of the periodic table except of the lanthanides. If the system contains other elements, the user has to provide the free-atomic parameters for all atoms in the system via {{TAG|VDW_ALPHA}}, {{TAG|VDW_C6}} and {{TAG|VDW_R0}} (described by the {{TAG|Tkatchenko-Scheffler method}}) defined in the {{TAG|INCAR}} file.
+*The charge-density dependence of gradients is neglected.
+*This method is incompatible with the setting {{TAG|ADDGRID}}{{=}}''.TRUE.''.
+*It is essential that a sufficiently dense FFT grid (controlled via {{TAG|NGXF}}, {{TAG|NGYF}} and {{TAG|NGZF}} ) is used in the {{TAG|Tkatchenko-Scheffler method}} calculation. We strongly recommend to use {{TAG|PREC}}{{=}}''Accurate'' for this type of calculations (in any case, avoid using {{TAG|PREC}}{{=}}''Low'').
+*The method sometimes has numerical problems if highly polarizable atoms are located at short distances. In such a case the calculation terminates with an error message ''Error(vdw\_tsscs\_range\_separated\_k): d\_lr(pp)<{{=}}0''. Note that this problem is not caused by a bug, but rather it is due to a limitation of the underlying physical model.
+*Analytical gradients of the energy are implemented (fore details see reference {{cite|bucko:jpcm:16}}) and hence the atomic and lattice relaxations can be performed.
+*Due to the long-range nature of dispersion interactions, the convergence of energy with respect to the number of k-points should be carefully examined.
+*A default value for the free-parameter of this method is available only for the PBE ({{TAG|VDW_SR}}{{=}}0.83), PBE0 ({{TAG|VDW_SR}}{{=}}0.85), HSE06 ({{TAG|VDW_SR}}{{=}}0.85), B3LYP ({{TAG|VDW_SR}}{{=}}0.64), and SCAN ({{TAG|VDW_SR}}{{=}}1.12) functionals. If any other functional is used, the value of {{TAG|VDW_SR}} must be specified in the {{TAG|INCAR}} file.}}
+
+== Related tags and articles ==
+{{TAG|VDW_ALPHA}},
+{{TAG|VDW_C6}},
+{{TAG|VDW_R0}},
+{{TAG|VDW_SR}},
+{{TAG|LVDWEXPANSION}},
+{{TAG|LSCSGRAD}},
+{{TAG|IVDW}},
+{{TAG|Tkatchenko-Scheffler method}},
+{{TAG|Self-consistent screening in Tkatchenko-Scheffler method}},
+{{TAG|Tkatchenko-Scheffler method with iterative Hirshfeld partitioning}},
+{{TAG|Many-body dispersion energy with fractionally ionic model for polarizability}}
+
+== References ==
+<references/>
+
+----
+
+[[Category:Exchange-correlation functionals]][[Category:van der Waals functionals]][[Category:Theory]][[Category:Howto]]

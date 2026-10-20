@@ -1,0 +1,56 @@
+In the DFT-D3 method of Grimme et al.{{cite|grimme:jcp:10}}, the following expression for the vdW dispersion energy-correction term is used:
+
+:<math> E_{\mathrm{disp}} = -\frac{1}{2}  \sum_{i=1}^{N_{at}} \sum_{j=1}^{N_{at}} \sum_{\mathbf{L}}{}^\prime \left ( f_{d,6}(r_{ij,L})\,\frac{C_{6ij}}{r_{ij,{L}}^6} +f_{d,8}(r_{ij,L})\,\frac{C_{8ij}}{r_{ij,L}^8} \right ).</math>
+
+Unlike in the older {{TAG|DFT-D2}} method, the dispersion coefficients <math>C_{6ij}</math> are geometry-dependent as they are calculated on the basis of the local geometry (coordination number) around atoms <math>i</math> and <math>j</math>. Two variants of DFT-D3, that differ in the mathematical form  of the damping functions <math>f_{d,n}</math>, are available. More variants of the damping function are available via the [[simple-DFT-D3]] external package ({{TAG|IVDW}}=15).
+
+=== DFT-D3(zero) ===
+In the zero-damping variant of DFT-D3,{{cite|grimme:jcp:10}} invoked by setting {{TAG|IVDW}}=11, the damping function reads
+
+:<math>f_{d,n}(r_{ij}) = \frac{s_n}{1+6(r_{ij}/(s_{R,n}R_{0ij}))^{-\alpha_{n}}}</math>
+
+where <math>R_{0ij} = \sqrt{\frac{C_{8ij}}{C_{6ij}}}</math>, <math>\alpha_6=14</math> and <math>\alpha_8=16</math> are fixed (there is no tag to change their values), and the others parameters, whose default values depend on the choice of the exchange-correlation functional, can be modified as follows:
+*{{TAG|VDW_S6}}=[real] : scaling <math>s_6</math> of the dipole-dipole dispersion. '''Available since VASP.6.6.0'''.
+*{{TAG|VDW_S8}}=[real] : scaling <math>s_8</math> of the dipole-quadrupole dispersion
+*{{TAG|VDW_SR}}=[real] : radii scaling <math>s_{r,6}</math> in the dipole-dipole damping function
+*{{TAG|VDW_SR8}}=[real] : radii scaling <math>s_{r,8}</math> in the dipole-quadrupole damping function. '''Available since VASP.6.6.0'''.
+*{{TAG|VDW_RADIUS}}=[real] : two-body interaction cutoff (in Å)
+*{{TAG|VDW_CNRADIUS}}=[real] : coordination number cutoff (in Å)
+
+=== DFT-D3(BJ) ===
+In the rational Becke-Johnson (BJ) damping variant of DFT-D3,{{cite|grimme:jcc:11}}, invoked by setting {{TAG|IVDW}}=12, the damping function is given by
+
+:<math>f_{d,n}(r_{ij}) = \frac{s_n\,r_{ij}^n}{r_{ij}^n + (a_1\,R_{0ij}+a_2)^n} </math>
+
+where <math>s_6</math>, <math>s_8</math>, <math>a_1</math>, and <math>a_2</math> are parameters whose default values depend on the choice of the exchange-correlation functional, but can also be modified as follows:
+*{{TAG|VDW_S6}}=[real] : scaling <math>s_6</math> of the dipole-dipole dispersion. '''Available since VASP.6.6.0'''.
+*{{TAG|VDW_S8}}=[real] : scaling <math>s_8</math> of the dipole-quadrupole dispersion
+*{{TAG|VDW_A1}}=[real] : scaling <math>a_{1}</math> of the critical radii
+*{{TAG|VDW_A2}}=[real] : offset <math>a_{2}</math> of the critical radii
+*{{TAG|VDW_RADIUS}}=[real] : two-body interaction cutoff (in Å)
+*{{TAG|VDW_CNRADIUS}}=[real] : coordination number cutoff (in Å)
+
+{{NB|mind|
+*The default values for the damping function parameters are available for several {{TAG|GGA}} (PBE, RPBE, revPBE and PBEsol), {{TAG|METAGGA}} (TPSS, M06L and SCAN) and [[list_of_hybrid_functionals|hybrid]] (B3LYP and PBEh/PBE0) functionals, as well as [[list_of_hybrid_functionals|Hartree-Fock]]. If another functional is used, the user has to define these parameters via the corresponding tags in the {{TAG|INCAR}} file. The up-to-date list of parametrized DFT functionals with recommended values of damping function parameters can be found on the webpage https://www.chemie.uni-bonn.de/grimme/de/software/dft-d3/ and follow the link "List of parametrized functionals".
+*The DFT-D3 method has been implemented in VASP by Jonas Moellmann based on the dftd3 program written by Stefan Grimme, Stephan Ehrlich and Helge Krieg. If you make use of the DFT-D3 method, please cite reference {{cite|grimme:jcp:10}}. When using DFT-D3(BJ) references {{cite|grimme:jcp:10}} and {{cite|grimme:jcc:11}} should also be cited. Also carefully check the more extensive list of references found on  https://www.chemie.uni-bonn.de/grimme/de/software/dft-d3/.}}
+
+== Related tags and articles ==
+{{TAG|IVDW}},
+{{TAG|VDW_S6}},
+{{TAG|VDW_S8}},
+{{TAG|VDW_SR}},
+{{TAG|VDW_SR8}},
+{{TAG|VDW_A1}},
+{{TAG|VDW_A2}},
+{{TAG|VDW_RADIUS}},
+{{TAG|VDW_CNRADIUS}},
+[[DFT-D2]],
+[[simple-DFT-D3]],
+[[DFT-D4]],
+[[DFT-ulg]]
+
+== References ==
+<references/>
+
+----
+[[Category:Exchange-correlation functionals]][[Category:van der Waals functionals]][[Category:Theory]][[Category:Howto]]

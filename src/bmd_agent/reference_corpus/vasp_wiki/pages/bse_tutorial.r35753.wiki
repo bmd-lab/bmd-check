@@ -1,0 +1,11 @@
+{{Template:BSE - Tutorial}}
+
+The Bethe-Salpeter equation (BSE) tutorial consists of the following parts:
+<div style="background:var(--vdefault-bg); border:solid 1px var(--vlines); padding:0.5em 1em; margin-right:14em;">
+# [[Dielectric properties of Si using BSE|Dielectric properties of Si using BSE]]
+# [[Improving the dielectric function|Improving the dielectric function]]
+# [[Plotting the BSE fatband structure of Si|Plotting the BSE fatband structure of Si]]
+</div>
+They can be performed independently, but for people who are new to BSE calculations the order presented above is advisable.
+
+[[Category:Tutorials]]

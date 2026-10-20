@@ -1,0 +1,57 @@
+''<u>Exercise :</u>'' Determine the most stable magnetic order between the antiferromagnetic (AFM) and ferromagnetic (FM) configurations. Compare the both DOS.
+
+*{{TAG|INCAR}}
+ NiO GGA AFM
+   {{TAGBL|SYSTEM}}   = "NiO"
+     
+ Electronic minimization
+   {{TAGBL|ENCUT}}    = 450
+   {{TAGBL|EDIFF}}    = 1E-5
+   {{TAGBL|LORBIT}}   = 11
+   {{TAGBL|LREAL}}    = .False.
+   {{TAGBL|ISTART}}   = 0
+   {{TAGBL|NELMIN}}   = 6
+     
+ DOS
+   {{TAGBL|ISMEAR}}   = -5
+     
+ Magnetism
+   {{TAGBL|ISPIN}}    = 2
+   {{TAGBL|MAGMOM}}   = 2.0 -2.0 2*0  # AFM order
+   # {{TAGBL|MAGMOM}}   = 2.0 2.0 2*0 # FM order
+     
+ Mixer
+   {{TAGBL|AMIX}}     = 0.2
+   {{TAGBL|BMIX}}     = 0.00001
+   {{TAGBL|AMIX_MAG}} = 0.8
+   {{TAGBL|BMIX_MAG}} = 0.00001 
+
+*{{TAG|KPOINTS}}
+<pre>
+k-points
+ 0
+gamma
+ 4  4  4 
+ 0  0  0
+</pre>
+
+*{{TAG|POSCAR}}
+<pre>
+NiO
+ 4.17
+ 1.0 0.5 0.5
+ 0.5 1.0 0.5
+ 0.5 0.5 1.0
+ 2 2
+Cartesian
+ 0.0 0.0 0.0
+ 1.0 1.0 1.0
+ 0.5 0.5 0.5
+ 1.5 1.5 1.5
+</pre>
+
+== Download ==
+[[Media:Nio_gga.tgz| nio_gga.tgz]]
+----
+
+[[Category:Examples]]

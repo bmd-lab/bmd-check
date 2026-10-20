@@ -1,0 +1,211 @@
+Molecular dynamics (MD) is used to study the movement of atoms over time in a given thermodynamic ensemble. This makes MD useful whenever a static ground-state calculation is insufficient, e.g., to study thermal disorder, diffusion, structural fluctuations, phase stability, melting, or how a system equilibrates under realistic conditions.
+
+In an ab initio MD, the forces along the trajectory can be computed directly from DFT, or they can be provided by a machine-learned force field (MLFF) once a reliable model is available. In practice, MD in VASP can therefore be used for both accurate short first-principles trajectories and much longer simulations involving more atoms based on native [[Machine learning force field calculations: Basics|MLFF workflows]] or external models, such as [[Running GRACE force fields in VASP|GRACE]]. This page explains how to set up and validate standard MD calculations in VASP, as well as how to avoid the most common numerical and physical pitfalls. More advanced sampling methods are covered under "[[advanced molecular-dynamics sampling]]".
+
+== Step-by-step instructions ==
+
+=== Step 1: Prepare a stable starting structure ===
+Generate a {{FILE|POSCAR}} containing a large enough cell. In practice, MD usually requires a substantial number of ions so that the trajectory samples a meaningful distribution of local environments. If the cell is too small, the statistics will be poor, and the atoms, defects, or local distortions may interact too strongly with their periodic images.
+
+Start with a reasonable structure. This could be an [[structure optimization|optimized structure]], a snapshot from an earlier MD run, or an intentionally nonequilibrium starting point. Whether a separate [[Structure optimization]] is useful depends mainly on the starting structure and on the workflow goal. MD can equilibrate velocities, temperature, and small local distortions on its own. However, fixed-cell ensembles such as [[NVT ensemble|NVT]] or [[NVE ensemble|NVE]] cannot repair an incorrect cell volume or density; see [[#Step 3: Select the ensemble and cell dynamics|Step 3]] for how the ensemble constrains what can relax during MD. If the starting structure is strongly strained, the early part of the trajectory will mainly remove these artifacts instead of sampling the finite-temperature behavior of interest. This is especially costly in ab initio MD and can generate poor training data in MLFF workflows. A separate optimization is therefore most useful when starting from a new structure guess and less important when the nonequilibrium character is intentional, e.g., in heating or melt-quench runs.
+{{NB|mind|If you are continuing an earlier trajectory or from an [[structure optimization]], do not forget to copy {{FILE|CONTCAR}} to {{FILE|POSCAR}}.
+{{CB|cp CONTCAR POSCAR|:}}
+If {{FILE|POSCAR}} does not contain velocities, VASP will randomly generate them at the beginning of the run. This can make it harder to compare trajectories from separate runs directly. If you need reproducible randomized velocities, set {{TAG|RANDOM_SEED}}.}}
+
+If you plan to run ab initio MD, relax the structure with the same ab initio setup that you will later use for the trajectory. The same consistency is needed for MLFF-based MD: either relax with the same MLFF that will drive the dynamics, or generate the reference structures with the same ab initio settings used for training. Disable symmetry with {{TAG|ISYM|0}} for MD, since thermal motion generally breaks the symmetry of the relaxed structure.
+
+=== Step 2: Set the core MD tags ===
+Activate MD with {{TAG|IBRION|0}}, then define the trajectory length, timestep, temperature control, and cell constraints.
+
+The key MD tags are:
+* '''{{TAG|NSW}}''' sets the number of ionic steps and therefore the total simulation length.
+* '''{{TAG|POTIM}}''' sets the time step in fs and must be supplied for MD runs. It must be small enough to resolve the fastest ionic motion.
+* '''{{TAG|TEBEG}}''' and '''{{TAG|TEEND}}''' define the initial and target temperatures for thermostat-based runs.
+* '''{{TAG|MDALGO}}''' selects the thermostat and integration scheme. More on that in the next step.
+* '''{{TAG|ISIF}}''' determines whether the cell can change shape and volume or is fixed.
+
+Choose {{TAG|POTIM}} conservatively. Systems containing hydrogen bonds or stiff bonds usually require smaller timesteps than heavy, weakly bound systems. Reduce {{TAG|POTIM}} and retest if the total energy drifts strongly in [[NVE ensemble|NVE]], if the atoms show unrealistically large displacements, or if the electronic self-consistent field (SCF) cycle becomes erratic.
+
+For long trajectories, also decide how often data should be written. {{TAG|NBLOCK}} controls how often ionic configurations are written to {{FILE|XDATCAR}} and how often pair-correlation and DOS-related quantities are accumulated. In MLFF prediction runs, use {{TAG|ML_OUTBLOCK}} to more broadly reduce screen and file output frequency.
+{{NB|tip|The atomic masses can be intentionally changed for MD, by setting the {{TAG|POMASS}} tag in the {{FILE|INCAR}}. By default the masses are read from {{FILE|POTCAR}}. This can be useful for increasing POTIM for light atoms such as hydrogen, but it changes the physical dynamics and should be avoided when mass-dependent observables are the target.}}
+
+=== Step 3: Select the ensemble and cell dynamics ===
+Select an ensemble based on the physical conditions you want to sample. Because VASP determines the ensemble by combining {{TAG|MDALGO}} and {{TAG|ISIF}}, your choice of [[Thermostats|thermostat]] directly impacts your available cell degrees of freedom. For instance, while the [[Langevin thermostat]] ({{TAG|MDALGO|3}}) flexibly supports both [[NVT ensemble|NVT]] and [[NpT ensemble|NpT]] simulations, other algorithms do not allow fluctuations of the cell.
+
+* '''[[NVT ensemble|Canonical ensemble (NVT)]]:''' use this to run simulations at a fixed number of particles (N), fixed volume (V) and constant temperature (T). Several thermostats can be used here, including [[Andersen thermostat|Andersen]] ({{TAG|MDALGO|1}}), [[Nosé-Hoover thermostat|Nosé–Hoover]] ({{TAG|MDALGO|2}}), [[Langevin thermostat|Langevin]] ({{TAG|MDALGO|3}}), [[Nosé-Hoover chain thermostat|Nosé–Hoover chain]] ({{TAG|MDALGO|4}}), [[CSVR thermostat|CSVR]] ({{TAG|MDALGO|5}}), and multiple Andersen thermostats ({{TAG|MDALGO|13}}). Keep the cell fixed with {{TAG|ISIF}} < 3; {{TAG|ISIF|2}} is a common choice because it also reports the full stress tensor.
+* '''[[NVE ensemble|Micro–canonical ensemble (NVE)]]:''' use this when the target are dynamical observables. This ensemble is useful because the atoms are only propagated by the MLFF or DFT forces, and no thermostat modifies the velocities. For example, [[Sampling phonon spectra from molecular-dynamics simulations|phonon spectra]] or [[Computing the phonon dispersion and DOS|dispersion]]. In VASP, NVE is treated as a special case where a thermostat is selected but effectively switched off. The simplest way to do this is with {{TAG|MDALGO|1}} and {{TAG|ANDERSEN_PROB|0.0}}. Another option is {{TAG|MDALGO|2}} with {{TAG|SMASS|-3}}, which disables the [[Nosé-Hoover thermostat|Nosé–Hoover thermostat]] and yields [[NVE ensemble|NVE]] dynamics. Keep the cell fixed with {{TAG|ISIF}} < 3. Note that the choice of the thermostat will determine the propagation scheme which is used for the NVE simulation.
+* '''[[NpT ensemble|Isothermal–isobaric ensemble (NpT)]]:''' use this when pressure and volume fluctuations are part of the problem. This will be the case when for example phase transitions should be studied under which the simulation box will change. In VASP, this is implemented for [[Langevin thermostat|Langevin dynamics]], i.e., {{TAG|MDALGO|3}} together with {{TAG|ISIF|3}}. The [[Langevin thermostat]] requires the following additional tags: {{TAG|LANGEVIN_GAMMA}} for the ions and {{TAG|LANGEVIN_GAMMA_L}} for the lattice. {{TAG|PMASS}} controls the fictitious lattice mass.
+* '''[[NpH ensemble|Isoenthalpic–isobaric ensemble (NpH)]]:''' use this when you want constant pressure without a thermostat hitting at you system. This ensemble is interesting when studying for example crystallization processes. Crystallization converts potential energy into kinetic energy. An ([[NpT ensemble|NpT]]) thermostat artificially drains this kinetic energy to keep temperature flat, killing the natural heating that regulates the real nucleation rate. Again, one has to use the Langevin route with {{TAG|MDALGO|3}} and {{TAG|ISIF|3}}, but with {{TAG|LANGEVIN_GAMMA|0}} and {{TAG|LANGEVIN_GAMMA_L|0}}, which switches off both ionic and lattice thermostatting.
+
+For most workflows, begin with [[NVT ensemble|NVT]] and then validate the timestep and force quality in [[NVE ensemble|NVE]]. Only use [[NpT ensemble|NpT]] when the cell should fluctuate. [[NpT ensemble|NpT]] can lead to irreversible cell deformations for liquids or systems with limited long-range order unless lattice constraints are applied.
+
+{{Template:MDCOMBINATIONS}}
+
+A minimal fixed-cell [[NVT ensemble|NVT]] starting point is:
+ {{TAG|IBRION}} = 0
+ {{TAG|NSW}}    = 5000
+ {{TAG|POTIM}}  = 1.0
+ {{TAG|TEBEG}}  = 300
+ {{TAG|TEEND}}  = 300
+ {{TAG|MDALGO}} = 2
+ {{TAG|SMASS}}  = 0
+ {{TAG|ISIF}}   = 2
+ {{TAG|ISYM}}   = 0
+
+For variable-cell [[NpT ensemble|NpT]] with Langevin dynamics, start from:
+ {{TAG|IBRION}}           = 0
+ {{TAG|NSW}}              = 5000
+ {{TAG|POTIM}}            = 1.0
+ {{TAG|TEBEG}}            = 300
+ {{TAG|TEEND}}            = 300
+ {{TAG|MDALGO}}           = 3
+ {{TAG|ISIF}}             = 3
+ {{TAG|LANGEVIN_GAMMA}}   = 10.0 10.0 # For two species
+ {{TAG|LANGEVIN_GAMMA_L}} = 10.0
+ {{TAG|PMASS}}            = 1000
+ {{TAG|ISYM}}             = 0
+These are just starting points for MD control; add the converged electronic and force-provider settings from the next step.
+
+For the Langevin parameters, begin with moderate friction and only adjust if a clear problem appears in the short test run. If {{TAG|LANGEVIN_GAMMA}} or {{TAG|LANGEVIN_GAMMA_L}} is too small, temperature or pressure equilibration may be very slow. If they are too large, the dynamics become overdamped, and time-dependent observables become less meaningful. {{TAG|PMASS}} controls how quickly the cell responds. Too small values can lead to violent volume fluctuations, while too large values makes the cell relaxation very sluggishly. For liquids or soft systems, closely monitor the cell evolution and use the {{FILE|ICONST}} file to constrain the lattice if the box begins to deform irreversibly.
+
+=== Step 4: Choose how the forces are computed ===
+Select the method for force generation, as this choice dictates the computational expense and determines whether the workflow incorporates machine learning training.
+
+* '''Ab initio MD:''' all forces are computed from DFT at every step. This is the standard setup and typically the best starting point for a new system.
+* '''Native VASP MLFF, on-the-fly:''' enable {{TAG|ML_LMLFF|.TRUE.}} to activate machine-learned force fields. With {{TAG|ML_MODE|train}}, VASP performs on-the-fly learning. MLFF predictions are used when the estimated error is low enough. Additional ab initio calculations are triggered when new reference data are needed. Therefore, this mode still requires a complete ab initio setup, including {{FILE|INCAR}}, {{FILE|KPOINTS}}, and {{FILE|POTCAR}}. For the full workflow, see: "[[Machine learning force field calculations: Basics]]".
+* '''Native VASP MLFF, prediction-only:''' after training and refitting the force field, use {{TAG|ML_MODE|run}} to perform MD with MLFF predictions only. This mode does not generate new ab initio data, so it should only be used once the applicability of the force field has been verified.
+* '''GRACE in VASP:''' GRACE is an external pretrained force field and is also a prediction-only method. Use {{TAG|ML_LMLFF|.TRUE.}}, {{TAG|ML_MODE|run}}, and {{TAG|ML_TYPE|grace}} with a compatible build and an available GRACE model.
+
+In practice, the practical distinction is simple: ab initio MD computes every step directly from DFT; on-the-fly MLFF combines MD with automatic training; and both VASP-native {{TAG|ML_MODE|run}} and GRACE are prediction-only modes.
+
+An ab initio MD run also requires electronic settings that maintain a stable SCF cycle throughout the trajectory. A conservative starting point is:
+ {{TAG|PREC}}  = Accurate
+ {{TAG|EDIFF}} = 1E-6
+ {{TAG|ALGO}}  = Normal
+Combine these with the converged {{TAG|ENCUT}}, smearing choice, and '''k'''-point mesh from the preceding relaxation. For on-the-fly MLFF runs, the same ab initio settings must be present because VASP triggers reference electronic calculations whenever new training data are needed.
+{{NB|mind|Keep the exchange-correlation functional, PAW datasets, cutoff, and '''k'''-point strategy consistent between relaxation, MLFF training, and MD. Changing these settings changes the underlying potential-energy surface, meaning the relaxed structure and forces are no longer fully compatible.}}
+To convert the previous MD input into an on-the-fly MLFF run, add:
+ {{TAG|ML_LMLFF}} = .TRUE.
+ {{TAG|ML_MODE}}  = train
+
+For prediction-only MLFF, use:
+ {{TAG|ML_LMLFF}} = .TRUE.
+ {{TAG|ML_MODE}}  = run
+For GRACE, add {{TAG|ML_TYPE|grace}} to the prediction-only setup.
+{{NB|mind|If the cell is allowed to change with {{TAG|ISIF|3}}, monitor the cell shape and volume carefully. The PAW basis is fixed at the beginning of the calculation, so significant cell changes can lead to Pulay-stress errors and unreliable pressure readings.}}
+
+=== Step 5: Test the run before extending it ===
+Begin with a short trajectory and examine the temperature, forces, stress, and electronic convergence before committing to a long run. Ensure that the thermostat drives the system toward the intended temperature, that no atom leaves the physically meaningful structure, and that the SCF cycle remains stable along the trajectory.
+
+In practice, check {{FILE|OSZICAR}} for the temperature and total energy evolution, {{FILE|OUTCAR}} for force maxima, stress, and SCF convergence behavior, and {{FILE|XDATCAR}} or {{FILE|CONTCAR}} for obviously unphysical atomic motion. Warning signs include repeated electronic nonconvergence, large force spikes, a steady temperature drift away from the target in [[NVT ensemble|NVT]], strong total energy drift in [[NVE ensemble|NVE]], and rapidly growing cell distortions in variable-cell runs. If any of these occur, first reduce {{TAG|POTIM}}. Then, tighten the electronic settings. If needed, fall back to a simpler fixed-cell [[NVT ensemble|NVT]] test.
+
+A short run should produce recognizable MD output in several files. Typical examples are:
+
+{{FILE|OSZICAR}} and {{FILE|stdout}} contain the same compact one-line MD step summaries, e.g.
+  N       E                     dE             d eps       ncg     rms          rms(c)
+ ...
+ RMM:   9    -0.403286893162E+02   -0.17249E-05   -0.50662E-07    25   0.375E-03    0.187E-03
+ RMM:  10    -0.403286918348E+02   -0.25186E-05   -0.73425E-07    25   0.385E-03    0.132E-03
+ RMM:  11    -0.403286919455E+02   -0.11075E-06   -0.13533E-07    25   0.208E-03
+      29 T=   339. E= -.40079922E+02 F= -.40328692E+02 E0= -.40329272E+02  EK= 0.30631E+00 SP= -.62E-01 SK= 0.41E-02
+{{FILE|OUTCAR}} contains the same information in a more expanded form, for example
+  ENERGY OF THE ELECTRON-ION-THERMOSTAT SYSTEM (eV)
+   ---------------------------------------------------
+ % ion-electron   TOTEN  =       -40.328692  see above
+   kinetic energy EKIN   =         0.306307
+   kin. lattice  EKIN_LAT=         0.000000  (temperature  338.53 K)
+   nose potential ES     =        -0.061619
+   nose kinetic   EPS    =         0.004082
+   ---------------------------------------------------
+   total energy   ETOTAL =       -40.079922 eV
+The entries are:
+{| class="wikitable"
+! {{FILE|OSZICAR}}
+! {{FILE|OUTCAR}}
+! Description
+|-
+| <code>T</code>
+| <code>temperature</code>
+| Instantaneous temperature.
+|-
+| <code>E</code>
+| <code>ETOTAL</code>
+| Total energy of the extended MD system.
+|-
+| <code>F</code>
+| <code>TOTEN</code>
+| Free energy of the ion-electron system.
+|-
+| <code>E0</code>
+| —
+| Energy with the electronic smearing width extrapolated to zero.
+|-
+| <code>EK</code>
+| <code>EKIN</code>
+| Ionic kinetic energy.
+|-
+| <code>SP</code>
+| <code>ES</code>
+| Thermostat potential energy.
+|-
+| <code>SK</code>
+| <code>EPS</code>
+| Thermostat kinetic energy.
+|-
+| —
+| <code>EKIN_LAT</code>
+| Kinetic energy of lattice motion, zero for fixed-cell runs.
+|}
+{{FILE|OUTCAR}} additionally contains the stress tensor, external pressure, forces, and SCF details.
+{{NB|important|Monitor <code>E</code> in {{FILE|OSZICAR}} or the equivalent <code>ETOTAL</code> in {{FILE|OUTCAR}}. In [[NVE ensemble|NVE]] and deterministic [[NVT ensemble|NVT]] runs such as [[Nosé-Hoover thermostat|Nosé–Hoover]] or [[Nosé-Hoover chain thermostat|Nosé–Hoover chain]], the extended-system energy should not show a systematic drift. In stochastic thermostatted or barostatted runs it is not strictly conserved, so focus on unexplained long-term drift. Sudden changes can indicate either a numerical problem or a real structural event, such as a phase transition, therefore, interpret them together with the trajectory and structure. For [[NpH ensemble|NpH]], monitor the enthalpy-related output in {{FILE|REPORT}}. Also make sure that <code>T</code> fluctuates around the target in thermostat-controlled runs and that <code>EK</code> evolves smoothly.}}
+
+Thermostat details and constrained MD output are given in {{FILE|REPORT}}. For example, an Andersen run contains
+ ...
+ ========================================
+          MD step No.      19
+ ========================================
+  
+  >Energies
+                    E_tot             E_pot            E_kin             EPS               ES
+   e_b>   -0.40110362E+02   -0.40354992E+02   0.24462978E+00  0.00000000E+00   0.00000000E+00 
+  
+  >Temperature
+               T_sim     T_inst
+   tmprt>    300.000    270.361
+  
+  >Thermostat, num. of collisions:               5
+ ...
+An [[Nosé-Hoover chain thermostat|Nosé–Hoover chain]] run additionally report chain variables and energies. In [[NpT ensemble|NpT]] runs, {{FILE|REPORT}} also contains pressure and temperature summaries, and when {{FILE|ICONST}} is used it reports constrained or monitored coordinates.
+
+If the short test behaves sensibly, continue from {{FILE|CONTCAR}} with the same physical and electronic settings. To restart, copy {{FILE|CONTCAR}} to {{FILE|POSCAR}}. If the {{FILE|CONTCAR}} file was written by an MD run it may also contain the ionic velocities. This allows the trajectory to continue smoothly instead of starting with newly randomized velocities. Use a short [[NVE ensemble|NVE]] segment after equilibration to assess whether the timestep and force convergence are adequate.
+{{NB|mind|Equilibration and production serve different purposes. Use the initial part of the trajectory to allow the temperature, pressure, volume, and local structure to relax away from the initial configuration. Only after these quantities have fluctuated around a steady state should the trajectory be treated as production data for calculating averages, diffusion coefficients, performing structural analyses, and determining other observables.}}
+
+== Recommendations and advice ==
+* Use a generous cutoff for variable-cell runs. With {{TAG|ISIF|3}}, the PAW basis does not update during the run. Therefore, large cell distortions can increase Pulay-stress errors and degrade the pressure.
+* For long trajectories, increase {{TAG|NBLOCK}} if {{FILE|XDATCAR}} and related MD output become unnecessarily large. For MLFF prediction-only runs, use {{TAG|ML_OUTBLOCK}} for output throttling. It also sets a lower bound for {{TAG|NBLOCK}}.
+* Restart from {{FILE|CONTCAR}} and retain the velocities when continuing a trajectory.
+* Do not interpret a very short trajectory as thermodynamic sampling. Equilibration and production are separate parts of an MD workflow.
+* Most thermostat and barostat options selected through {{TAG|MDALGO}} require a build compiled with <code>-Dtbdyn</code>.
+
+Common pitfalls:
+* Starting from an highly strained structure, which often causes large forces and unstable dynamics.
+* Using a supercell that is too small or containing too few ions results in poor statistics and enhances finite-size artifacts from periodic images.
+* Choosing a timestep that is too large for the fastest vibrational modes.
+* Allowing poor electronic convergence, which directly corrupts the forces.
+* Changing the cutoff, smearing, or the '''k'''-point mesh between related MD or MLFF runs.
+* Using variable-cell dynamics without ensuring that the pressure and Pulay stress are under control.
+* Treating thermostat-controlled trajectories as if they automatically provide reliable dynamical observables is also a mistake.
+* Restarting from {{FILE|CONTCAR}} without confirming that velocities are present and physically consistent.
+* Using MLFF or GRACE production runs outside the range of structures represented in the training data.
+
+== Related tags and articles ==
+Files: {{FILE|POSCAR}}, {{FILE|INCAR}}, {{FILE|POTCAR}}, {{FILE|CONTCAR}}, {{FILE|OUTCAR}}, {{FILE|OSZICAR}}, {{FILE|REPORT}} {{FILE|XDATCAR}}, {{FILE|vaspout.h5}}
+
+Tags: {{TAG|IBRION}}, {{TAG|NSW}}, {{TAG|POTIM}}, {{TAG|TEBEG}}, {{TAG|TEEND}}, {{TAG|MDALGO}}, {{TAG|ISIF}}, {{TAG|SMASS}}, {{TAG|ANDERSEN_PROB}}, {{TAG|LANGEVIN_GAMMA}}, {{TAG|LANGEVIN_GAMMA_L}}, {{TAG|PMASS}}, {{TAG|NBLOCK}}, {{TAG|ML_OUTBLOCK}}, {{TAG|VELOCITY}}, {{TAG|ENCUT}}, {{TAG|EDIFF}}, {{TAG|NELM}}, {{TAG|ALGO}}, {{TAG|PREC}}, {{TAG|ISYM}}, {{TAG|ML_LMLFF}}, {{TAG|ML_MODE}}, {{TAG|ML_LIB}}, {{TAG|ML_TYPE}}, {{TAG|RANDOM_SEED}}
+
+[[Structure optimization]], [[Ensembles]], [[NVT ensemble]], [[NVE ensemble]], [[NpT ensemble]], [[NpH ensemble]], [[Thermostats]], [[Andersen thermostat]], [[Nosé-Hoover thermostat]], [[Langevin thermostat]], [[Nosé-Hoover chain thermostat]], [[CSVR thermostat]], [[Forces]], [[Machine-learned force fields]], [[Best practices for machine-learned force fields]], [[Running universal machine-learned force fields]], [[ACFDT/RPA calculations]], [[Plugins]]
+
+[[:Category:Advanced molecular-dynamics sampling|Advanced MD methods]] for free energies, biased sampling, monitored collective variables, and transport properties: [[Interface pinning calculations]], [[Constrained molecular dynamics]], [[Metadynamics]], [[Biased molecular dynamics]], [[Slow-growth approach]], [[MDALGO#Monitoring geometric parameters|Monitoring geometric parameters]], [[:Category:Thermodynamic integration|Thermodynamic integration]], [[Müller-Plathe method]].
+
+[[Category:Howto]]
+[[Category:Molecular dynamics]]

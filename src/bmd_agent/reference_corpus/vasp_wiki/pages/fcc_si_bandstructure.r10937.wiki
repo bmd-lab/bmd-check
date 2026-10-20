@@ -1,0 +1,71 @@
+{{Template:Bulk_systems - Tutorial}}
+
+== Task ==
+
+Computation of the bandstructure in fcc Si along L-&Gamma;-X-U and K-&Gamma;.
+
+== Input ==
+
+=== {{TAG|POSCAR}} ===
+ fcc Si:
+  3.9
+  0.5 0.5 0.0
+  0.0 0.5 0.5
+  0.5 0.0 0.5
+    1
+ cartesian
+ 0 0 0
+
+=== {{TAG|INCAR}} ===
+ {{TAGBL|System}} = fcc Si 
+ {{TAGBL|ICHARG}} = 11 #charge read file
+ {{TAGBL|ENCUT}}  =    240
+ {{TAGBL|ISMEAR}} = 0; {{TAGBL|SIGMA}} = 0.1;
+ {{TAGBL|LORBIT}} = 11
+
+=== {{TAG|KPOINTS}} ===
+ k-points for bandstructure L-G-X-U K-G
+  10
+ line
+ reciprocal
+   0.50000  0.50000  0.50000    1
+   0.00000  0.00000  0.00000    1
+ 
+   0.00000  0.00000  0.00000    1
+   0.00000  0.50000  0.50000    1
+ 
+   0.00000  0.50000  0.50000    1
+   0.25000  0.62500  0.62500    1
+ 
+   0.37500  0.7500   0.37500    1
+   0.00000  0.00000  0.00000    1
+
+*k points along the line <math>L - \Gamma - X - U K - \Gamma</math>.
+*10 points per line.
+*Keyword ''line'' to generate bandstructure.
+*In reciprocal coordinates.
+*All points with weight 1.
+*Example bandstructure should look like this:
+[[File:Fig Si 5.png|300px]]
+
+=== {{TAG|CHGCAR}} ===
+This calculation needs a converged charge density as input ({{TAG|ICHARG}}=11).
+You may use the {{FILE|CHGCAR}} file of the [[Fcc Si DOS|fcc Si DOS]] example.
+
+==  CALCULATION ==
+
+*To copy the self-consistent charge density of example fccSidos to your current working directory, type: 
+ cp ../fccSidos/CHGCAR .
+* You must do this otherwise VASP can not read the {{TAG|CHGCAR}} and will terminate.
+
+*To plot the bandstructure use p4vasp:
+[[File:Fig Si 6.png|800px]]
+
+'''Mind''': For this calculations you need the {{FILE|CHGCAR}} file of the [[Fcc Si DOS|fcc Si DOS example]].
+
+== Download ==
+[[Media:FccSiband.tgz| fccSiband.tgz]]
+ 
+{{Template:Bulk_systems}}
+
+[[Category:Examples]]

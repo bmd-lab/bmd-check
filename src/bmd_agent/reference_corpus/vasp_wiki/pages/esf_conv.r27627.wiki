@@ -1,0 +1,16 @@
+{{DISPLAYTITLE:ESF_CONV}}
+{{TAGDEF|ESF_CONV|[real]|0.01}}
+
+Description: Sets the convergence criterion for {{TAG|ESF_SPLINES}}, i.e., the threshold for the energy difference between two interpolations (in eV).
+----
+
+If the energy between two interpolated k-point grids is less than {{TAG|ESF_CONV}} the calculation is considered to be converged. If the threshold has not been reached within {{TAG|ESF_NINTER}} iterations VASP will print a warning about insufficient convergence. 
+
+== Related tags and articles ==
+{{TAG|ESF_SPLINES}}, 
+{{TAG|ESF_NINTER}},
+{{TAG|LOPTICS}}
+
+{{sc|ESF_SPLINES|Examples|Examples that use this tag}}
+
+<!---[[Category:INCAR tag]][[Category:Many-body perturbation theory]][[Category:GW]][[Category:ACFDT]][[Category:Low-scaling GW and RPA]]

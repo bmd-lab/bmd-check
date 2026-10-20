@@ -1,0 +1,90 @@
+Description: Magnetocrystalline Anisotropy Energy determined non-self-consistently
+
+The Magnetocrystalline Anisotropy Energy is determined by rotating all spins according to different directions. First of all, an accurate ([[PREC|PREC]] = Accurate, [[LREAL|LREAL]] = .False.) collinear calculation (using the <tt>vasp_std</tt> version) in the ground state has to be done. Next, the spin-orbit coupling ([[LSORBIT|LSORBIT]] = .True. using the <tt>vasp_ncl</tt> version) is taken into account non-self-consistently ([[ICHARG|ICHARG]] = 11) for several spin orientations. In most cases, the changes in energies are very low (sometimes around micro-eV). The number of bands for the has to be doubled compared to the collinear run.
+
+To modify the orientation of the spins in the crystal, we consider the second approach described [[SAXIS|here]]. For the [[MAGMOM|MAGMOM]]-tag, the total local magnetic moment is written according to the z-direction (necessarily, the x and y-directions are equal to 0). The spin orientation <math>(u,v,w)</math> is defined by the [[SAXIS|SAXIS]]-tag in the Cartesian frame. The Magnetocrystalline Anisotropy Energy is calculated by orientating the spins in different directions and the following equation
+
+::<math>E_{\text{MAE}} = E_{(u,v,w)} - E_0</math>
+
+with <math>E_0</math> the energy of the most stable spin orientation.
+More details are available in the [[SAXIS|SAXIS]] and [[LSORBIT|LSORBIT]] pages.
+
+''<u>Exercise :</u>'' Determine the Magnetocrystalline Anisotropy Energy of NiO in a non self-consistent approach by orientating the spins along the following path : (2,2,2) --> (2,2,1) --> (2,2,0) --> ... --> (2,2,-6). Compare to the [[Including_the_Spin-Orbit_Coupling|self-consistent approach]].
+
+----
+*{{TAG|INCAR}}
+
+ NiO MAE
+   {{TAGBL|SYSTEM}}    = "NiO"
+     
+ Electronic minimization
+   {{TAGBL|PREC}} = Accurate
+   {{TAGBL|ENCUT}}         = 450
+   {{TAGBL|EDIFF}}         = 1E-7
+   {{TAGBL|LORBIT}}        = 11
+   {{TAGBL|LREAL}}         = .False.
+   {{TAGBL|ISYM}}          = -1
+   {{TAGBL|NELMIN}}        = 6
+   #  {{TAGBL|ICHARG}} = 11
+   #  {{TAGBL|LCHARG}} = .FALSE.
+   #  {{TAGBL|LWAVE}} = .FALSE.
+   #  {{TAGBL|NBANDS}} = 52
+   #  {{TAGBL|GGA_COMPAT}} = .FALSE.
+     
+ DOS
+   {{TAGBL|ISMEAR}}    = -5
+     
+ Magnetism
+   {{TAGBL|ISPIN}}     = 2
+   {{TAGBL|MAGMOM}} = 2.0 -2.0 2*0.0
+   # {{TAGBL|MAGMOM}}    = 0 0 2 0 0 -2 6*0 # Including Spin-orbit
+   # {{TAGBL|LSORBIT}}       = .True.
+   # {{TAGBL|SAXIS}} = 1 0 0 # Quantization axis used to rotate all spins in a direction defined in the (O,x,y,z) Cartesian frame
+     
+ Orbital mom.
+   {{TAGBL|LORBMOM}} = T
+     
+ Mixer
+   {{TAGBL|AMIX}}      = 0.2
+   {{TAGBL|BMIX}}      = 0.00001
+   {{TAGBL|AMIX_MAG}}  = 0.8
+   {{TAGBL|BMIX_MAG}}  = 0.00001
+     
+ GGA+U
+   {{TAGBL|LDAU}}      = .TRUE.
+   {{TAGBL|LDAUTYPE}}  = 2
+   {{TAGBL|LDAUL}}     = 2 -1
+   {{TAGBL|LDAUU}}     = 5.00 0.00
+   {{TAGBL|LDAUJ}}     = 0.00 0.00
+   {{TAGBL|LDAUPRINT}} = 1
+   {{TAGBL|LMAXMIX}}   = 4 
+
+*{{TAG|KPOINTS}}
+<pre>
+k-points
+ 0
+gamma
+ 4  4  4 
+ 0  0  0
+</pre>
+
+*{{TAG|POSCAR}}
+<pre>
+NiO
+ 4.17
+ 1.0 0.5 0.5
+ 0.5 1.0 0.5
+ 0.5 0.5 1.0
+ 2 2
+Cartesian
+ 0.0 0.0 0.0
+ 1.0 1.0 1.0
+ 0.5 0.5 0.5
+ 1.5 1.5 1.5
+</pre>
+
+== Download ==
+[[Media:Nio_noSOC.tgz| nio_noSOC.tgz]]
+----
+
+[[Category:Examples]][[Category:Spin-orbit coupling]]

@@ -1,0 +1,110 @@
+Spin spirals are magnetic structures in which the direction of the magnetization rotates continuously from one unit cell to the next. In VASP they are modeled with a generalization of the Bloch condition, which captures incommensurate magnetic order in the primitive cell and avoids the need for large supercells.{{cite|marsman:prb:02}}
+
+This page describes the underlying formalism. For step-by-step instructions on setting up, running, and analyzing a spin-spiral calculation, see [[Spin-spiral calculations]].
+
+== Generalized Bloch condition ==
+Spin spirals may be conveniently modeled using a generalization of the Bloch condition{{cite|sandratskii:pssb:86}}{{cite|marsman:prb:02}} (set {{TAG|LNONCOLLINEAR|.TRUE.}} and {{TAG|LSPIRAL|.TRUE.}}):
+
+<span id="GeneralizedBlochTheorem">
+:<math>
+\left[ \begin{array}{c} \Psi^{\uparrow}_{\bf k}(\bf r) \\
+\Psi^{\downarrow}_{\bf k}(\bf r) \end{array} \right] = \left(
+\begin{array}{cc}
+e^{-i\bf q \cdot \bf R / 2} & 0\\
+0 & e^{+i\bf q \cdot \bf R / 2} \end{array}\right) \left[
+\begin{array}{c} \Psi^{\uparrow}_{\bf k}(\bf r-R) \\
+\Psi^{\downarrow}_{\bf k}(\bf r-R) \end{array} \right],
+</math>
+</span>
+
+''i.e.'', from one unit cell to the next the up- and down-spinors pick up an additional phase factor of <math>\exp(-i{\bf q}\cdot {\bf R}/2)</math> and <math>\exp(+i{\bf q}\cdot {\bf R}/2)</math>, respectively, where '''R''' is a lattice vector of the crystalline lattice, and '''q''' is the so-called spin-spiral propagation vector.
+
+The spin-spiral propagation vector is commonly chosen to lie within the first Brillouin zone of the reciprocal lattice, and is specified by means of the {{TAG|QSPIRAL}} tag.
+
+=== Magnetization density ===
+The generalized Bloch condition above gives rise to the following behavior of the magnetization density:
+
+:<math>
+{\bf m} ({\bf r} + {\bf R})= \left(
+\begin{array}{c}
+m_x({\bf r}) \cos({\bf q} \cdot {\bf R}) - m_y({\bf r}) \sin({\bf q} \cdot {\bf R}) \\
+m_x({\bf r}) \sin({\bf q} \cdot {\bf R}) + m_y({\bf r}) \cos({\bf q} \cdot {\bf R}) \\
+m_z({\bf r})
+\end{array}
+\right)
+</math>
+
+The components of the magnetization in the ''xy''-plane rotate about the spin-spiral propagation vector '''q''', while the out-of-plane component <math>m_z</math> retains the usual cell periodicity. This is depicted schematically below:
+
+[[File:Spinspiral.png|center|400px]]
+
+{{NB|mind|The generalized Bloch condition does not mean that the magnetization density may not have contributions along the ''z''-direction; these are simply unaffected by it. To keep the magnetization density from developing a component along ''z'', set {{TAG|LZEROZ|.TRUE.}}, which sets <math>m_z({\bf r}) = 0</math> at each step of the electronic minimization.|:}}
+
+== Modified Hamiltonian ==
+The generalized Bloch condition redefines the Bloch functions as follows:
+
+:<math>
+\Psi^{\uparrow}_{\bf k}(\bf r) = \sum _{\bf G} \rm
+C^{\uparrow}_{\bf k \bf G} e^{i(\bf k + \bf G -\frac{\bf q}{2})\cdot \bf r}
+</math>
+
+:<math>
+\Psi^{\downarrow}_{\bf k}(\bf r)
+= \sum _{\bf G} \rm C^{\downarrow}_{\bf k \bf G} e^{i(\bf k + \bf
+G +\frac{\bf q}{2})\cdot \bf r}
+</math>
+
+This changes the Hamiltonian only minimally:
+
+:<math>
+\left( \begin{array}{cc}
+H^{\uparrow\uparrow} & V^{\uparrow\downarrow}_{\rm xc} \\
+V^{\downarrow\uparrow}_{\rm xc} & H^{\downarrow\downarrow} \end{array}\right)
+\rightarrow
+\left( \begin{array}{cc}
+H^{\uparrow\uparrow} & V^{\uparrow\downarrow}_{\rm xc} e^{-i\bf q \cdot \bf r} \\
+V^{\downarrow\uparrow}_{\rm xc}e^{+i\bf q \cdot \bf r} & H^{\downarrow\downarrow} \end{array}\right),
+</math>
+
+where in <math>H^{\uparrow\uparrow}</math> and <math>H^{\downarrow\downarrow}</math> the kinetic energy of a plane-wave component changes to:
+
+:<math>
+H^{\uparrow\uparrow}:\qquad |{\bf k} + {\bf G}|^2 \rightarrow |{\bf k} + {\bf G} - {\bf q} /2|^2
+</math>
+
+:<math>
+H^{\downarrow\downarrow}:\qquad |{\bf k} + {\bf G}|^2 \rightarrow |{\bf k} + {\bf G} + {\bf q} /2|^2
+</math>
+
+Because the only change to the off-diagonal exchange-correlation potential is a phase modulation, a spin-spiral calculation has approximately the same computational cost as a standard noncollinear calculation{{cite|hobbs:prb:00}} of the primitive cell.
+
+== Basis-set considerations ==
+Because the two spinor components are shifted in reciprocal space by <math>\pm{\bf q}/2</math>, the plane-wave cutoff must be chosen carefully. The cutoff of the basis set of the individual spinor components is specified by means of the {{TAG|ENINI}} tag, while {{TAG|ENMAX}} must be chosen large enough that the plane-wave components of both spinors have a kinetic energy below {{TAG|ENMAX}}. This is the case when
+
+:<math>
+\mathtt{ENMAX} \geq \frac{\hbar^2}{2m}\left( G_{\rm ini} + |q| \right)^2,
+\qquad
+G_{\rm ini}=\sqrt{\frac{2m}{\hbar^2}\mathtt{ENINI}}.
+</math>
+
+In practice it is more than sufficient to set {{TAG|ENMAX}} to {{TAG|ENINI}} + 100 eV. The practical settings, and the runtime warning VASP prints when {{TAG|ENMAX}} is too small, are described in [[Spin-spiral calculations]].
+
+== Symmetry ==
+The introduction of a spin spiral generally lowers the symmetry of the system, and VASP cannot currently account for the presence of a spin spiral in its symmetry analysis. For this reason the use of symmetry has to be switched off completely ({{TAG|ISYM|-1}}) in spin-spiral calculations.
+
+== Related tags and articles ==
+[[Spin-spiral calculations]]
+
+{{TAG|LNONCOLLINEAR}},
+{{TAG|LSPIRAL}},
+{{TAG|QSPIRAL}},
+{{TAG|LZEROZ}},
+{{TAG|ENINI}},
+{{TAG|ENMAX}},
+{{TAG|ISYM}},
+{{TAG|MAGMOM}}
+
+== References ==
+<references/>
+
+[[Category:Magnetism]][[Category:Spin spirals]][[Category:Theory]]

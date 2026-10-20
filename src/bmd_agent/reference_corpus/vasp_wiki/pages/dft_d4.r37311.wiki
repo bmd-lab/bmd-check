@@ -1,0 +1,46 @@
+DFT-D4{{cite|caldeweyher:jcp:2019}}{{cite|dftd4_1}}{{cite|dftd4_2}} is an external package that can be [[Makefile.include#DFT-D4 and simple-DFT-D3_.28optional.29|linked to VASP]]. DFT-D4 adds to the DFT energy expression a term that accounts for the [[:Category:Van der Waals functionals|van der Waals (vdW) interactions]], which are in principle not included in semilocal and hybrid exchange-correlation functionals.
+This is an approximation of the atom-pairwise type that depends only on the structure of the system, which allows for a fast computation.
+Since every functional has different interactions between atoms, DFT-D4 tailors its adjustable parameters to the functional.
+For more information regarding these parameters, please refer to the DFT-D4 paper{{cite|caldeweyher:jcp:2019}} and websites.{{cite|dftd4_1}}{{cite|dftd4_2}}
+
+== Usage ==
+
+For some of the common exchange-correlation functionals (e.g., PBE, SCAN, or HSE06) it is sufficient to set {{TAG|IVDW}}=13 in the {{FILE|INCAR}} file. Internally, VASP passes automatically the name of the functional to DFT-D4. However, for other functionals the {{TAG|DFTD4_XC}} tag has to be used to specify the functional to DFT-D4 (the names are listed in the file param.f90 of the DFT-D4 source code).
+Subsequently, DFT-D4 maps the functional name to optimized settings for the adjustable parameters of the vdW interaction.
+VASP uses these parameters to compute the DFT-D4 energies, forces, and stresses in every ionic step and adds them to the corresponding DFT terms.
+As a result, you can relax structures or run [[MD|MD simulations]] with an approximate treatment of vdW interactions.
+{{NB|important|
+*The API of DFT-D4 has been modified starting with version 4.0.0. The adaptation has been made in VASP.6.6.0. Versions of DFT-D4 with the old API (v3.7.0 and older) can still be compiled with VASP.6.6.0 as explained [[Makefile.include#DFT-D4 and simple-DFT-D3_.28optional.29|here]].
+*Below, we explain how to tweak the parameters of DFT-D4. Typically, you should not modify them unless you have a very good reason, e.g., because the interface is not implemented for the exchange-correlation functional you use.
+}}
+{{NB|mind|DFT-D4 may switch to a [https://github.com/dftd4/dftd4/issues/377 smooth cutoff] by default, which will change results for periodic systems with respect to prior versions.}}
+
+VASP allows setting the following tags in the {{FILE|INCAR}} file:
+* {{TAG|DFTD4_MODEL}} : dispersion model (available from VASP.6.6.0 onwards).
+* {{TAG|DFTD4_XC}} : functional name to determine the set of vdW parameters (available from VASP.6.6.0 onwards).
+* {{TAG|VDW_S6}} : scaling of the dipole-dipole dispersion.
+* {{TAG|VDW_S8}} : scaling of the dipole-quadrupole dispersion.
+* {{TAG|VDW_A1}} : scaling of the critical radii in the Becke-Johnson rational damping.
+* {{TAG|VDW_A2}} : offset of the critical radii in the Becke-Johnson rational damping.
+* {{TAG|VDW_S9}} : scaling of the three-body dispersion energy (available from VASP.6.6.0 onwards).
+* {{TAG|VDW_RADIUS}} : two-body interaction cutoff (available from VASP.6.6.0 onwards).
+* {{TAG|VDW_CNRADIUS}} : coordination number cutoff (available from VASP.6.6.0 onwards).
+
+== References ==
+<references/>
+
+== Related tags and articles ==
+{{TAG|IVDW}},
+{{TAG|DFTD4_MODEL}},
+{{TAG|DFTD4_XC}},
+{{TAG|VDW_S6}},
+{{TAG|VDW_S8}},
+{{TAG|VDW_A1}},
+{{TAG|VDW_A2}},
+{{TAG|VDW_S9}},
+{{TAG|VDW_RADIUS}},
+{{TAG|VDW_CNRADIUS}},
+[[DFT-D3]],
+[[simple-DFT-D3]]
+
+[[Category:Exchange-correlation functionals]][[Category:Van der Waals functionals]][[Category:Howto]]

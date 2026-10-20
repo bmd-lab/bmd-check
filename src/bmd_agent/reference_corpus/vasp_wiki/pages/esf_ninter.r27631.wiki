@@ -1,0 +1,17 @@
+{{DISPLAYTITLE:ESF_NINTER}}
+{{TAGDEF|ESF_NINTER|[integer]|15}}
+
+Description: {{TAG|ESF_NINTER}} sets the maximum number of interpolation steps for the electronic structure factor ({{TAG|ESF_SPLINES}}). 
+----
+
+If the threshold set by {{TAG|ESF_CONV}} has not been reached within {{TAG|ESF_NINTER}} iterations VASP will print a warning about insufficient convergence. 
+
+== Related tags and articles ==
+{{TAG|ESF_SPLINES}}, 
+{{TAG|ESF_CONV}},
+{{TAG|LOPTICS}}
+
+{{sc|ESF_SPLINES|Examples|Examples that use this tag}}
+
+
+<!---[[Category:INCAR tag]][[Category:Many-body perturbation theory]][[Category:GW]][[Category:ACFDT]][[Category:Low-scaling GW and RPA]]

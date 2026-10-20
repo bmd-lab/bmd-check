@@ -1,0 +1,11 @@
+{| border="1" cellspacing="0" cellpadding="5"
+|+''n''s type Hydrogen radial wave functions
+! <math>n</math>
+! <math>R(r)</math>
+|-
+| <math>1</math> || <math>2\alpha^{3/2}\exp(-\alpha r)</math>
+|-
+| <math>2</math> || <math>\frac{1}{2\sqrt 2}\alpha^{3/2}(2-\alpha r)\exp(-\alpha r /2)</math>
+|-
+| <math>3</math> || <math>{\sqrt \frac{4}{27}}\alpha^{3/2}(1-2\alpha r/3+2\alpha^2 r^2/27)\exp(-\alpha r /3)</math>
+|}

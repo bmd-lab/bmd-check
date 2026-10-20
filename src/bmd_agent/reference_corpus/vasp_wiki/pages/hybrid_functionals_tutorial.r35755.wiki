@@ -1,0 +1,11 @@
+{{Template:Hybrid_functionals - Tutorial}}
+
+The tutorial is made of the following parts:
+<div style="background:var(--vdefault-bg); border:solid 1px var(--vlines); padding:0.5em 1em; margin-right:14em;">
+# [[bandgap of Si using different DFT+HF methods|bandgap of Si using different DFT+HF methods]]
+# [[MgO optimum mixing|MgO optimum mixing]]
+# [[fcc Ni DOS with hybrid functional|fcc Ni DOS with hybrid functional]]
+# [[Si bandstructure|Si bandstructure]]
+</div>
+
+[[Category:Tutorials]]

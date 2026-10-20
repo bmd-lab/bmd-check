@@ -1,0 +1,200 @@
+== Green's functions  == 
+The GW method can be understood in terms of the following eigenvalue equation<ref name="HybertsenLouie"/>
+
+<span id="EVGW">
+<math>
+(T+V_{ext}+V_h)\phi_{n{\bf k}}({\bf r})+\int d{\bf r}\Sigma({\bf r},{\bf r}',\omega=E_{n{\bf k}})\phi_{n{\bf k}}({\bf r}') = E_{n{\bf k}}\phi_{n{\bf k}}({\bf r})
+</math>
+</span>
+
+Here <math>T</math> is the kinetic energy, <math>V_{ext}</math> the external potential of the nuclei, <math>V_h</math> the Hartree potential and <math>E_{n{\bf k}}</math> the quasiparticle energies with orbitals <math>\phi_{n{\bf k}}</math>. In contrast to DFT, the exchange-correlation potential is replaced by the many-body self-energy <math>\Sigma</math> and should be obtained together with the Green's function <math>G</math>, the irreducible polarizability <math>\chi</math>, the screened Coulomb interaction <math>W</math> and the irreducible vertex function <math>\Gamma</math> in a self-consistent procedure. For completeness, these equations are<ref name="Hedin"/> 
+
+<span id="G">
+<math>
+G(1,2)=G_0(1,2)+\int d(3,4) G_0(1,3)\Sigma(3,4)G(4,2)
+</math>
+
+</span>
+<span id="chi">
+<math>
+\chi(1,2)=\int d(3,4) G(1,3)G(4,1)\Gamma(3,4;2)
+</math>
+
+</span>
+<span id="W">
+<math>
+W(1,2)=V(1,2)+\int d(3,4) V(1,3)\chi(3,4)W(4,2)
+</math>
+</span>
+
+<span>
+<span id="Sigma">
+<math>
+\Sigma(1,2)=\int d(3,4) G(1,3)\Gamma(3,2;4)W(4,1)
+</math>
+</span>
+
+<span>
+<span id="I">
+<math>
+\Gamma(1,2;3)=\delta(1,2)\delta(1,3)+\int d(4,5,6,7)\frac{\delta\Sigma(1,2)}{\delta G(4,5)}G(4,6)G(7,5)\Gamma(6,7;3)
+</math>
+</span>
+
+Here the common notation <math>1=({\bf r}_1,t_1)</math> was adopted and <math>V</math> denotes the bare Coulomb interaction. Note, that these equations are exact and provide an alternative to the Schrödinger equation for the many-body problem. Nevertheless, approximations are necessary for realistic systems. The most popular one is the GW approximation and is obtained by neglecting the equation for the vertex function and using the bare vertex instead:
+
+</span><span id="bare_vertex">
+<math>
+\Gamma(1,2;3)=\delta(1,2)\delta(1,3)
+</math>
+</span> 
+
+This means that the equations for the polarizability and self-energy reduce to 
+
+</span>
+<span id="chi_GW">
+<math>
+\chi(1,2)=G(1,2)G(2,1)
+</math>
+
+<span>
+<span id="Sigma_GW">
+<math>
+\Sigma(1,2)=G(1,2)W(2,1)
+</math>
+</span>
+
+while the equations for the Green's function and the screened potential remain the same. 
+
+However, in practice, these equations are usually solved in reciprocal space in the frequency domain
+
+</span>
+<span id="W_reci">
+<math>
+W_{{\bf G}{\bf G}'}({\bf q},\omega)=\left[\delta_{{\bf G}{\bf G}'}-\chi_{{\bf G}{\bf G}'}({\bf q},\omega)V_{{\bf G}{\bf G}'}({\bf q})\right]^{-1}V_{{\bf G}{\bf G}'}({\bf q})
+</math>
+
+<span>
+<span id="G_GW">
+<math>
+G_{{\bf G}{\bf G}'}({\bf q},\omega)=\left[\delta_{{\bf G}{\bf G}'}-\Sigma_{{\bf G}{\bf G}'}({\bf q},\omega)G^{(0)}_{{\bf G}{\bf G}'}({\bf q})\right]^{-1}G^{(0)}_{{\bf G}{\bf G}'}({\bf q})
+</math>
+</span>
+
+In principle Hedin's equations have to be solved self-consistently, where in the first iteration <math>G^{(0)}</math> is the non-interacting Green's function 
+
+<span id="SpectralG">
+<math>
+G^{(0)}({\bf r},{\bf r}',\omega)=\sum_{n{\bf k}}\frac{\phi_{n{\bf k}}^{*(0)}
+({\bf r})\phi^{(0)}_{n{\bf k}}
+({\bf r}')}{\omega-E^{(0)}_{n{\bf k}}}</math>
+</span>
+
+with <math>\phi^{(0)}_{n{\bf k}}</math> being a set of one-electron orbitals and <math>E_{n{\bf k}}^{(0)}</math> the corresponding energies. Afterwards the polarizability <math>\chi^{(0)}</math> is determined, followed by the screened potential <math>W^{(0)}</math> and the self-energy <math>\Sigma^{(0)}</math>. This means that GW calculations require a first guess for the one-electron eigensystem, which is usually taken from a preceding DFT step. 
+
+In principle, one has to repeat all steps by the updating the Green's function with the Dyson equation given above in each iteration cycle until self-consistency is reached. In practice, this is hardly ever done due to computational complexity on the one hand (in fact fully self-consistent GW calculations are available as of VASP 6 only). 
+
+On the other hand, one observes that by keeping the screened potential <math>W</math> in the first iteration to the DFT level one benefits from error cancelling,<ref name="shishkin:prl:07" />  which is the reason why often the screening is kept on the DFT level and one aims at self-consistency in Green's function only. 
+
+Following possible approaches are applied in practice and selectable within VASP with the {{TAG|ALGO}} tag. 
+
+== Single Shot: G<sub>0</sub>W<sub>0</sub> == 
+Performing only one GW iteration step is commonly referred to the G<sub>0</sub>W<sub>0</sub> method. Here the self-energy <math>\Sigma^{(0)}</math> is determined and the corresponding eigenvalue equation is solved.<ref name="HybertsenLouie"/> Formally, this is a five step precedure
+* Determine the independent particle polarizability <math>\chi^{(0)}_{\bf GG'}({\bf q},\omega)</math>
+* Determine the screened Coulomb potential <math>W^{(0)}_{\bf GG'}({\bf q},\omega)</math>
+* Determine the self-energy <math>\Sigma^{(0)}({\bf r,r'},\omega)</math>
+* Solve the eigenvalue equation <math>
+(T+V_{ext}+V_h)\phi_{n{\bf k}}({\bf r})+\int d{\bf r}\Sigma^{(0)}\left({\bf r},{\bf r}',\omega=E^{(1)}_{n{\bf k}}\right)\phi_{n{\bf k}}({\bf r}') = E^{(1)}_{n{\bf k}}\phi_{n{\bf k}}({\bf r})
+</math> for the quasi-particle energies <math>E_{n\bf k}^{(1)}</math>.
+
+To save further computation time, the self-energy is linearized with a series expansion around the Kohn-Sham eigenvalues <math>\epsilon_{n\bf k}</math> 
+
+<math>\Sigma^{(0)}({\bf r,r'},\omega)\approx\Sigma^{(0)}({\bf r,r'},\epsilon_{n{\bf k}})+ \left.\frac{\partial\Sigma^{(0)}}{\partial \omega}({\bf r,r'},\omega)\right|_{\omega=\epsilon_{n{\bf k}}}(\omega-\epsilon_{n{\bf k}})</math>
+
+and the renormalization factor <math>Z^{(0)}_{n{\bf k}}=\left[ 1-{\rm Re}\left( \left.\frac{\partial\Sigma^{(0)}}{\partial \omega}({\bf r,r'},\omega)\right|_{\omega=\epsilon_{n{\bf k}}}\right)\right]^{-1}</math> is introduced. This allows to obtain the G<sub>0</sub>W<sub>0</sub> quasi-particle energies from following equation<ref name="HybertsenLouie"/>
+
+<math>
+E^{(1)}_{n\bf k}=\epsilon_{n\bf k}+ Z_{n\bf k}^{(0)} {\rm Re}\left[
+\langle \phi_{n\bf k}|
+-\frac{\Delta}2+V_{ext}+V_h+\Sigma^{(0)}(\omega=\epsilon_{n\bf k}) -\epsilon_{n\bf k}
+|\phi_{n\bf k}\rangle
+\right]
+</math>
+
+The G<sub>0</sub>W<sub>0</sub> method avoids the direct computation of the Green's function and neglects self-consistency in <math>G</math> completely. In fact, only the Kohn-Sham energies are updated from <math>\epsilon_{n\bf k}\to E^{(1)}_{n\bf k}</math>, while the orbitals remain unchanged. This is the reason why the G<sub>0</sub>W<sub>0</sub> method is internally selected as of VASP6 with {{TAG|ALGO}} =EVGW0 ("eigenvalue GW") in combination with {{TAG|NELM}}=1 to indicate one single iteration, even though the method is commonly known as the G<sub>0</sub>W<sub>0</sub> approach. To keep backwards-compatibility, however, {{TAG|ALGO}}=G0W0 is still supported in VASP6.
+
+Note that avoiding self-consistency might seem a drastic step at first sight. However, the G<sub>0</sub>W<sub>0</sub> method often yields satisfactory results with band-gaps close to experimental measurements and is often employed for realistic band gap calculations.<ref name="shishkin-PRB74"/><ref name="shishkin-PRB75"/>
+
+== Partially self-consistent: GW<sub>0</sub> or EVGW<sub>0</sub> ==
+
+The G<sub>0</sub>W<sub>0</sub> quasi-particle energies can be used to update the poles of the Green's function in the spectral representation
+<span id="SpectralG">
+<math>
+G^{(i)}({\bf r},{\bf r}',\omega)=\sum_{n{\bf k}}\frac{\phi_{n{\bf k}}^{*(0)}
+({\bf r})\phi^{(0)}_{n{\bf k}}
+({\bf r}')}{\omega-E^{(i)}_{n{\bf k}}}</math>
+</span>
+which in turn can be used to update the self-energy via <math>\Sigma^{(0)} = G^{(i)}W^{(0)}</math>. This allows to form a partial self-consistency loop, where the screening is kept on the DFT level. The method is commonly known as GW<sub>0</sub>, even though only eigenvalues are updated:
+* Determine the independent particle polarizability <math>\chi^{(0)}_{\bf GG'}({\bf q},\omega)</math>
+* Determine the screened Coulomb potential <math>W^{(0)}_{\bf GG'}({\bf q},\omega)</math> and keep it fixed in the following
+* Determine the self-energy <math>\Sigma^{(j)}({\bf r,r'},\omega)= G^{(j)}W^{(0)}</math>.
+* Update quasi-particle energies <math>
+E^{(j+1)}_{n\bf k}=\epsilon_{n\bf k}+ Z_{n\bf k}^{(j)} {\rm Re}\left[
+\langle \phi_{n\bf k}|
+-\frac{\Delta}2+V_{ext}+V_h+\Sigma^{(j)}(\omega=E^{(j)}_{n\bf k}) -\epsilon_{n\bf k}
+|\phi_{n\bf k}\rangle
+\right]
+</math>. In the first iteration use <math>E_{n\bf k}^{(0)}=\epsilon_{n\bf k}</math>
+
+The last two steps are repeated until self-consistency is reached. The GW<sub>0</sub> method is computationally slightly more expensive than the single-shot approach, but yields often excellent agreement with experimentally measured band gaps while being computationally affordable at the same time.<ref name="shishkin-PRB74"/><ref name="shishkin-PRB75"/>
+
+Note that the GW<sub>0</sub> and its single-shot approach do not allow for updates in the Kohn-Sham orbitals <math>\phi_{n\bf k}</math>, merely the eigenvalues are updated. Furthermore, the name GW<sub>0</sub> indicates an update in the Green's function as a solution of the Dyson equation, while the used spectral representation of the Green's function above is strictly speaking correct only in the single-shot approach. Since VASP6 allows to update the Green's function from the solution of the corresponding Dyson equation, the commonly known GW<sub>0</sub> method is also selectable with {{TAG|ALGO}}=EVGW0 ("eigenvalue GW") and the number of iteration is set with {{TAG|NELM}}.
+
+== Self-consistent Quasi-particle approximation: scQPGW<sub>0</sub> ==
+In addition to eigenvalues one can use the self-consistent Quasi-particle GW0 approach (scQPGW0) to update the orbitals <math>\phi_{n\bf k}\to \psi^{(j)}_{n\bf k} </math> as well. This approach was presented first by Faleev et. al,<ref name="Faleev"/>   and used a hermitized self-energy <math> \Sigma^{\rm herm}=\frac{\Sigma+\Sigma^\dagger}2</math> in the eigenvalue equation to determine both, quasi-particle energies <math>E_{n\bf k}</math> and corresponding orbitals <math>\psi_{n\bf k}</math>. 
+
+In contrast to the Faleev approach one may consider a generalized eigenvalue problem instead that is obtained consistently from the linearization of the self-energy 
+<math>\Sigma(E^{(j+1)})\approx \Sigma(E^{(j)}) +  \xi(E^{(j)})(E^{(j+1)}-E^{(j)})</math> (where <math>\xi(E^{(j)})=\partial\Sigma(E^{(j)})/ \partial E^{(j)}</math>) and reads<ref name="shishkin:prl:07"/>
+
+<math>
+\underbrace{\left[ 
+T + V_{ext}+V_h + \Sigma\left(E_{n\bf k}^{(j)}\right) - \xi\left(E^{(j)}_{n\bf k}\right) E^{(j)}_{n\bf k}\right]}_{{\bf H}(E^{(j)}_{n\bf k})}
+\left|\psi_{n\bf k}^{(j+1)} \right\rangle = E^{(j+1)}_{n\bf k}\underbrace{\left[1-\xi(E^{(j)}_{n\bf k}) \right]}_{{\bf S}(E^{(j)}_{n\bf k})} \left|\psi_{n\bf k}^{(j+1)} \right\rangle
+</math>
+
+The resulting Hamiltonian <math>{\bf H}</math> and overlap matrix <math>{\bf H}</math> are non-hermitian in general, implying that the resulting orbitals  <math> \left|\psi_{n\bf k}^{(j+1)} \right\rangle </math> are not normalized to 1. Therefore, VASP determines the hermitian parts <math>H= \frac{ {\bf H} + {\bf H}^\dagger }{2}, S = \frac{ {\bf S} + {\bf S}^\dagger }{2} </math> and diagonalizes following matrix instead
+
+<math> 
+ S^{-1/2}  H  S^{-1/2} = U \Lambda U^\dagger
+</math>
+
+The resulting diagonal matrix <math>\Lambda</math> contains the new quasi-particles, while the unitary matrix <math>U</math> determine the new orbitals <math> \psi_{n\bf k}^{(j+1)} = \sum_{m}U_{nm} \psi_{m\bf k}^{(j+1)} </math>.
+The method can be selected in VASP with {{TAG|ALGO}}=QPGW0. See [[GW calculations#qpgw|here]] for more information.
+
+<span id="lowGW">
+== Low-scaling GW: The Space-time Formalism ==
+{{:Low-scaling GW: The space-time formalism}}
+</span>
+<span id="GWLimitations">
+
+== Limitations of GW ==
+From a physical point of view, the scGW method yields mostly unsatisfactory results compared to experiment. Notably, the band gaps are significantly overestimated compared to experiment, and plasmonic satellites are entirely missing in the spectral 
+function.<ref name="grumet"/>
+
+The fact that "sloppier" GW flavours, such as EVGW<sub>0</sub> or even the single-shot approach yield more accurate results is due to fortuitous error cancelling and can be understood in terms of the band-gap <math>\Delta</math> of a system. The DFT gap is typically smaller than the GW band gap and yields, therefore, a larger dielectric function <math>\epsilon(\omega)=1-\chi(\omega)V</math> (the polarizability is inverse proportional to the band gap of the system). Although the band gap is corrected by GW, at the same time the screening of the Coulomb interaction is weakened. Forcing self-consistency only increases the effect and deteriorates the agreement with experimental band gaps.
+The rather disappointing results of the self-consistent GW approximation shows the general limitations of Hedin's equations in the absence of vertex corrections. It can be shown that inclusion of vertex corrections yields band gaps that are again in agreement with experiment.<ref name="shishkin:prl:07"/>
+</span>
+
+== References ==
+<references>
+<ref name="Hedin">[https://journals.aps.org/pr/abstract/10.1103/PhysRev.139.A796 L. Hedin, Phys. Rev. 139, A796 (1965)]</ref>
+<ref name="HybertsenLouie">[https://journals.aps.org/prb/abstract/10.1103/PhysRevB.34.5390 M. S. Hybertsen, S. G. Louie Phys. Ref. B 34, 5390 (1986)]</ref>
+<ref name="shishkin-PRB74">[http://link.aps.org/doi/10.1103/PhysRevB.74.035101 M. Shishkin and G. Kresse, Phys. Rev. B 74, 035101 (2006).]</ref>
+<ref name="shishkin-PRB75">[http://link.aps.org/doi/10.1103/PhysRevB.75.235102 M. Shishkin and G. Kresse, Phys. Rev. B 75, 235102 (2007).]</ref>
+<ref name="Faleev">[https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.93.126406 S. V. Faleev, M. Schilfgaarde and T. Kotani, Phys. Rev. Lett. 93, 126406 (2004).]</ref>
+<ref name="shishkin:prl:07">[http://link.aps.org/doi/10.1103/PhysRevLett.99.246403 M. Shishkin, M. Marsman, and G. Kresse, Phys. Rev. Lett. 99, 246403 (2007).]</ref>
+<ref name="grumet">[https://journals.aps.org/prb/abstract/10.1103/PhysRevB.98.155143 M. Grumet, P. Liu, M. Kaltak, J. Klimeš and Georg Kresse, Phys. Ref. B 98, 155143 (2018). ]</ref>
+</references>
+
+----
+[[Category:Many-body perturbation theory]][[Category:Theory]][[Category:Low-scaling GW and RPA]]

@@ -1,0 +1,17 @@
+The {{TAG|CONTCAR_ELPH}} file is an output file of a [[Electron-phonon potential from supercells|supercell calculation]] that contains the structural information of the primitive cell required for [[:Category:Electron-phonon_interactions#Many-body_perturbation_theory|electron-phonon calculations using many-body perturbation theory]].
+{{Available|6.5.1}}
+
+This file has the same format as the {{FILE|CONTCAR}} or {{FILE|POSCAR}} file.
+It is typically generated alongside the {{FILE|phelel_params.hdf5}} file by setting {{TAG|ELPH_POT_GENERATE|True}}.
+The {{TAG|CONTCAR_ELPH}} file can be renamed and used as the {{FILE|POSCAR}} input for a subsequent electron-phonon calculation in the primitive cell, e.g. [[Bandgap renormalization due to electron-phonon coupling|band-structure renormalization]] or [[Transport coefficients including electron-phonon scattering|transport coefficients including electron-phonon scattering]].
+
+== Related tags and articles ==
+* {{TAG | CONTCAR}}
+* {{TAG | POSCAR}}
+* {{TAG | ELPH_POT_GENERATE}}
+* {{TAG | ELPH_POT_LATTICE}}
+
+----
+
+
+[[Category:Files]][[Category:Output files]]

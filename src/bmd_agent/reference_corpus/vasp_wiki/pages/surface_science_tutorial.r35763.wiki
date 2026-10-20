@@ -1,0 +1,17 @@
+{{Sur_sci - Tutorial}}
+
+The tutorial is made of the following parts:
+<div style="background:var(--vdefault-bg); border:solid 1px var(--vlines); padding:0.5em 1em; margin-right:14em;">
+# [[Ni 100 surface relaxation|Ni 100 surface relaxation]]
+# [[Ni 100 surface DOS|Ni 100 surface DOS]]
+# [[Ni 100 surface bandstructure|Ni 100 surface bandstructure]]
+# [[Ni 111 surface relaxation|Ni 111 surface relaxation]]
+# [[Ni 111 surface high precision|Ni 111 surface high precision]]
+# [[partial DOS of CO on Ni 111 surface|partial DOS of CO on Ni 111 surface]]
+# [[vibrational frequencies of CO on Ni 111 surface|vibrational frequencies of CO on Ni 111 surface]]
+# [[STM of graphite|STM of graphite]]
+# [[STM of graphene|STM of graphene]]
+# [[collective jumps of a Pt adatom on fcc-Pt (001): Nudged Elastic Band Calculation|collective jumps of a Pt adatom on fcc-Pt (001): Nudged Elastic Band Calculation]]
+</div>
+
+[[Category:Tutorials]]

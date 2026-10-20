@@ -1,0 +1,17 @@
+{{DISPLAYTITLE:vaspwave.h5}}
+The {{FILE|vaspwave.h5}} file is the hdf5 counterpart of the {{FILE|WAVECAR}} and {{FILE|CHGCAR}} and other files used inside a more elaborate workflow, like for instance GW. 
+This file is written if {{TAG|LH5}}=.TRUE. is set in the {{FILE|INCAR}} file.
+{{NB|mind|As of version 6.6.0 this files stores optionally following datasets.}}
+
+* energies and orbitals from {{FILE|WAVECAR}}
+* charge density from {{FILE|CHGCAR}}
+* optical transition elements from {{FILE|WAVEDER}}
+* Wannier projection matrices {{FILE|WANPROJ}}
+* local potential {{FILE|POT}}
+
+== Related tags and articles ==
+[[Restart and output files cheat sheet]]
+
+{{TAG|LCHARGH5}}, {{TAG|LH5}}, {{FILE|WAVECAR}}, {{FILE|CHGCAR}}, {{FILE|WAVEDER}}, {{FILE|WANPROJ}}, {{FILE|POT}}
+
+[[Category:Files]][[Category:Output files]][[Category:HDF5 support]]

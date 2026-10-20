@@ -1,0 +1,52 @@
+The free-energy profile along a geometric parameter <math>\xi</math> can be scanned by an approximate slow-growth
+approach{{Cite|woo:ziegler:1997}}.
+In this method, the value of <math>\xi</math> is linearly changed
+from the value characteristic for the initial state (1) to that for
+the final state (2) with a velocity of transformation
+<math>\dot{\xi}</math>.
+The resulting work needed to perform a transformation <math>1 \rightarrow 2</math>
+can be computed as:
+
+::<math>
+w^{irrev}_{1 \rightarrow 2}=\int_{{\xi(1)}}^{{\xi(2)}}  \left ( \frac{\partial                                      {V(q)}} {\partial \xi} \right ) \cdot \dot{\xi}\, dt.
+</math>
+
+In the limit of infinitesimally small <math>\dot{\xi}</math>, the work <math>w^{irrev}_{1 \rightarrow 2}</math>
+corresponds to the free-energy difference between the the final and initial state.
+In the general case, <math>w^{irrev}_{1 \rightarrow 2}</math> is the irreversible work related
+to the free energy via Jarzynski's identity {{Cite|jarzynski:prl:1997}}:
+
+::<math>
+exp^{-\frac{\Delta A_{1 \rightarrow 2}}{k_B\,T}}=
+\bigg \langle  exp^{-\frac{w^{irrev}_{1 \rightarrow 2}}{k_B\,T}} \bigg\rangle. 
+</math>
+
+Note that calculation of the free-energy via this equation requires
+averaging of  the term <math>{\rm exp} \left \{-\frac{w^{irrev}_{1 \rightarrow 2}}{k_B\,T} \right \}</math>
+over many realizations of the <math>1 \rightarrow 2</math>
+transformation.
+Detailed description of the simulation protocol that employs Jarzynski's identity
+can be found in reference {{Cite|overhofer:geissler:2005}}.
+
+== How to ==
+* For a slow-growth simulation, one has to perform a calculation very similar to [[Constrained molecular dynamics]] but additionally the transformation velocity-related {{TAG|INCREM}} tag for each geometric parameter with <tt>STATUS=0</tt> has to be specified:
+#Set the standard MD-related tags: {{TAG|IBRION}}=0, {{TAG|TEBEG}}, {{TAG|POTIM}}, and {{TAG|NSW}}
+#Choose a thermostat:
+## Set {{TAG|MDALGO}}=1, and choose an appropriate setting for {{TAG|ANDERSEN_PROB}}
+## Set {{TAG|MDALGO}}=2, and choose an appropriate setting for {{TAG|SMASS}}
+#Define geometric constraints in the {{FILE|ICONST}} file, and set the STATUS parameter for the constrained coordinates to 0
+#When the free-energy gradient is to be computed, set {{TAG|LBLUEOUT}}=.TRUE.
+
+<ol start="5">
+<li>Specify the transformation velocity-related {{TAG|INCREM}}-tag for each geometric parameter with <tt>STATUS=0</tt>.</li>
+</ol>
+
+== Related tags and articles ==
+{{FILE|ICONST}}, {{TAG|INCREM}}, {{TAG|SHAKEMAXITER}}, {{TAG|SHAKETOL}}, {{TAG|SHAKETOLSOFT}}, {{TAG|LBLUEOUT}}, {{FILE|REPORT}}
+
+[[Slow-growth approach calculations]]
+
+== References ==
+
+
+[[Category:Advanced molecular-dynamics sampling]][[Category:Theory]]

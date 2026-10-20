@@ -1,0 +1,42 @@
+The [[NpH ensemble]] (isoenthalpic–isobaric ensemble) is a [[:Category:Ensembles|statistical ensemble]] that is used to study material properties under the conditions of a constant particle number N, a pressure p fluctuating around an equilibrium pressure <math> \langle p \rangle </math> and a conserved enthalpy H (up to numerical inaccuracies). This page describes how to sample the NpH ensemble from a [[Molecular dynamics calculations|molecular-dynamics]] run.
+ 
+''' Instructions for setting up a NpH ensemble '''
+
+To run an NpH [[Molecular dynamics calculations|molecular-dynamics]] simulation {{TAG|MDALGO|3}} has to be used. The {{TAG|LANGEVIN_GAMMA}} and {{TAG|LANGEVIN_GAMMA_L}} have to be zero to disable any thermostatting. By setting the tag {{TAG|LANGEVIN_GAMMA|0}} the friction term and
+the stochastic term of the [[Langevin thermostat]] will be zero, such that the velocities are determined by the Hellmann-Feynman forces or machine-learned force fields only. Setting the tag {{TAG|LANGEVIN_GAMMA_L|0}},
+removes the stochastic term and the friction term from the barostat, resulting in a box update
+depending solely on the kinetic stress tensor. The inertia of lattice degrees-of-freedom is controlled with the {{TAG|PMASS}} tag.
+
+{|class="wikitable" style="margin:aut 
+! NpH ensemble !! Langevin  
+|- 
+|style="text-align:center;"| {{TAG|MDALGO}}           ||   style="text-align:center;"|   3        
+|- 
+|style="text-align:center;"| {{TAG|ISIF}}           ||   style="text-align:center;"|   3        
+|- 
+|style="text-align:center;"| {{TAG|LANGEVIN_GAMMA_L}}           ||   style="text-align:center;"|   0        
+|- 
+|style="text-align:center;"| {{TAG|LANGEVIN_GAMMA}}           ||   style="text-align:center;"|   0
+|- 
+| optional tags  to set || style="text-align:center;"| {{TAG|PMASS}}        
+|}
+
+It is recommended to equilibrate the system of interest with an [[NpT_ensemble|NPT]] [[Molecular dynamics calculations|molecular-dynamics]] run before starting the NpH run. A general guide for molecular-dynamics simulations can be found on the [[Molecular dynamics calculations|molecular-dynamics]] page.
+
+''An example {{FILE|INCAR}} file for the NpH ensemble'' 
+
+  #INCAR molecular-dynamics tags NpH ensemble 
+  {{TAGBL|IBRION}} = 0                   # choose molecular-dynamics 
+  {{TAGBL|MDALGO}} = 3                   # using Langevin thermostat
+  {{TAGBL|ISIF}} = 3                     # compute stress tensor and allow change of box volume/shape 
+  {{TAGBL|TEBEG}} = 300                  # set temperature 
+  {{TAGBL|NSW}} = 10000                  # number of time steps 
+  {{TAGBL|POTIM}} = 1.0                  # time step in femto seconds 
+  {{TAGBL|LANGEVIN_GAMMA}} = 0.0 0.0     # setting friction and stochastic term of Langevin thermostat zero
+  {{TAGBL|LANGEVIN_GAMMA_L}} = 0.0       # setting friction and stochastic term of Langevin barostat zero
+{{NB|mind| This {{FILE|INCAR}} file only contains the parameters for the molecular-dynamics part. The [[Electronic minimization|electronic minimization]] or the [[Machine-learned force fields|machine learning]] tags have to be added.}}
+
+==Related tags and articles==
+[[Molecular dynamics calculations|Molecular-dynamics calculations]], {{TAG|ISIF}}, {{TAG|MDALGO}}, {{TAG|LANGEVIN_GAMMA}}, {{TAG|LANGEVIN_GAMMA_L}}, [[:Category:Ensembles|Ensembles]]
+
+[[Category:Molecular dynamics]][[Category:Ensembles]][[Category:Thermostats]]

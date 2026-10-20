@@ -1,0 +1,729 @@
+To test the quality of a machine-learned force field (MLFF), thermodynamic integration (TI) can be performed between the MLFF (''non-interacting system'') and a density functional (''interacting system''), e.g., a [[:Category:Exchange-correlation functionals|GGA or metaGGA]]. In this example, TI is performed from the MLFF to RPBE+D3 for Fe<sup>2+</sup>{{Cite|jinnouchi:ncm:2024}}. 
+
+== Input files ==
+This TI follows much the same procedure as the previous [[Thermodynamic integration between machine-learned force fields|MLFF:MLFF TI]]. Run two molecular dynamics (MD) calculations in parallel, between MLFF and RPBE+D3. 
+{{NB|important|For calculating the redox potential of Fe<sup>2+</sup>/Fe<sup>3+</sup>, this TI procedure will be done twice; once for Fe<sup>3+</sup> in 64 H<sub>2</sub>O (<code>Fe3P_64H2O</code>) and once for Fe<sup>2+</sup> in 64 H<sub>2</sub>O (<code>Fe2P_64H2O</code>). Since the procedure is the same, only Fe<sup>2+</sup> is described here. To run the Fe<sup>3+</sup> case instead, change the number of electrons ({{TAG|NELECT|525}}), the initial magnetic moment {{TAG|MAGMOM|128*0 64*0 1*5}}, difference between the number of spin-up and spin-down electrons {{TAG|NUPDOWN|5}} and changing the {{FILE|ML_FF}} to the Fe<sup>3+</sup> MLFF.}} 
+
+=== {{FILE|POSCAR}}s ===
+The {{FILE|POSCAR}} files are described on more detail in the [[Thermodynamic integration: redox potential|redox potential overview page]].
+<div class="toccolours mw-customtoggle-poscar-fe3p-64h2o">'''Click to reveal the <math>[\mathrm{Fe}(\mathrm{H}_2\mathrm{O})_n]^{3+}</math> POSCAR'''</div>
+<div class="mw-collapsible mw-collapsed" id="mw-customcollapsible-poscar-fe3p-64h2o">
+
+ Fe_64H2O
+ 1
+      12.42282200       0.00000000       0.00000000
+       0.00000000      12.42282200       0.00000000
+       0.00000000       0.00000000      12.42282200
+ H  O  Fe
+   128    64     1
+ Direct
+      -0.38272023       0.47236734       0.69895078
+      -0.27203601       0.41866794       0.72914269
+       0.60916541       0.72796225       0.09306829
+       0.71070494       0.78725068       0.14392771
+       1.08865564       0.93820602       0.24600432
+       1.03755512       0.98120737       0.35350048
+       0.04276558       1.23801733       0.56678300
+       0.45616640       0.36926572       0.39344586
+      -0.16977976       0.40716591       0.53863440
+      -0.25237329       0.38130525       0.44755164
+       0.44169261       1.14516978       0.14529032
+       0.37457743       1.13530301       0.24819417
+       0.18407518       0.25222959       0.06812304
+       0.09998538       0.14744161       0.06444770
+       0.27831295       0.57479968       0.31380844
+       0.29633366       0.45926581       0.36724418
+       0.64763154      -0.53184911       0.87002912
+       0.63022496       0.40977773       0.99107908
+       0.47906160       0.58853267       0.63100265
+       0.59945353       0.62329058       0.64816927
+       0.87712851       0.41898140       1.07505748
+       0.26314503      -0.13253460       0.01243951
+       0.16153170      -0.19745195       0.05804701
+       0.34412600      -0.01810085       0.81692911
+       0.14554222       0.77130921      -0.25213594
+       0.21209078       0.79452634      -0.14442072
+       0.41500251       0.04461290       0.96837924
+       0.49008610       0.14359786       0.93019679
+       0.82125847       0.86254586       1.27147476
+       0.00873717       0.10267666       0.23211446
+       0.35980746       0.34237108       0.76169366
+       0.33485343       0.46345006       0.77046483
+       0.90320251       0.61221204       0.04264507
+       0.97690745       0.71802735       1.06017819
+       0.96030764       0.81465128       0.70019704
+       1.01749178       0.74674122       0.60432752
+       0.64007416       0.23981183       0.92947124
+       0.31788389      -0.12374136       0.74827741
+       0.99321033       0.93631524       0.55767630
+       0.15487454       0.51028490      -0.09542554
+       0.66815917       0.79686891       0.72718580
+       0.76202793       0.70002522       0.75366280
+       0.13591369      -0.02901335       0.00566347
+       0.08957800       1.06396642      -0.07143824
+       0.53392446      -0.11896063       0.23953882
+       0.48718378      -0.00799262       0.25860106
+      -0.07163033       1.26809135       0.50762252
+       0.67405502       0.12105566       0.95083205
+       0.74551359       0.62681866       0.34775553
+       0.66650260       0.64357368       0.25540936
+       0.38872827       0.12804968       0.55656518
+       0.33782256       0.21579745       0.49248801
+       0.92231233      -0.04307885       1.00089073
+       0.79411522      -0.04854941       1.01531498
+      -0.40705912       1.12847907       0.48347215
+       0.65420892       1.23981902       0.47957005
+       0.84599640      -0.09249550       0.84023452
+       0.80327236       0.97997213       0.74592535
+       0.88638541       0.47237368       0.72110537
+       0.88941805       0.35493190       0.74249811
+       0.55296221       0.93428417       0.55243420
+       0.51441228       0.92952738       0.43767406
+       0.73847683       0.51634987       1.03266322
+       0.40092134       0.63952229      -0.01737781
+       0.41176789       0.89134362       1.10615330
+       0.44444253       0.84405868       0.99393367
+       0.58073572       0.63347610      -0.04423652
+       0.60854638       0.72933752      -0.11607112
+      -0.16580359       0.22001380       0.89963070
+      -0.04391612       0.21085677       0.85654400
+       0.40533602       0.50000334       0.11555470
+       0.34998095       0.38355577       0.10448457
+      -0.24359234       0.77537730       0.45894937
+      -0.26614437       0.70560002       0.56106171
+       0.28303298       0.61126441       0.01597951
+       0.37578327       0.33380444       0.30290136
+       0.59618764       0.27699048       1.12423906
+       0.50319683       0.35108728       1.09799129
+       0.18989659       0.76741117       1.22566037
+       0.06153560       0.75549602       0.22936925
+       0.51785592       0.24354330       0.65223118
+       0.56708719       0.32005973       0.73245604
+       0.61206395       0.98022340       0.70759384
+       0.50678625       0.91620503       0.71723010
+       0.68602440       0.14707860       0.76412395
+       0.69294218       0.12172781       0.64036372
+       0.33488986       0.71525634       0.14956129
+       0.35814895       0.80854785       0.22920363
+       0.95945912       1.05245660       0.53679791
+       0.77994512       0.55222218       1.15138214
+       0.69626269       0.94689443       0.43758767
+       0.82244291       0.95270203       0.44158402
+      -0.08533410       0.30668689       0.99691887
+       0.88689642       0.15254779       0.21721075
+       0.96565778       0.66203563       0.74352603
+       0.91899641       0.64391575       0.86105003
+       0.60192845       0.32627053       0.34541527
+       0.54412777       0.22739074       0.29056180
+       0.33801876       0.24481339      -0.03610605
+       0.27498242       0.34868783      -0.07124872
+       0.63970642       0.49240211       0.35877270
+       0.61552019       0.46892953       0.48438447
+       0.30584874       0.64699933      -0.22951580
+       0.42787645       0.64881697      -0.19623458
+       0.05975532       0.12314654       0.75074831
+      -0.02832220       1.03112946       0.76086242
+       1.07382577       0.25251612       0.39457391
+       1.17074101       0.24004400       0.30909053
+       0.90882853       0.66787644       0.52270722
+       0.07399163       0.59412808       0.95304999
+       0.13906082       0.47905225       0.10518101
+       1.17121656       0.46180650       0.23562581
+       0.97971011       0.63429872       0.37278291
+       0.90631471       0.68858591       0.26904690
+       0.60516786       0.96463888       0.06395544
+       0.68233031       1.04347277       1.12012494
+       0.20897747       0.21380315       0.63498998
+       0.20507421       0.29490009       0.72649781
+       0.21069366       1.05104536      -0.68658423
+       0.27938942       1.09406910       0.40078460
+       0.70263174       0.14455648       1.25970691
+       0.75730930       0.04722448       1.29768294
+       0.91307779       0.40130091       0.34978752
+       0.94369056       0.50994390       0.28013594
+       0.08933991       0.43228293       0.60852163
+       1.17837154       0.48628664       0.53072146
+       1.00504493       0.58007882       0.54073092
+       0.86291931      -0.13828811       1.15173275
+      -0.34491075       0.43621986       0.75416516
+       0.63900568       0.75492759       0.15829659
+       1.07199795       1.00257563       0.28363155
+       0.38420131       0.34485841       0.37967695
+      -0.17342306       0.37643136       0.46438657
+       0.45349630       1.14005000       0.22505348
+       0.11869813       0.21939929       0.09604324
+       0.23622993       0.50759344       0.33909324
+       0.64875252       0.47771851       0.95286519
+       0.55590506       0.57693205       0.60050819
+       0.18736673      -0.15437724      -0.00677806
+       0.37523088      -0.06818877       0.76435686
+       0.21811495       0.76245384      -0.22055952
+       0.42220970       0.12606004       0.96558981
+       0.85780135       0.81574581       1.21531426
+       0.30433544       0.39124488       0.77849745
+       0.95758533       0.65697710       1.00747411
+       1.03085555       0.79681957       0.66923251
+       0.69067343       0.18643375       0.90833405
+       0.96523126       0.16955239       0.22035170
+       0.68612747       0.72230731       0.74299918
+       0.08987161       0.03581255       0.00348357
+       0.46357734      -0.08420990       0.24196675
+      -0.01222913       1.21468404       0.51335175
+       0.71162904       0.58691114       0.28804098
+       0.32268708       0.16090339       0.53975026
+       0.86234882      -0.08436224       0.98773807
+      -0.38355188       0.19092778       0.52248232
+       0.85291582      -0.08281162       0.75894361
+       0.86323773       0.40597333       0.69118967
+       0.54292990       0.98123241       0.48667605
+       0.80728528       0.53397589       1.07560692
+       0.39528125       0.89790682       1.02768167
+       0.56047647       0.70886600      -0.05694049
+      -0.09585039       0.25981162       0.89091800
+       0.40071565       0.42814971       0.14908255
+      -0.23238312       0.70278251       0.48864911
+       0.35169257       0.62880569       0.04279978
+       0.56212715       0.31299799       1.06345122
+       0.12066294       0.79773619       1.19966391
+       0.51154081       0.26173878       0.72839369
+       0.58450605       0.90652737       0.69203180
+       0.70957535       0.09399646       0.71195964
+       0.32002783       0.74390105       0.22241023
+       0.95247763       0.97831298       0.50380136
+       0.76168681       0.93342180       0.39565898
+      -0.07590969       0.35133103       1.07020111
+       0.90649162       0.63028257       0.78114555
+       0.61524001       0.25974801       0.30414551
+       0.30266553       0.31064613      -0.00899828
+       0.62120647       0.43621160       0.41233540
+       0.36878355       0.59976322      -0.20951626
+       0.00592307       0.09406140       0.79582533
+       1.10947213       0.28743919       0.33114811
+       0.13898678       0.54360995       0.97023057
+       1.15168897       0.42574337       0.16437693
+       0.96099089       0.62982868       0.29120309
+       0.66514203       1.00695060       0.04564722
+       0.15635030       0.24896214       0.68388955
+       0.26078411       1.11001890       0.32632346
+       0.75255117       0.09346553       1.23417762
+       0.93550375       0.42521425       0.27361930
+       1.12555194       0.49730673       0.58995753
+       0.97951694       0.64650296       0.50479031
+       1.02535902       0.32276265       0.18627127
+
+</div>
+<div class="toccolours mw-customtoggle-poscar-fe2p-64h2o">'''Click to reveal the <math>[\mathrm{Fe}(\mathrm{H}_2\mathrm{O})_n]^{2+}</math> POSCAR'''</div>
+<div class="mw-collapsible mw-collapsed" id="mw-customcollapsible-poscar-fe2p-64h2o">
+
+ Fe_64H2O
+ 1
+      12.42282200       0.00000000       0.00000000
+       0.00000000      12.42282200       0.00000000
+       0.00000000       0.00000000      12.42282200
+ H  O  Fe
+   128    64     1
+ Direct
+       0.12743711       0.48760461       0.68402834
+       0.07224030       0.59099573       0.69720079
+       0.39623895       0.90251919      -0.68562329
+       0.52396846       0.89222892      -0.69202626
+       0.42964083       0.63656491       0.92024856
+       0.40471536       0.51747508       0.92244566
+       0.50949529       0.22553243       0.82975356
+       0.79695561      -0.29210416      -0.14766098
+       0.00805766       0.01676094       0.93033834
+      -0.01969191       0.14077136       0.89733509
+       0.01773692       1.49221026      -0.45662142
+      -0.09754205       1.45083180      -0.48707747
+       0.28568895       0.07977712       0.14809775
+       0.40460027       0.11889958       0.12632577
+      -0.44823614      -0.23392047       0.91065326
+      -0.44655395      -0.27382665       1.03236410
+       0.55758309       0.63486700       0.51461921
+       0.54015662       1.52364880       0.45450703
+       0.67045916       0.85136844       0.58289035
+       0.71164261       0.89435637       0.47626762
+       1.16684705       0.13193713       0.89590371
+       0.33871812       0.20748811       0.69296855
+       0.38041592       0.31864036       0.75378916
+      -0.26840230      -0.60381695       0.57433173
+       0.25751301       1.09723808      -0.39131073
+       0.28561906       1.17135043      -0.49010853
+      -0.15559770       0.77405954       1.51947552
+      -0.03350167       0.77676575       1.52339975
+       0.75237735       1.02309221       1.12180723
+       0.04826055       0.15234086       0.05862687
+      -0.09230147      -0.06114088       1.02402855
+      -0.07779336      -0.14013315       0.92524744
+       0.68560087       0.63322667       1.36320530
+       0.79400335       0.69800156       2.34722324
+       1.01111679       0.16477327       0.53663862
+       0.98618018       0.28565957       0.49809698
+       0.20452861       0.81136804       0.83127978
+      -0.29824646      -0.48415938       0.54811270
+       0.37502040       1.26549068       0.41257460
+       1.30154976       0.64025841       0.11667748
+       1.75290818       0.59403116       0.98316689
+       1.65052923       0.63412803       0.91547295
+       0.75375838       0.00138371      -0.37473678
+       0.76130867       1.05807834      -0.25911110
+      -0.05696647      -0.29493528       0.76468746
+       0.02811791      -0.33267590       0.85098776
+       0.61065413       0.29830310       0.85951557
+       0.11763966       0.86822584       0.90729729
+       0.18919114       0.55109134       0.38993918
+       0.21099928       0.52226945       0.51012484
+       0.03269714       0.36292005       0.33650725
+       0.02620788       0.48115860       0.28181401
+       1.05541232       0.90157404       0.64524915
+       1.07849658       0.77961507       0.68820380
+      -0.62352298       1.63205141       0.30877689
+       0.43788457       1.73907737       0.26620496
+       0.64515164      -0.84752695       1.12986454
+       0.64730542       0.18633377       1.26064334
+       0.19923207      -0.08426170       0.07502044
+       0.22493320      -0.20749942       0.08281964
+       0.78950677       1.18291196       0.57758905
+       0.83466268       1.23338961       0.48038196
+       1.10490483       1.28683406       0.74494774
+       0.29928808       0.66864147      -0.17842015
+       0.69120317       0.84829619       1.11035412
+       0.67223805       0.75611954       1.18775106
+      -0.00106366       0.61277354       0.38525072
+       0.01326608       0.68609575       0.28998127
+      -0.07137268       0.05723237       0.64512696
+       0.03262162       0.06902330       0.71661499
+       0.77907316       0.40440365       0.75246685
+       0.73437154       0.47097142       0.84530449
+       0.22165260       0.78128841       0.57222522
+       0.24873347       0.68762843       0.48624453
+       0.21948415       0.65300265      -0.26571256
+       0.79089209      -0.20809083      -0.24704170
+       1.11107834       0.01381845       0.32957265
+       1.03239487       0.10538648       0.35890625
+      -0.22306466       1.43601128       1.11757892
+      -0.24593929       1.53904148       0.17695298
+       0.53330947      -0.13832394       0.74775872
+       0.48380538      -0.08752260       0.84569979
+       0.33958593       1.05428999       0.90703938
+       0.29513801       0.93047632       0.90464110
+      -0.10080201      -0.17071890       0.20726349
+       0.00812468      -0.20258160       0.13847835
+       0.08102303       0.64583254       0.03494449
+      -0.04079584       0.61193214       0.04209357
+       0.35121443       1.17006312       0.32377652
+       1.18017291       1.28895470       0.63748305
+       0.44815316       0.76165600      -0.42603898
+       0.46425067       0.68605942      -0.32598380
+       0.26710057       0.21583209       0.85066344
+       1.08895608       0.13400129       0.17359061
+       0.65188184       1.12136051       0.88104293
+       0.65005020       0.99400031       0.86041374
+       0.74276310       0.93357167       0.31617568
+       0.65193906       1.01050888       0.33337941
+       0.22155564      -0.06334224      -0.33974479
+       0.31584241      -0.05457389      -0.25072038
+       0.46701413       0.39534529       0.33741153
+       0.37353168       0.43618379       0.40490478
+       0.88534124       0.31114574       0.85608235
+       0.90593210       0.27739909       0.97341481
+       0.39857237      -0.04387750       0.56182123
+       0.47095275       1.02320312       0.49993905
+       1.25892990       0.45837652       0.17875477
+       1.15656687       0.39089427       0.22252886
+       0.51644837       0.17070272       0.40580457
+       1.27940834       0.60940694       0.99753791
+       0.42616197       0.40350440       0.06681017
+       1.44539498       0.30393771      -0.01376590
+       0.46562325       1.01534518       0.03284939
+       0.50319974       0.99064681       0.15470387
+       0.81037140       0.25082530       0.14657752
+       0.90914722       0.31376690       1.17885883
+       0.90887977       0.86774057       1.39942038
+       0.94187889       0.97203833       1.33441155
+       0.22890408       0.88765248       0.26506994
+       0.22943934       0.87502350       1.39740388
+       0.49252993       0.56873322       1.17531223
+       0.58322974       0.47973985       1.18073167
+       1.07353906       0.35801775      -0.07352972
+       1.10345201       0.46291908      -0.00569576
+       0.56233028       0.47301291       0.65701182
+       1.50111441       0.39245196       0.57504212
+       0.64733050       0.17609466       0.44047892
+       0.76155406      -0.00064089       0.99805907
+       0.11696365       0.55392898       0.64536596
+       0.45665944       0.88787932      -0.73431062
+       0.37333616       0.58173353       0.89358570
+       0.83287880      -0.23084103      -0.18836803
+       0.03157586       0.08326143       0.89500066
+      -0.01967168       1.44066290      -0.50120574
+       0.32649692       0.14675159       0.14354441
+      -0.47815402      -0.28476352       0.96183234
+       0.58825114       1.58190086       0.46693607
+       0.73530757       0.86486122       0.54696653
+       0.36850393       0.23869519       0.76098331
+      -0.24064441      -0.53169325       0.57977533
+       0.24867886       1.17176032      -0.42128557
+      -0.09114394       0.73086170       1.49415350
+       0.77082046       0.96821649       1.06941593
+      -0.03834292      -0.10477073       0.98185130
+       0.72904928       0.67702858       2.31155822
+       0.98643994       0.21068855       0.47648425
+       0.18404121       0.88355581       0.86864094
+       1.08703359       0.18844511       0.11444108
+       1.71734102       0.59616846       0.90840384
+       0.79123200       0.05674886      -0.33394462
+       0.02043659      -0.31156425       0.77570162
+       0.56069314       0.24338431       0.88537227
+       0.24569014       0.53057214       0.44182948
+       0.03448211       0.40131521       0.26357804
+       1.09819988       0.83512130       0.63612042
+      -0.60356192       0.67216851       0.24349363
+       0.68641610      -0.81762609       1.18817124
+       0.21611881      -0.14120573       0.12450673
+       0.76919341       1.22245249       0.51393968
+       1.14696413       1.32734585       0.69656507
+       0.65811040       0.77819298       1.11522722
+       0.04903142       0.62925399       0.32627031
+       0.01260756       0.05983530       0.64228866
+       0.74653920       0.39814097       0.82582336
+       0.26593357       0.76215637       0.50729285
+       0.25423481       0.71079817      -0.23075499
+       1.04656732       0.05170956       0.30685598
+      -0.27090311       1.50034802       1.11590884
+       0.55144479      -0.10997314       0.82138721
+       0.36595179       0.97842307       0.90355956
+      -0.04879022      -0.22282940       0.18797022
+       0.02303649       0.60374665      -0.00064438
+       0.36248716       1.18806896       0.40233898
+       0.50553342       0.72818132      -0.38174573
+       0.23339102       0.17685431       0.91622715
+       0.69519318       1.05764833       0.86986144
+       0.66244443       0.93542605       0.32313623
+       0.29157406      -0.03443908      -0.32197353
+       0.43576289       0.39304384       0.41288487
+       0.93290635       0.26807660       0.90192508
+       0.46947458      -0.04604768       0.53317357
+       1.23797107       0.38686102       0.19701795
+       1.24279488       0.62426866       1.06753929
+       1.39453671       0.36177382       0.00797544
+       0.49872289       1.04632858       0.09816681
+       0.86030136       0.31356352       0.11502915
+       0.87609952       0.92053833       1.35250286
+       0.23398309       0.92340184       1.33460122
+       0.50301930       0.49047944       1.17320678
+       1.13069333       0.39166539      -0.03166013
+       1.52690177       0.40275423       0.64871882
+       0.59258213       0.16054156       0.38717393
+       1.22868038       0.27296875       0.05742047
+</div>
+
+=== {{FILE|INCAR}} ===
+The {{FILE|INCAR}} files are shown here for reference; each is reproduced and discussed in the step that uses it.
+
+<div class="toccolours mw-customtoggle-incar-ti">'''Click to reveal the {{FILE|INCAR}}'''</div>
+<div class="mw-collapsible mw-collapsed" id="mw-customcollapsible-incar-ti">
+ # TI settings
+ {{TAGBL|VCAIMAGES}} = 0.5
+ {{TAGBL|NCORE_IN_IMAGE1}} = 20
+ 
+ # MD settings
+ {{TAGBL|IBRION}} = 0
+ {{TAGBL|ISYM}}   = 0
+ {{TAGBL|NSW}}    = 5000
+ {{TAGBL|POTIM}}  = 2.0
+ {{TAGBL|TEBEG}} = 298.15
+ {{TAGBL|TEEND}} = 298.15
+ 
+ {{TAGBL|MDALGO}} = 2
+ {{TAGBL|ISIF}} = 2
+ {{TAGBL|SMASS}} = 0
+ 
+ {{TAGBL|POMASS}} = 2.0 16.0 55.847
+ {{TAGBL|RANDOM_SEED}} =         248489752                0                0 
+ 
+ # General settings
+ {{TAGBL|ML_ESTBLOCK}} = 100 
+ 
+ {{TAGBL|IMAGE_1}} {
+ #GGA
+ {{TAGBL|ENCUT}}  = 520.0
+ {{TAGBL|EDIFF}}  = 1E-5
+ {{TAGBL|GGA}} = RP # turns on the RPBE functional
+ {{TAGBL|IVDW}} = 11 # turns on D3
+ {{TAGBL|ISMEAR}} = 0
+ {{TAGBL|SIGMA}}  = 0.10
+ {{TAGBL|PREC}}   = Normal
+ {{TAGBL|LREAL}}  = A
+ {{TAGBL|NELMIN}} = 4
+ {{TAGBL|NELM}} = 200 
+ {{TAGBL|ALGO}} = All 
+ {{TAGBL|ICHARG}} = 2
+ {{TAGBL|IWAVPR}} = 2
+ {{TAGBL|NCORE}} = 4
+ {{TAGBL|ISPIN}} = 2 
+ {{TAGBL|MAGMOM}} = 128*0 64*0 1*4 
+ {{TAGBL|NELECT}} = 526 
+ {{TAGBL|NUPDOWN}} = 4
+ }
+ 
+ {{TAGBL|IMAGE_2}} {
+ #Machine learning
+ {{TAGBL|ML_LMLFF}} = .TRUE.                    # switches on machine learning
+ {{TAGBL|ML_MODE}} = run
+ }
+</div>
+
+=== {{FILE|KPOINTS}} ===
+Only the &Gamma; point is used, so the {{FILE|KPOINTS}} file is:
+
+ Gamma-point only
+  0
+ Monkhorst Pack
+  1 1 1
+  0 0 0
+
+=== {{FILE|POTCAR}} ===
+Standard {{FILE|POTCAR}} files are used throughout:
+*<code>PAW_PBE H 15Jun2001</code>
+*<code>PAW_PBE O 08Apr2002</code>
+*<code>PAW_PBE Fe_sv 23Jul2007</code>
+
+== Step-by-step instructions ==
+In this TI, you only need to perform 5000 MD steps, as the cost is much higher when using GGAs than when using only MLFFs. Fortunately, the free energy difference converges quickly within only a few thousand steps. Additionally, the change from non-interacting (<math>\lambda=0</math>, MLFF) to interacting (<math>\lambda=1</math>, DFT) systems is generally linear, so you can use 3 coupling parameters for <math>\lambda=0.0, 0.5, 1.0</math> instead of the 5 for MLFF:MLFF. 
+
+=== Step 1: Preparing the directories ===
+
+To perform TI, you need to use the {{TAG|VCAIMAGES}} tag. This requires a parent directory from which the TI is run, containing the following {{FILE|INCAR}} file:
+
+ # TI settings
+ {{TAGBL|VCAIMAGES}} = 0.5
+ {{TAGBL|NCORE_IN_IMAGE1}} = 20
+ 
+ # MD settings
+ {{TAGBL|IBRION}} = 0
+ {{TAGBL|ISYM}}   = 0
+ {{TAGBL|NSW}}    = 5000
+ {{TAGBL|POTIM}}  = 2.0
+ {{TAGBL|TEBEG}} = 298.15
+ {{TAGBL|TEEND}} = 298.15
+ 
+ {{TAGBL|MDALGO}} = 2
+ {{TAGBL|ISIF}} = 2
+ {{TAGBL|SMASS}} = 0
+ 
+ {{TAGBL|POMASS}} = 2.0 16.0 55.847
+ {{TAGBL|RANDOM_SEED}} =         248489752                0                0 
+ 
+ # General settings
+ {{TAGBL|ML_ESTBLOCK}} = 100 
+ 
+ {{TAGBL|IMAGE_1}} {
+ #GGA
+ {{TAGBL|ENCUT}}  = 520.0
+ {{TAGBL|EDIFF}}  = 1E-5
+ {{TAGBL|GGA}} = RP # turns on the RPBE functional
+ {{TAGBL|IVDW}} = 11 # turns on D3
+ {{TAGBL|ISMEAR}} = 0
+ {{TAGBL|SIGMA}}  = 0.10
+ {{TAGBL|PREC}}   = Normal
+ {{TAGBL|LREAL}}  = A
+ {{TAGBL|NELMIN}} = 4
+ {{TAGBL|NELM}} = 200 
+ {{TAGBL|ALGO}} = All 
+ {{TAGBL|ICHARG}} = 2
+ {{TAGBL|IWAVPR}} = 2
+ {{TAGBL|NCORE}} = 4
+ {{TAGBL|ISPIN}} = 2 
+ {{TAGBL|MAGMOM}} = 128*0 64*0 1*4 
+ {{TAGBL|NELECT}} = 526 
+ {{TAGBL|NUPDOWN}} = 4
+ }
+ 
+ {{TAGBL|IMAGE_2}} {
+ #Machine learning
+ {{TAGBL|ML_LMLFF}} = .TRUE.                    # switches on machine learning
+ {{TAGBL|ML_MODE}} = run
+ }
+{{NB|important|For Fe<sup>3+</sup>, change:
+ {{TAG|MAGMOM|128*0 64*0 1*5}}
+ {{TAG|NELECT|525}}
+ {{TAG|NUPDOWN|5}}
+}}
+
+In addition, the relevant {{FILE|ML_FF}} file is required (since you are using [[:Category:Machine-learned force fields|MLFFs]]). The {{TAG|VCAIMAGES}} tag runs calculations in two image directories <code>01</code> and <code>02</code>, which contain the two ''DFT'' &lambda;=0 and ''MLFF'' &lambda;=1 systems, respectively. 
+{{NB|mind|The {{TAG|VCAIMAGES}} value is the weight of image <code>01</code>, so with the DFT calculation in <code>01</code> the coupling parameter runs from &lambda;{{=}}0 (pure MLFF) to &lambda;{{=}}1 (pure RPBE+D3). The DFT run is placed first because it is by far the more expensive of the two, and the output of the first image is written to <code>stdout</code>, so it is the one worth watching.}}
+{{NB|important|{{TAG|NCORE_IN_IMAGE1}} sets the number of cores used by the first image; the second image uses the remaining cores. Put the DFT calculation in the first image directory <code>01</code>, as the calculation for the first image is printed to the <code>stdout</code>. Additionally, since the MLFF is much cheaper than the DFT, use only a few cores for the MLFF image (~4 cores) and as many as possible for the DFT image.}}
+{{NB|tip|You can link the {{FILE|ML_FF}} files to the directory where they were refitted using:
+
+{{CB|ln -s ${ML_FFN_directory}/ML_FFN ML_FF|:}}
+}}
+
+Each <code>01</code> and <code>02</code> directory must also contain the same {{FILE|POSCAR}} file, the corresponding {{FILE|POTCAR}} file and a {{FILE|KPOINTS}} file. The two calculations will be run in these directories.
+
+=== Step 2: Running the molecular dynamics ===
+Set up the TI calculations for different &lambda; values defined by {{TAG|VCAIMAGES}} (e.g., 0.0, 0.5, and 1.0). This will require 3 separate directories:
+
+ lambda_0p0  lambda_0p5  lambda_1p0
+
+for 0.0, 0.5, and 1.0, respectively. Submit the calculation from the ''parent'' directory, as for a [[Nudged elastic bands|nudged elastic band]] calculation. These will each run two parallel MD calculations for the value of &lambda; defined in {{TAG|VCAIMAGES}}.
+{{NB|important|The Nosé-Hoover thermostat is used here ({{TAG|MDALGO|2|color=purple}}). The trajectories in <code>01</code> and <code>02</code> directories need to be identical, so you ''cannot'' use the Langevin thermostat as it introduces random numbers.}}
+
+=== Step 3: Extracting the energies ===
+
+Each of these calculations will output the energy for each MD step in the following format for DFT:
+
+ free  energy   TOTEN  =      -942.84863220 eV
+
+and MLFF:
+
+ free  energy ML TOTEN  =      -943.20202490 eV
+
+You should take the values for the <code>01</code> and <code>02</code> directories separately, e.g., by grepping for the energies and temperatures in each of the sub-directories:
+
+{{CB|grep "free  energy" 01/OUTCAR {{!}} awk '{print $5}' > free_E.dat|:}}
+{{CB|grep "free  energy ML TOTEN  {{=}}" 02/OUTCAR {{!}} awk '{print $6}' >> free_E.dat|:}}
+{{CB|grep temperature 01/OUTCAR {{!}} awk '{print $6}' > T.dat|:}}
+
+then calculate the two ensemble averages, before taking the difference between the two. Exclude the first 1000 MD steps to allow time for equilibration. You can do this with the following script, which will plot the probability vs potential energy, the MD step number vs the potential energy, and the MD step number vs the temperature:
+
+<syntaxhighlight lang="python">
+from py4vasp import plot
+import plotly.graph_objects as go
+import numpy as np
+import os 
+import matplotlib.pyplot as plt
+from scipy.stats import gaussian_kde
+
+def delta_A(path, directory, file, lower, upper, step):
+    number_str = directory.split("_")[1] 
+    number_str = number_str.replace("p", ".")
+    Lambda = float(number_str)
+    print(path+directory)
+    
+    data = np.genfromtxt(path + str(directory) +"/" + str(file), dtype=None, encoding=None)
+    length=len(data)
+    
+    U_ox, U_red = data[lower:upper:step], data[int(length/2)+lower:int(length/2)+upper:step]
+    n_ox, n_red = range(lower, upper+1, step), range(int(length/2)+lower,int(length/2)+upper+1, step)
+    print(n_ox, n_red)
+    print(len(U_ox), len(U_red))
+    U_red_av, U_ox_av = np.average(U_red), np.average(U_ox)
+    U_1_0_av = U_red_av - U_ox_av
+    return(Lambda, (U_1_0_av), (U_red-U_ox))
+
+def diff_cutoff(path, file, lower, upper, step):
+    directories = [d for d in os.listdir(path) if d.startswith("lambda_")]
+
+    lambdas, A = [], []
+    for directory in ['lambda_0p0', 'lambda_0p5', 'lambda_1p0']:
+        print(directories)
+        temp1, temp2, data = delta_A(path, directory, file, lower, upper, step)
+        lambdas.append(temp1)
+        A.append(temp2)
+        print(lambdas, A)
+        U = data
+        # Plot first graph
+        kde = gaussian_kde(data)
+        x = np.linspace(min(data), max(data), 20)
+        ax1.plot(x, kde(x), '-', linewidth=2, alpha= 0.5, label=directory)
+        ax1.set_title('P vs. U')
+        ax1.set_xlabel(r'$\Delta U_{\mathrm{ML}}$')
+        ax1.set_ylabel(r'$P(\Delta U_{\mathrm{ML}})$')
+        ax1.legend()       
+
+        # Plot second graph
+        ax2.set_title('MD step vs. U')
+        ax2.set_xlabel(r'$\Delta U_{\mathrm{ML}}$')
+        ax2.set_ylabel('MD step')
+        ax2.plot(U, range(lower,upper,step), '-', linewidth=2, alpha= 0.5, label=directory)        
+
+        # Plot T
+        data = np.genfromtxt(path + str(directory) + "/T.dat", dtype=None, encoding=None)
+        ax3.plot(data, range(len(data)), '-', linewidth=2, alpha= 0.5, label=directory)
+        ax3.set_title('MD step vs. T')
+        ax3.set_xlabel('T')
+        ax3.set_ylabel('MD step')
+        ax3.legend()  
+        
+    return(lambdas, A)
+
+path = "$PATH_TO_TI_MLFF_GGA_Fe2+_DIRECTORIES/"
+
+l_cutoff, A_cutoff = [], []
+
+# Create a figure with 1 row and 2 columns
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(10, 4))  # 1 row, 2 columns
+
+lambdas, A = diff_cutoff(path, "free_E.dat", 1000, 5000, 1)
+l_cutoff.append(lambdas)
+A_cutoff.append(A)
+
+print((A_cutoff))
+print((l_cutoff))
+
+ax1.legend()
+ax2.legend()
+
+# Adjust layout so titles/labels don't overlap
+plt.tight_layout()
+plt.savefig("TI_mlff_gga.png")
+</syntaxhighlight>
+
+[[File:Mlff_gga_test.png|800px|thumb|center|'''Figure 1'''. Probability vs potential energy (cf. Supplementary Figure 9 of Ref. {{Cite|jinnouchi:ncm:2024}}), the MD step number vs the potential energy, and the MD step number vs the temperature for between RPBE+D3 (&lambda; = 0) and MLFF (&lambda; = 1).]]
+
+You can then plot the free energy against the lambda values and integrate to obtain the free energy difference:
+
+[[File:Mlff_gga_int.png|600px|thumb|center|'''Figure 2'''. Free energy difference &#916;A for thermodynamic integration using a parameter &lambda; between MLFF (&lambda; = 0) and RPBE+D3 (&lambda; = 1) (cf. Supplementary Figure 10 of Ref. {{Cite|jinnouchi:ncm:2024}}).]]
+
+If you now repeat the procedure for Fe<sup>3+</sup>, you can plot these on the same graph:
+
+[[File:Mlff_gga_int_both.png|600px|thumb|center|'''Figure 3'''. Free energy difference &#916;A for thermodynamic integration using a parameter &lambda; between MLFF (&lambda; = 0) and RPBE+D3 (&lambda; = 1) for Fe<sup>2+</sup> and Fe<sup>3+</sup> (cf. Supplementary Figure 10 of Ref. {{Cite|jinnouchi:ncm:2024}}).]]
+{{NB|mind|Ideally, the Fe<sup>3+</sup> line would be more linear. However, the difference to the TI is only a few 10s of meV, so this does not amount to anything substantial.}}
+
+=== Step 4: Integrating to obtain the free energy ===
+With the free energy for each individual &lambda;, you can integrate over them to obtain the free energy of the TI. 
+
+<math>\Delta A = \int_0^1 \langle U_1 - U_0 \rangle_{\lambda} d\lambda - ne\Delta \bar{\phi} </math>
+
+<syntaxhighlight lang="python">
+from scipy.integrate import simpson
+print('Simpson: ' + str(simpson(A_cutoff, l_cutoff)[0]))
+</syntaxhighlight>
+
+This gave a value of: 0.048 eV for Fe<sup>2+</sup>. Repeating this procedure for Fe<sup>3+</sup> gives 0.103 eV. Equation 16 of Ref. {{Cite|jinnouchi:ncm:2024}} gives the value at the GGA level using thermodynamic integration by adding it to the MLFF:
+
+<math>\Delta A^{\mathrm{FP}_\mathrm{GGA}} =  \Delta A ^{\mathrm{ML}} + \Delta A^{\mathrm{FP}_\mathrm{GGA}-\mathrm{ML}}_1 - \Delta A^{\mathrm{FP}_\mathrm{GGA}-\mathrm{ML}}_0</math>
+
+In total, this gives:
+
+<math>\Delta A^{\mathrm{FP}_\mathrm{GGA}} =  (-4.98) + (0.048) - (0.103) = -5.03\: \mathrm{eV }</math>
+
+The redox potential <math>U_\mathrm{redox}</math> (<math>U_\mathrm{redox} = -\Delta A /e</math>) is therefore: 5.03 V. Comparing this to the literature value (cf. Supplementary Table 6 of Ref. {{Cite|jinnouchi:ncm:2024}}) of 5.00 V, the agreement is reasonable.
+
+This reproduces the literature absolute redox potential. This can be compared to experiment by changing from the ''absolute'' redox potentials by taking the standard hydrogen electrode (SHE) as a reference (4.44 V {{Cite|trasatti:pac:1986}}), meaning that the calculated value relative to the SHE is 0.59 V <math>U_\mathrm{redox,SHE}</math>, compared to the literature 0.56 V and the experimental 0.77 V.
+{{NB|mind|The literature value of 0.56 V was obtained with standard {{FILE|POTCAR}} files and was provided by R. Jinnouchi. In Ref. {{Cite|jinnouchi:ncm:2024}}, 0.8 V (cf. the first row of Table 1) was obtained using GW {{FILE|POTCAR}}s. The choice of {{FILE|POTCAR}} can therefore be worth considering, although the procedure is identical either way.}}
+
+== Recommendations and advice ==
+*To avoid the high cost of many MD steps using a GGA for each &lambda;, use fewer steps. This example uses only 5000 steps compared to the 100000 that would be required for an entire GGA simulation normally. This is valid if the free energy converges quickly. 
+*If you see that during the MD simulation (in the TI), U drifts far from the average, this is an indication that a chemical change has happened. Check to see if an Fe-O bond has formed. This should not happen and is an indication that your force field is unstable.
+*{{TAG|NCORE_IN_IMAGE1}} sets the number of cores used by the first image; the second image uses the remaining cores. Put the DFT calculation in the first image directory <code>01</code>, as the calculation for the first image is printed to the <code>stdout</code>. Additionally, since the MLFF is much cheaper than the DFT, use only a few cores for the MLFF image (~4 cores) and as many as possible for the DFT image.
+
+== Related tags and articles ==
+;How-tos
+* [[Thermodynamic integration: redox potential]]
+* [[Vacuum reference]]
+* [[Thermodynamic integration between machine-learned force fields]]
+<!--* [[Thermodynamic integration between density functionals]] (not yet published)-->
+;Theory
+* [[Thermodynamic integration]]
+;Files
+* {{FILE|ML_FF}}
+;Tags
+* {{TAG|VCAIMAGES}}, {{TAG|NCORE_IN_IMAGE1}}
+
+== References ==
+<references/>
+
+[[Category:Howto]][[Category:Advanced molecular-dynamics sampling]][[Category:Machine-learned force fields]]
+<!--[[Category:Electrochemistry]]-->

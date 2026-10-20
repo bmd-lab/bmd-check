@@ -1,0 +1,20 @@
+In the approach by Nosé and Hoover{{cite|nose:jcp:1984}}{{cite|nose:ptp:1991}}{{cite|hoover:pra:1985}}{{cite|frenkel:book:1996}}, an extra degree of freedom is introduced in the Hamiltonian. The heat bath is considered as an integral part of the system and has a fictious coordinate <math>s</math> which is introduced into the Lagrangian of the system. This Lagrangian for a <math>N</math> particle system is written as
+
+::<math>
+\mathcal{L} = \sum\limits_{i=1}^{N} \frac{m_{i}}{2} s^{2} \dot{\mathbf{r}}_{i}^{2} - U(\mathbf{r}) + \frac{Q}{2} \dot{s}^{2}-g k_{B} T \mathrm{ln} \, s
+</math>
+
+where <math>m_{i}</math> and <math>k_{B}</math> are the mass of ion <math>i</math> and the Boltzmann constant, respectively. The first two terms are the kinetic and potential energy of the system. The third and fourth term represent the kinetic and potential energy of the fictitious coordinate <math>s</math>. These terms also ensure the energy conservation of the Nosé-Hoover thermostat. The parameter <math>g</math> is usually equal to the number of degrees of freedom of the system <math>g=3N - N_{\mathrm{constraint}}</math>, where <math>N_{\mathrm{constraint}}</math> is equal to the number of constraint set (fixed coordinates in the {{TAG|POSCAR}} file). The parameter <math>Q</math> is an effective "mass" of <math>s</math>, which controls the coupling of the system to the heat bath. It is set by the {{TAG|INCAR}} tag {{TAG|SMASS}}.  
+
+The Nosé-Hoover thermostat is selected by {{TAG|MDALGO}}=2.
+
+
+==Related tags and articles==
+[[Molecular dynamics calculations|Molecular-dynamics calculations]], [[Andersen thermostat]], [[Langevin thermostat]], [[CSVR thermostat]], [[Nosé-Hoover chain thermostat]], {{TAG|ISIF}}, {{TAG|MDALGO}}, {{TAG|SMASS}}
+
+== References ==
+<references/>
+
+<noinclude>
+----
+[[Category:Molecular dynamics]][[Category:Thermostats]][[Category:Theory]][[Category:Howto]]

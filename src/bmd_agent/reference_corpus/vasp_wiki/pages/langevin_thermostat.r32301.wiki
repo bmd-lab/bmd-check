@@ -1,0 +1,27 @@
+The Langevin thermostat{{cite|allen:book:1991}}{{cite|hoover:prl:1982}}{{cite|evans:jcp:1983}} maintains the temperature through a modification of Newton's equations of motion
+:<math>
+\dot{r_i} = p_i/m_i \qquad
+\dot{p_i} = F_i - {\gamma}_i\,p_i + f_i,
+</math>
+where ''F<sub>i</sub>'' is the force acting on atom ''i'' due to the interaction potential, &gamma;<sub>i</sub> is a friction coefficient, and ''f<sub>i</sub>'' is a random force simulating the random kicks by the damping of particles between each other due to friction. The random numbers are chosen from a Gaussian distribution with the following variance
+:<math>
+\sigma_i^2 = 2\,m_i\,{\gamma}_i\,k_B\,T/{\Delta}t
+</math>
+with &Delta;''t'' being the time-step used in the MD to integrate the equations of motion. Obviously, Langevin dynamics is identical to the classical Hamiltonian in the limit of vanishing &gamma;.
+
+*{{TAG|NVT ensemble}}:
+The friction coefficient is set by the {{TAG|LANGEVIN_GAMMA}} parameter. 
+*{{TAG|NpT ensemble}}:
+As for the {{TAG|NVT ensemble}} the {{TAG|LANGEVIN_GAMMA}} parameter has to be set. If the {{TAG|NpT ensemble}} is used (by setting {{TAG|ISIF}}=3) additionally the friction coefficient of the lattice {{TAG|LANGEVIN_GAMMA_L}} has to be provided too.
+
+The Langevin thermostat is selected by MDALGO=3. 
+
+==Related tags and articles==
+[[Molecular dynamics calculations|Molecular-dynamics calculations]], [[Andersen thermostat]], [[Nosé-Hoover thermostat]], [[CSVR thermostat]], [[Nosé-Hoover chain thermostat]], {{TAG|ISIF}}, {{TAG|MDALGO}}, {{TAG|LANGEVIN_GAMMA}}, {{TAG|LANGEVIN_GAMMA_L}}
+
+== References ==
+<references/>
+
+<noinclude>
+----
+[[Category:Molecular dynamics]][[Category:Thermostats]][[Category:Theory]][[Category:Howto]]

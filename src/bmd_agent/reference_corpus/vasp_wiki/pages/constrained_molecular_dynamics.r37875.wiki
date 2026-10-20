@@ -1,0 +1,54 @@
+Constrained molecular dynamics is performed using the SHAKE{{cite|ryckaertt:jcp:1977}} algorithm.
+In this algorithm, the Lagrangian for the system <math>\mathcal{L}</math> is extended as follows:
+:<math>
+\mathcal{L}^*(\mathbf{q,\dot{q}}) = \mathcal{L}(\mathbf{q,\dot{q}}) +
+\sum_{i=1}^{r} \lambda_i \sigma_i(q),
+</math>
+where the summation is over ''r'' geometric constraints, <math>\mathcal{L}^*</math> is the Lagrangian for the extended system, and &lambda;<sub>''i''</sub> is a Lagrange multiplier associated with a geometric constraint &sigma;<sub>''i''</sub>:
+:<math>
+\sigma_i(q) = \xi_i({q})-\xi_i \;
+</math>
+with &xi;<sub>''i''</sub>(''q'') being a geometric parameter and &xi;<sub>''i''</sub> is the value of &xi;<sub>''i''</sub>(''q'') fixed during the simulation.
+
+In the SHAKE algorithm, the Lagrange multipliers &lambda;<sub>i</sub> are determined in the iterative procedure:
+#Perform a standard  MD step (leap-frog algorithm):
+#:<math>
+v^{t+{\Delta}t/2}_i = v^{t-{\Delta}t/2}_i + \frac{a^{t}_i}{m_i} {\Delta}t
+</math>
+#:<math>
+q^{t+{\Delta}t}_i = q^{t}_i + v^{t+{\Delta}t/2}_i{\Delta}t
+</math>
+#Use the new positions ''q''(''t''+&Delta;''t'') to compute Lagrange multipliers for all constraints:
+#:<math>
+{\lambda}_k= \frac{1}{{\Delta}t^2} \frac{\sigma_k(q^{t+{\Delta}t})}{\sum_{i=1}^N m_i^{-1} \bigtriangledown_i{\sigma}_k(q^{t}) \bigtriangledown_i{\sigma}_k(q^{t+{\Delta}t})}
+</math>
+#Update the velocities and positions by adding a contribution due to restoring forces (proportional to &lambda;<sub>k</sub>):
+#:<math>
+v^{t+{\Delta}t/2}_i = v^{t-{\Delta}t/2}_i + \left( a^{t}_i-\sum_k \frac{{\lambda}_k}{m_i} \bigtriangledown_i{\sigma}_k(q^{t}) \right ) {\Delta}t
+</math>
+#:<math>
+q^{t+{\Delta}t}_i = q^{t}_i + v^{t+{\Delta}t/2}_i{\Delta}t
+</math>
+#repeat steps 2-4 until either |&sigma;<sub>''i''</sub>(''q'')| are smaller than a predefined tolerance (determined by {{TAG|SHAKETOL}}), or the number of iterations exceeds {{TAG|SHAKEMAXITER}}.
+
+<div id="Slowgro"></div>
+
+=== Constrained molecular dynamics ===
+For a description of constrained molecular dynamics see {{TAG|Constrained molecular dynamics}}.
+
+* For a constrained molecular dynamics run with Andersen thermostat, one has to:
+#Set the standard MD-related tags: {{TAG|IBRION}}=0, {{TAG|TEBEG}}, {{TAG|POTIM}}, and {{TAG|NSW}}
+# Select the thermostat: 
+## Set {{TAGDEF|MDALGO|1}}, and choose an appropriate setting for {{TAG|ANDERSEN_PROB}}.
+## Set {{TAGDEF|MDALGO|2}}, and choose an appropriate setting for {{TAG|SMASS}}.
+#Define geometric constraints in the {{FILE|ICONST}}-file, and set the STATUS parameter for the constrained coordinates to 0
+#When the free-energy gradient is to be computed, set {{TAG|LBLUEOUT}}=.TRUE.
+
+== Related tags and articles ==
+{{FILE|ICONST}}, {{TAG|SHAKEMAXITER}}, {{TAG|SHAKETOL}}, {{TAG|SHAKETOLSOFT}}, {{TAG|LBLUEOUT}}, {{FILE|REPORT}}
+
+[[Constrained molecular dynamics calculations]]
+
+== References ==  
+     
+[[Category:Advanced molecular-dynamics sampling]][[Category:Theory]]

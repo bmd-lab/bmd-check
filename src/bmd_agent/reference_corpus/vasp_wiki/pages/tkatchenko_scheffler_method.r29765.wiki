@@ -1,0 +1,76 @@
+The expression for the dispersion energy within the method of Tkatchenko and Scheffler{{cite|tkatchenko:prl:09}} is formally identical to that of the {{TAG|DFT-D2}} method. The important difference is, however, that the dispersion coefficients and damping function are charge-density dependent. The Tkatchenko-Scheffler method is therefore able to take into account variations in vdW contributions of atoms due to their local chemical environment. In this method the polarizability, dispersion coefficients, and atomic radii of an atom in a molecule or a solid are computed from their free-atomic values using the following relations:
+
+:<math>\alpha_{i}  = \nu_{i}\, \alpha_{i}^{free},</math>
+
+:<math>C_{6ii} = \nu_{i}^{2}\,C_{6ii}^{free},</math>
+
+:<math> R_{0i} = \left(\frac{\alpha_{i}}{\alpha_{i}^{free}} \right)^{\frac{1}{3}} R_{0i}^{free}. </math>
+
+The free-atomic quantities <math>\alpha_{i}^{free},C_{6ii}^{free}</math> and <math>R_{0i}^{free}</math> are tabulated for all elements from the first six rows of the periodic table except for lanthanides. If a Tkatchenko-Scheffler calculation is performed for the system containing an unsupported element, the user has to define the corresponding values using the tags {{TAG|VDW_ALPHA}}, {{TAG|VDW_C6}} and {{TAG|VDW_R0}} (see below). The effective atomic volumes <math>\nu_{i}</math> are determined using the Hirshfeld partitioning of the all-electron density:
+
+:<math>\nu_{i} = \frac{\int r^3 \,w_i({\mathbf{r}}) n({\mathbf{r}})\,d^3{\mathbf{r}}}{\int r^3\, n_{i}^{free}({\mathbf{r}})\,d^3{\mathbf{r}}}</math>
+
+where <math>n({\mathbf{r}})</math> is the total electron density and <math>n_{i}^{free}({\mathbf{r}})</math> is the spherically averaged electron density of the neutral free atomic species <math>i</math>. The Hirshfeld weight <math>w_i({\mathbf{r}})</math> is defined by free atomic densities as follows:
+
+:<math> w_i({\mathbf{r}}) = \frac{n_{i}^{free}({\mathbf{r}})}{\sum_{j=1}^{N_{at}} n_{j}^{free}({\mathbf{r}})}. </math>
+
+The combination rule to define the strength of the dipole-dipole dispersion interaction between unlike species is:
+
+:<math> C_{6ij} = \frac{2C_{6ii}\,C_{6jj}}{[\frac{\alpha_{j}} {\alpha_{i}}C_{6ii}+\frac{\alpha_{i}}{\alpha_{j}}C_{6jj}]}. </math>
+
+The parameter <math>R_{0ij}</math> used in the damping function of the {{TAG|DFT-D2}} method is obtained from the atom-in-molecule vdW radii as follows:
+
+:<math> R_{0ij} = R_{0i} + R_{0j}. </math>
+
+The performance of the Tkatchenko-Scheffler method in optimization of various crystalline systems has been examined in reference {{cite|bucko:prb:13}}.
+
+== Usage ==
+
+The Tkatchenko-Scheffler method is invoked by setting {{TAG|IVDW}}=2|20. The following parameters can be optionally defined in {{TAG|INCAR}} (the given values are the default ones):
+
+*{{TAG|LVDWSCS}}=.FALSE. : activates the {{TAG|self-consistent screening in Tkatchenko-Scheffler method}}
+*{{TAG|VDW_RADIUS}}=50.0 : cutoff radius (in &Aring;) for pair interactions
+*{{TAG|VDW_S6}}=1.00 : global scaling factor <math>s_6</math>
+*{{TAG|VDW_SR}}=0.94 : scaling factor <math>s_R</math>
+*{{TAG|VDW_D}}=20.0 : damping parameter <math>d</math>
+*{{TAG|VDW_ALPHA}}=[real array] : free-atomic polarizabilities (atomic units) for each species defined in the {{TAG|POSCAR}} file
+*{{TAG|VDW_C6AU}}=[real array] : free-atomic <math>C_6</math> parameters (atomic units) for each species defined in the {{TAG|POSCAR}} file
+*{{TAG|VDW_C6}}=[real array] : free-atomic <math>C_6</math> parameters (<math>\mathrm{Jnm}^{6}\mathrm{mol}^{-1}</math>) for each species defined in the {{TAG|POSCAR}} file (this parameter overrides {{TAG|VDW_C6AU}})
+*{{TAG|VDW_R0AU}}=[real array] : free-atomic <math>R_0</math> parameters (atomic units) for each species defined in the {{TAG|POSCAR}} file
+*{{TAG|VDW_R0}}=[real array] : <math>R_0</math> parameters (in &Aring;) for each species defined in the {{TAG|POSCAR}} file (this parameter overrides {{TAG|VDW_R0AU}})
+*{{TAG|LVDW_EWALD}}=.FALSE. : the lattice summation in <math>E_{\mathrm{disp}}</math> expression is computed by means of Ewald's summation (''.TRUE.'' ) or via a real space summation over all atomic pairs within cutoff radius {{TAG|VDW_RADIUS}} (''.FALSE.'').  (available in VASP.5.3.4 and later)
+*{{TAG|LTSSURF}}=.FALSE.: if set to .TRUE., the standard parametrization of the Tkatchenko-Scheffler method is replaced by the one designed to enable reliable modeling of structure and stability for a broad class of organic molecules adsorbed on metal surfaces is activated<ref>[https://journals.aps.org/prb/abstract/10.1103/PhysRevB.93.035118 V. G. Ruiz, W. Liu, and A. Tkatchenko, Phys. Rev. B 93, 035118 (2016).]</ref>
+
+{{NB|mind|
+*This method requires the use of {{TAG|POTCAR}} files from the PAW dataset version 52 or later.
+*The input reference data for non-interacting atoms is available only for elements of the first six rows of the periodic table except for lanthanides. If the system contains other elements, the user must provide the free-atomic parameters for all atoms in the system via {{TAG|VDW_ALPHA}}, {{TAG|VDW_C6}}, {{TAG|VDW_R0}} defined in the {{TAG|INCAR}} file.
+*The charge-density dependence of gradients is neglected.
+*The DFT-TS method is incompatible with the setting {{TAG|ADDGRID}}{{=}}''.TRUE.''.
+*It is essential that a sufficiently dense FFT grid (controlled via {{TAG|NGXF}}, {{TAG|NGYF}} and {{TAG|NGZF}}) is used in the DFT-TS calculation - we strongly recommend to use {{TAG|PREC}}{{=}}''Accurate'' for this type of calculations (in any case, avoid using {{TAG|PREC}}{{=}}''Low'').
+*Defaults for the parameters controlling the damping function ({{TAG|VDW_S6}}, {{TAG|VDW_SR}}, {{TAG|VDW_D}}) are available for the PBE, PBE0, HSE03, HSE06, TPSS, and M06L functionals. If any other functional is used, the value of {{TAG|VDW_SR}} must be specified in the {{TAG|INCAR}} file.
+*Ewald's summation in the calculation of <math>E_{disp}</math> (controlled via {{TAG|LVDW_EWALD}}) implemented according to reference {{cite|kerber:jcc:08}} is available as of VASP.5.3.4.
+*Parameters {{TAG|VDW_C6AU}} and {{TAG|VDW_R0AU}}  are available as of VASP.5.3.4.
+*Hirshfeld charges for all configurations generated in a calculation are written out in the {{TAG|OUTCAR}} file. The corresponding table is introduced by the expression ''Hirshfeld charges:''.}}
+
+== Related tags and articles ==
+{{TAG|VDW_RADIUS}},
+{{TAG|VDW_S6}},
+{{TAG|VDW_SR}},
+{{TAG|VDW_D}},
+{{TAG|VDW_ALPHA}},
+{{TAG|VDW_C6AU}},
+{{TAG|VDW_C6}},
+{{TAG|VDW_R0AU}},
+{{TAG|VDW_R0}},
+{{TAG|LVDW_EWALD}},
+{{TAG|IVDW}},
+{{TAG|Tkatchenko-Scheffler method with iterative Hirshfeld partitioning}},
+{{TAG|Self-consistent screening in Tkatchenko-Scheffler method}},
+{{TAG|Many-body dispersion energy}},
+{{TAG|Many-body dispersion energy with fractionally ionic model for polarizability}}
+
+== References ==
+<references/>
+
+----
+[[Category:Exchange-correlation functionals]][[Category:van der Waals functionals]][[Category:Theory]][[Category:Howto]]

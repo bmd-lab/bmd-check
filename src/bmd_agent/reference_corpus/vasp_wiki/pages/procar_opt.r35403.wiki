@@ -1,0 +1,11 @@
+{{DISPLAYTITLE:PROCAR_OPT}}
+The {{FILE|PROCAR_OPT}} file contains the spd- and site-projected wave function character at the '''k''' points of the {{TAG|KPOINTS_OPT}} driver. It is written whenever the {{TAG|KPOINTS_OPT}} driver is active, i.e., when a {{FILE|KPOINTS_OPT}} file is present or {{TAG|KSPACING_OPT}} is set in the {{FILE|INCAR}} file, and {{TAG|LORBIT|10|op=>=}} or all {{TAG|RWIGS}} values are positive.
+
+The {{FILE|PROCAR_OPT}} file has the same format as {{FILE|PROCAR}}; see that page for a detailed description.
+
+== Related tags and articles ==
+Tags: {{TAG|LKPOINTS_OPT}}, {{TAG|KSPACING_OPT}}, {{TAG|LORBIT}}, {{TAG|RWIGS}}
+
+Files: {{FILE|KPOINTS_OPT}}, {{FILE|PROCAR}}
+
+[[Category:Files]][[Category:Output files]]

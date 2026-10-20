@@ -1,0 +1,10 @@
+{{FILE|KPOINTS_WAN}} is an optional input file to obtain eigenstates and eigenenergies at the specified '''k''' points from [[:Category:Wannier functions|Wannier functions]].
+The format is the same as for the {{FILE|KPOINTS}} file. 
+{{NB|important| The VASP calculation must include the construction of [[:Category:Wannier functions|Wannier functions]], e.g., using {{TAG|LSCDM}} or {{TAG|LWANNIER90}}.}}
+{{FILE|KPOINTS_WAN}} is read automatically when present. To avoid this, set {{TAG|LKPOINTS_WAN}}<code>=.FALSE.</code> in the {{FILE|INCAR}} file.
+VASP writes corresponding fields in the {{FILE|vaspout.h5}} file and {{FILE|vasprun.xml}} file indicated by the keyword ''kpoints_wan''.
+{{NB|mind| Available as of VASP 6.3.0.}}
+== Related tags and sections ==
+{{FILE|KPOINTS}}, {{FILE|KPOINTS_OPT}}, {{TAG|LKPOINTS_WAN}}, {{FILE|PROCAR_WAN}}, {{TAG|LSCDM}}, {{TAG|LWANNIER90}}, {{TAG|LOCPROJ}}
+
+[[Category:VASP]][[Category:Files]][[Category:Input files]][[Category:Wannier functions]][[Category:Crystal momentum]]

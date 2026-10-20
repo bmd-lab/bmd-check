@@ -1,0 +1,105 @@
+The Bethe-Salpeter equation (BSE) was first derived and applied in the context of particle physics and QED in 1951 {{cite|salpeter:pr:1951}}. The first application of BSE in solids was done by Hanke and Sham {{cite|hanke:prl:1979}}, who calculated the absorption spectrum of bulk silicon in qualitative agreement with experiment. Since then numerous works have shown successful applications of BSE for describing optical properties of materials and BSE has become the state of the art for ''ab initio'' simulation of absorption spectra.
+__TOC__
+== Theory  ==
+The Bethe-Salpeter equation is a Dyson like equation for the four-point polarization function <math>L(1,3,2,4)</math>, which can be found by summing up an infinite series of non-interacting polarization functions <math>L_0(1,3,2,4)</math> connected via the interaction kernel <math>\Xi'(6,5,7,8)</math>
+::<math>
+L(1,3,2,4)=L_0(1,3,2,4)+\int \mathrm{d}5\mathrm{d}6\mathrm{d}7\mathrm{d}8 L_0(1,3,6,5)\Xi'(6,5,7,8)L(7,8,2,4).
+</math>
+Here, the common notation is used <math>1\to{\mathbf{r}_1,t_1}</math>. The interaction kernel contains the full self-energy <math>\Sigma</math> including the Hartree term and reads
+::<math>
+\Xi'(2,1,3,4)=\frac{\delta[\Sigma_{\rm H}(12)+\Sigma^{\rm xc}(12)]}{\delta G(34)}=\delta(1,2)\delta(3^+,4)V(1,3)+\Xi(2,1,3,4)
+</math>. 
+In practical calculations the <math>\Sigma^{\rm xc}</math> is approximated via the GW self-energy
+::<math>
+\Xi(2,1,3,4)=-\frac{\delta[G(12)W(1^+2)]}{\delta G(34)}=-\delta(1,3)\delta(2,4)W(1^+2)-G(12)\frac{\delta W(1^+2)}{\delta G(34)}.
+</math>
+The variation of the screened potential w.r.t. the Green's function is of order <math>W^2</math> and is usually neglected. Thus, the Bethe-Salpeter equation takes a simplified from
+::<math>
+L(1,3,2,4)=L_0(1,3,2,4)+\int \mathrm{d}5\mathrm{d}6\mathrm{d}7\mathrm{d}8L_0(1,3,6,5)[\delta(5,6)\delta(7,8)V(5,8)-\delta(5,7)\delta(6,8)W(5^+6)]L(7,8,2,4)
+</math>
+This equation can be represented by an infinite sum of Feynman diagrams
+[[File:Bse_graph.png|700px|thumb|center|Diagrammatic representation of the Bethe-Salpeter equation for the polarizability function <math>L</math>.]]
+The interaction in BSE is described by two terms, the bare Coulomb interaction <math>v</math> and the attractive screened potential <math>W</math>. 
+Since the <math>W</math> term originated from the GW self-energy, the same level of approximation is used, i.e., the random phase approximation (RPA). However, the important difference is that in BSE the static approximation is usually used, i.e., <math>W(\omega=0)</math>. The dynamical effects in the screened potential are shown to cancel out to a large extent with the dynamical effects in the polarizability <math>L_0</math>.
+
+Finally, the macroscopic dielectric function can be found by making the connection to the two-point polarizability <math>\chi(1,2)=L(1,1^+,2,2^+)</math> 
+::<math>
+\varepsilon^{-1}(1,2)=\delta(1,2)+\int \mathrm{d}3 V(1,3)\chi(3,2)
+</math>
+
+== Implementation  ==
+The poles of the response function <math>L</math> correspond to the excitation energies including the excitonic effects.
+For practical reasons, it is more efficient to reformulate the Bethe-Salpeter equation in the the transition space and solve it as a non-hermitian eigenvalue problem, where the excitation energies correspond to the eigenvalues <math>\omega_\lambda</math>{{cite|sander:prb:15}}
+
+::<math>
+\left(\begin{array}{cc}
+\mathbf{A} & \mathbf{B} \\
+\mathbf{B}^* & \mathbf{A}^*
+\end{array}\right)\left(\begin{array}{l}
+\mathbf{X}_\lambda \\
+\mathbf{Y}_\lambda
+\end{array}\right)=\omega_\lambda\left(\begin{array}{cc}
+\mathbf{1} & \mathbf{0} \\
+\mathbf{0} & -\mathbf{1}
+\end{array}\right)\left(\begin{array}{l}
+\mathbf{X}_\lambda \\
+\mathbf{Y}_\lambda
+\end{array}\right)~.
+</math>
+
+
+The matrices <math>A</math> and <math>A^*</math> describe the resonant and anti-resonant transitions between the occupied <math>v,v'</math> and unoccupied <math>c,c'</math> states
+::<math>
+A_{vc}^{v'c'} = (\varepsilon_v-\varepsilon_c)\delta_{vv'}\delta_{cc'} + \langle cv'|V|vc'\rangle - \langle cv'|W|c'v\rangle.
+</math>
+The energies and orbitals of these states are usually obtained in a <math>G_0W_0</math> calculation, but DFT and Hybrid functional calculations can be used as well.
+The electron-electron interaction and electron-hole interaction are described via the bare Coulomb <math>V</math> and the screened potential <math>W</math>.
+
+The coupling between resonant and anti-resonant terms is described via terms <math>B</math> and <math>B^*</math>
+::<math>
+B_{vc}^{v'c'} = \langle vv'|V|cc'\rangle - \langle vv'|W|c'c\rangle.
+</math>
+Due to the presence of this coupling, the Bethe-Salpeter Hamiltonian is non-Hermitian.
+
+=== Tamm-Dancoff approximation ===
+A common approximation to the BSE is the Tamm-Dancoff approximation (TDA), which neglects the coupling between resonant and anti-resonant terms, i.e., <math>B</math> and <math>B^*</math>. 
+Hence, the TDA reduces the BSE to a Hermitian problem
+
+::<math>
+AX_\lambda=\omega_\lambda X_\lambda~.
+</math>
+
+In reciprocal space, the matrix <math>A</math> is written as  
+
+::<math>
+A_{vc\mathbf{k}}^{v'c'\mathbf{k}'} = (\varepsilon_v-\varepsilon_c)\delta_{vv'}\delta_{cc'}\delta_{\mathbf{kk}'}+
+\frac{2}{\Omega}\sum_{\mathbf{G}\neq0}\bar{V}_\mathbf{G}(\mathbf{q})\langle c\mathbf{k}|e^{i\mathbf{Gr}}|v\mathbf{k}\rangle\langle v'\mathbf{k}'|e^{-i\mathbf{Gr}}|c'\mathbf{k}'\rangle 
+  -\frac{2}{\Omega}\sum_{\mathbf{G,G}'}W_{\mathbf{G,G}'}(\mathbf{q},\omega)\delta_{\mathbf{q,k-k}'}
+\langle c\mathbf{k}|e^{i(\mathbf{q+G})}|c'\mathbf{k}'\rangle 
+\langle v'\mathbf{k}'|e^{-i(\mathbf{q+G})}|v\mathbf{k}\rangle,
+</math>
+
+where <math>\Omega</math> is the cell volume, <math>\bar{V}</math> is the bare Coulomb potential without the long-range part
+
+::<math>
+\bar{V}_{\mathbf{G}}(\mathbf{q})=\begin{cases}
+    0 & \text { if } G=0 \\
+    V_{\mathbf{G}}(\mathbf{q})=\frac{4 \pi}{|\mathbf{q}+\mathbf{G}|^2} & \text { else }
+\end{cases}~,
+</math>
+and the screened Coulomb potential 
+<math>
+W_{\mathbf{G}, \mathbf{G}^{\prime}}(\mathbf{q}, \omega)=\frac{4 \pi \epsilon_{\mathbf{G}, \mathbf{G}^{\prime}}^{-1}(\mathbf{q}, \omega)}{|\mathbf{q}+\mathbf{G}|\left|\mathbf{q}+\mathbf{G}^{\prime}\right|}.
+</math>
+
+Here, the dielectric function <math>\epsilon_\mathbf{G,G'}(\mathbf{q})</math> describes the screening in <math>W</math> within the random-phase approximation (RPA)
+
+::<math>
+\epsilon_{\mathbf{G}, \mathbf{G}^{\prime}}^{-1}(\mathbf{q}, \omega)=\delta_{\mathbf{G}, \mathbf{G}^{\prime}}+\frac{4 \pi}{|\mathbf{q}+\mathbf{G}|^2} \chi_{\mathbf{G}, \mathbf{G}^{\prime}}^{\mathrm{RPA}}(\mathbf{q}, \omega).
+</math>
+
+Although the dielectric function is frequency-dependent, the static approximation <math>W_{\mathbf{G}, \mathbf{G}^{\prime}}(\mathbf{q}, \omega=0)</math> is considered a standard for practical BSE calculations.
+
+== References ==
+
+[[Category:Many-body perturbation theory]][[Category:Theory]][[Category:Bethe-Salpeter equations]]

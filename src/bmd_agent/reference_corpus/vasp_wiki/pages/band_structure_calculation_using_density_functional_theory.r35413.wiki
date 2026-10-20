@@ -1,0 +1,148 @@
+The step-by-step instructions below cover calculating the [[:Category:Band structure|band structure]] within density-functional theory (DFT), including references to practical examples.
+
+Obtaining the band structure involves first solving the Hamiltonian to get eigenvalues and eigenvectors, then plotting them as electronic energy levels versus [[crystal momentum]]. The Kohn-Sham (KS) Hamiltonian requires at least the density (charge and possibly magnetization) and may contain higher derivatives depending on the [[:Category:Exchange-correlation functionals|exchange-correlation (XC) functional]]. 
+{{NB|mind| The approach presented on this page applies to [[GGA#Available functionals|LDA]] (needs density), [[GGA|GGA]] (needs density and gradient), and deorbitalized meta-GGA (needs density, gradient, and Laplacian) functionals. Additionally, it can be used for [[METAGGA|meta-GGAs]] that need the kinetic energy density as of VASP 6.6.0. In contrast, another approach is required [[Band-structure calculation using hybrid functionals|for computing the band structure for hybrid functionals]] and [[Band-structure calculation using hybrid functionals|for computing the band structure for MGGAs before VASP 6.6.0]].}}
+
+== Step-by-step instructions ==
+
+{{NB|tip|[[#Option A: Single run|Option A: Single run]] is convenient, because it does not require restarting the calculation. On the other hand, there is less control, e.g., over the used algorithm ({{TAG|ALGO}}), and depending on the number of '''k''' points on the regular mesh and the [[parallelization]], it can be less performant than [[#Option B: Split run|Option B: Split run]].}}
+
+=== Option A: Single run ===
+{{Available|6.3.0}}
+
+==== Step 1: Prepare SCF settings ====
+
+:Follow [[Setting_up_an_electronic_minimization#Create_the_input_files|the steps to create input files]] on the instructions for [[setting up an electronic minimization]]. Typically, this involves defining the input settings using the {{FILE|INCAR}}, {{FILE|POSCAR}}, {{FILE|KPOINTS}}, and {{FILE|POTCAR}} files.
+
+==== Step 2: High-symmetry path ====
+
+:[[#Choosing a high-symmetry path|Choose a high-symmetry path]] and set it in the {{FILE|KPOINTS_OPT}} file. Both {{FILE|KPOINTS}} and {{FILE|KPOINTS_OPT}} define crystal momenta: The {{FILE|KPOINTS}} file holds the regular '''k''' mesh for the initial SCF computation, while the {{FILE|KPOINTS_OPT}} file holds the high-symmetry path usually in line mode along which the band structure will be evaluated.
+
+==== Step 3: Run the calculation ====
+
+:Start the VASP run, which will internally perform an SCF run to obtain the converged KS orbitals and densities, and then perform the NSCF run at fixed density to evaluate the eigenvalues along the high-symmetry path. The progress is written to '''stdout'''. For more detailed suggestions on [[Setting_up_an_electronic_minimization#Optimize_your_settings|optimizing your settings]] and [[Setting_up_an_electronic_minimization#Run_the_calculation|running the calculation]] check the article on [[setting up an electronic minimization]].
+
+==== Step 4: Plot the band structure ====
+
+:{{py4vasp|url=calculation/band/#py4vasp.calculation._band.Band.to_graph}} provides utilities for plotting the band structure. Run the following in a Python notebook in the directory of the calculation:
+<syntaxhighlight lang="python">
+import py4vasp
+calc = py4vasp.Calculation.from_path(".")
+ef = calc.dos.read()["fermi_energy"]
+calc.band.plot("kpoints_opt", fermi_energy=ef)
+</syntaxhighlight>
+{{NB|tip|Set the {{TAG|EFERMI}} tag or pass the Fermi energy explicitly, because {{py4vasp}} reads the Fermi energy from the {{FILE|KPOINTS_OPT}} density of states (<code>results/electron_dos_kpoints_opt/efermi</code>), which is computed from the line-mode '''k''' points and is therefore unreliable.|:}}
+
+=== Option B: Split run ===
+
+In a nutshell, the KS Hamiltonian within DFT can be expressed in terms of the electronic charge and possibly the magnetization density. Both are written to the {{FILE|CHGCAR}} file during an initial self-consistent-field (SCF) run. From this converged {{FILE|CHGCAR}} file, we can obtain the eigenvalues at the desired [[#Choosing a high-symmetry path|high-symmetry path]] via a subsequent non-self-consistent-field (NSCF) run at fixed density.
+
+==== Step 1: Set up and perform a full SCF calculation ====
+
+:Follow the steps described in [[setting up an electronic minimization]].
+{{NB|important|Set {{TAG|LMAXMIX|4}} for d-electron systems and {{TAG|LMAXMIX|6}} for f-electron systems to adjust the maximum l-quantum number up to which the one-center PAW charge densities are written to the {{FILE|CHGCAR}} file. If you are unsure about the appropriate value for {{TAG|LMAXMIX}}, restart with fixed density using the regular '''k''' mesh and check that the total energy is identical to the SCF run.|:}}
+
+==== Step 2 (optionally): Create a backup ====
+
+:The simplest procedure is to create a new directory for the band-structure calculation and copy the input files of the SCF calculation (usually the {{FILE|INCAR}} file, {{FILE|POSCAR}} file, and the {{FILE|POTCAR}} file) as well as the {{FILE|CHGCAR}} file to the new directory.
+
+{{CB|mkdir -f bands
+cp INCAR POSCAR POTCAR CHGCAR bands/.|:}}
+
+:Alternatively, backup the {{FILE|OUTCAR}} file, {{FILE|KPOINTS}} file and possibly the {{FILE|OSZICAR}} file and {{FILE|vaspout.h5}} to be able to reconstruct the SCF calculation, if needed.
+
+==== Step 3: High-symmetry path ====
+
+:[[#Choosing a high-symmetry path|Choose a high-symmetry path]] and set it in the {{FILE|KPOINTS}} file.
+
+==== Step 4: Prepare a restart with fixed density ====
+
+:Adjust the {{FILE|INCAR}} file:
+::* Remove any of the following tags, if present: {{TAG|NSW}}, {{TAG|IBRION}} and {{TAG|ISTART}}.
+::* Add {{TAG|ICHARG|11}}. This restarts from the converged charge density read from the {{FILE|CHGCAR}} file and continues with the density held fixed.
+::* Add additional relevant tags as needed, i.e., {{TAG|LORBIT}}=11.
+{{NB|tip|Set the {{TAG|EFERMI}} tag to the Fermi energy obtained during the SCF calculation. Infact, the Fermi energy cannot be computed based on '''k''' points along a path, and the Fermi energy given by the NSCF calculation will therefore be unreliable. The Fermi energy of the SCF calculation is written to the {{FILE|OUTCAR}} file or can be extracted using {{py4vasp}}: 
+
+<syntaxhighlight lang="python">from py4vasp import Calculation
+Calculation.from_path("dir/with/SCF/vaspout.h5").dos.read()["fermi_energy"]
+</syntaxhighlight> 
+|:}}
+
+==== Step 5: Run the NSCF calculation ====
+
+:Perform the NSCF calculation with the prepared files. This will read the {{FILE|CHGCAR}} file and keep the density fixed.
+{{NB|mind| Any existing {{FILE|KPOINTS_OPT}} file triggers '''[[#Option A: Single run|Option A]]''' unless you disable this by setting {{TAG|LKPOINTS_OPT|F}}.|:}}
+
+==== Step 6: Plot the band structure ====
+
+:{{py4vasp|url=calculation/band/#py4vasp.calculation._band.Band.to_graph}} provides utilities for plotting the band structure. Run the following in a Python notebook in the directory of the calculation:
+<syntaxhighlight lang="python">
+import py4vasp
+calc = py4vasp.Calculation.from_path(".")
+calc.band.plot()
+</syntaxhighlight>
+{{NB|tip|If you did not set {{TAG|EFERMI}} in Step 4, pass the Fermi energy from the SCF run at the plotting stage:
+<syntaxhighlight lang="python">calc.band.plot(fermi_energy=...)  # plug in the Fermi energy from the SCF run</syntaxhighlight>|:}}
+
+== Choosing a high-symmetry path ==
+
+Band-structure calculations generally compute the '''Kohn-Sham orbitals''' and eigenenergies along a path in reciprocal space which usually connects high-symmetry points in the first '''Brillouin zone'''. Which '''k''' points are high-symmetry points depends on the '''space group''' of the structure.
+
+Use external tools{{cite|seekpath}}{{cite|bilbao:kvec}} to find the space group, plot the Brillouin zone, and pick a high-symmetry '''k''' path. Extract the corresponding coordinates and provide them in {{FILE|KPOINTS}}-file format, either as a list of [[KPOINTS#Explicit_k-point_mesh|explicit coordinates]] or (more commonly) using [[KPOINTS#Band-structure_calculations|line mode]].
+{{NB|tip|The tools provide the coordinates and the labels for a given structure. Because these paths depend on the symmetry, take special care that the analysis is not tainted by finite precision or rounding (see {{TAG|SYMPREC}}). Also, keep in mind that the primitive and the conventional unit cell have different reciprocal coordinate systems.}}
+
+Example high-symmetry path for face-centered-cubic silicon:
+  k points for band structure
+  10  ! intersections 
+  line
+  Fractional
+    0.50000  0.50000  0.50000   L
+    0.00000  0.00000  0.00000   Γ
+    
+    0.00000  0.00000  0.00000   Γ
+    0.00000  0.50000  0.50000   X
+    
+    0.00000  0.50000  0.50000   X
+    0.25000  0.62500  0.62500   U
+    
+    0.37500  0.7500   0.37500   K
+    0.00000  0.00000  0.00000   Γ
+
+The empty lines and labels are optional and meant for readability. The labels will be used by {{py4vasp}}. VASP produces equidistant '''k''' points for each segment. The example above would yield 10 points from ''L'' to ''Γ'', 10 points from ''Γ'' to ''X'', 10 from ''X'' to ''U'', and 10 from ''K'' to ''Γ'', including endpoints.
+For further details and instructions, please consult the section on [[KPOINTS#Band-structure_calculations|band-structure calculations in the KPOINTS]] documentation.
+
+== Recommendations and advice ==
+
+In case a {{FILE|KPOINTS_OPT}} file is present ([[#Option A: Single run |Option A]]), VASP computes the band energies for the '''k''' points of the {{FILE|KPOINTS_OPT}} file after SCF convergence is reached within the same submitted job. There may, however, be a '''computational advantage''' to splitting the run  ([[#Option B: Split run |Option B]]) because of different optimal batching options for the '''k''' mesh.
+
+There are additional advantages to using the {{FILE|KPOINTS_OPT}} file for computing the band structure [[Band-structure calculation using hybrid functionals|using hybrid functionals]] or [[Band-structure calculation using meta-GGA functionals|using meta-GGA functionals]]. Refer to these references for details.
+
+A number of '''post-processing options''' for the Kohn-Sham (KS) orbitals can affect the computation of the band structure. Usually, these options are set directly in the {{FILE|INCAR}} file: See, for example, {{TAG|LORBIT}}=11 or [[constructing Wannier orbitals]].
+
+== Practical examples ==
+
+We offer additional tutorials for calculating and visualizing DFT band structures:
+
+* [https://www.vasp.at/tutorials/latest/bulk/part1/#bulk-e03 Bulk systems, Part 1]: band structure of face-centered-cubic silicon.
+
+* [https://www.vasp.at/tutorials/latest/bulk/part2/#Step-3.) Bulk systems, Part 2]: band structure of cubic-diamond silicon.
+
+* [https://www.vasp.at/tutorials/latest/bulk/part3/#Step-3.) Bulk systems, Part 3]: band structure of face-centered-cubic nickel.
+
+== Related tags and articles ==
+
+{{FILE|KPOINTS}}, {{FILE|KPOINTS_OPT}}, 
+
+{{TAG|ICHARG}}, {{TAG|LMAXMIX}}
+
+[[XC functionals]], [[Setting up an electronic minimization]]
+
+[[Band-structure calculation using meta-GGA functionals]], [[Band-structure calculation using hybrid functionals]]
+
+== References ==
+
+<references/>
+
+[[Category:Band structure]]
+[[Category:Howto]]
+[[Category:Crystal momentum]]

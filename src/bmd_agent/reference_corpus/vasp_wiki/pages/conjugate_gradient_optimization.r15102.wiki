@@ -1,0 +1,15 @@
+Instead of the previous iteration scheme, which is just
+some kind of Quasi-Newton scheme, it also possible to optimize the
+expectation value of the Hamiltonian using a successive number of
+conjugate gradient steps.
+The first step is equal to the steepest descent step in section {{TAG|Single band steepest descent scheme}}.
+In all following steps the preconditioned gradient  <math> g^N_{n} </math>
+is conjugated to the previous search direction.
+The resulting conjugate gradient algorithm is almost as efficient as the algorithm
+given in {{TAG|Efficient single band eigenvalue-minimization}}.
+For further reading see {{cite|teter:prb:1989}}{{cite|bylander:prb:1990}}{{cite|press:book:1986}}.
+
+== References ==
+<references/>
+----
+[[Category:Electronic minimization]][[Category:Theory]]

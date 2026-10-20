@@ -1,0 +1,19 @@
+{{Template:Input and Output - Tutorial}}
+
+== Task == 
+This tutorial shows how to get {{TAG|POSCAR}} files containing a super cell from an initially smaller cell.
+
+== Super cells from p4vasp ==
+
+*Open p4vasp by typing ''p4v'' on the terminal.
+*Load the primitive cell by clicking on '''File'''&rarr;'''Load system''':
+[[File:Fig XAS 1.png|200px]]
+*Multiply cell in each direction (enter 3 for each direction) by clicking on '''Edit'''&rarr;'''Multiply Cell''':
+[[File:Fig XAS 2.png|250px]]
+*Save new system by clicking on '''File'''&rarr;'''Save system as''':
+[[File:Fig XAS 3.png|250px]]
+
+
+{{Template:Input and Output - Tutorial}}
+
+[[Category:Howto]]

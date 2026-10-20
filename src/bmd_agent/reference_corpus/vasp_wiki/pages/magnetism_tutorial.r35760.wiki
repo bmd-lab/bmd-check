@@ -1,0 +1,13 @@
+{{Template:Magnetism - Tutorial}}
+
+The tutorial is made of the following parts:
+<div style="background:var(--vdefault-bg); border:solid 1px var(--vlines); padding:0.5em 1em; margin-right:14em;">
+# [[fcc Ni (revisited)|fcc Ni (revisited)]]
+# [[NiO|NiO]]
+# [[NiO LSDA+U|NiO LSDA+U]]
+# [[Spin-orbit coupling in a Ni monolayer|Spin-orbit coupling in a Ni monolayer]]
+# [[Spin-orbit coupling in a Fe monolayer|Spin-orbit coupling in a Fe monolayer]]
+# [[constraining local magnetic moments|constraining local magnetic moments]]
+</div>
+
+[[Category:Tutorials]]

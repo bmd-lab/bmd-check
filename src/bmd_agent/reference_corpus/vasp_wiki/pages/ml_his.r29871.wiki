@@ -1,0 +1,6 @@
+{{DISPLAYTITLE:ML_HIS}}
+This file contains the distribution of energies, forces and stress in a histogram. This file is usually not important for the user.
+
+----
+
+[[Category:Files]][[Category:Machine-learned force fields]][[Category:Output files]]

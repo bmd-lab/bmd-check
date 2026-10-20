@@ -1,0 +1,57 @@
+{{FILE|PARCHG}} is an output file created when [[Band-decomposed charge densities|partial charge densities]] are calculated by setting {{TAG|LPARD}} = .TRUE..
+The file has the same structure as the {{FILE|CHG}} file, containing the structure followed by the charge density on the fine FFT grid, but missing the augmentation occupancies that are written to {{FILE|CHGCAR}}. The units are also equivalent to {{FILE|CHG}} and {{FILE|CHGCAR}}.
+
+The partial density written to {{FILE|PARCHG}} is part of the valence electron density that was converged selfconsistently in a previous run. 
+The bands and '''k''' points that contribute to the partial charges are selected by the {{TAG|IBAND}}, {{TAG|NBMOD}}, {{TAG|EINT}} and {{TAG|KPUSE}} tags, allowing for fine control of the contributions to the partial charge density.
+
+== PARCHG.nb.nk files==
+If {{TAG|LSEPB}} and/or {{TAG|LSEPK}} are set to .TRUE. variants of the {{FILE|PARCHG}} file are written, separating the contributing bands and '''k''' points respectively. The units and format of the files stay the same.
+
+* If {{TAG|LSEPB|.TRUE.}}, '''PARCHG.nb.ALLK''' files are written, where nb is an index over all bands contributing to the partial charge density.
+
+* If {{TAG|LSEPK|.TRUE.}}, '''PARCHG.ALLB.nk''' files are created, where nk runs over all '''k''' points in {{TAG|KPUSE}} or all '''k''' points if {{TAG|KPUSE}} is not set.
+
+* For {{TAG|LSEPB|.TRUE.}} and {{TAG|LSEPK|.TRUE.}}, all combinations are written to '''PARCHG.nb.nk''' files.
+{{NB|mind|If VASP 6.5.0 or later is used, the code is compiled with [[Makefile.include#HDF5_support_(strongly_recommended)|HDF5 support]], and {{TAG|LPARDH5}} {{=}} .TRUE., all output will be redirected to the {{FILE|vaspout.h5}} file, where it can be analyzed with {{py4vasp}}.}}
+== Format == 
+The {{FILE|PARCHG}} consists of the following blocks:
+* Structure in {{FILE|POSCAR}} format
+* FFT-grid dimensions {{TAG|NGXF}}, {{TAG|NGYF}}, {{TAG|NGZF}}
+* Partial charge density times FFT-grid volume is written with multiple real numbers per line until all {{TAG|NGXF}}*{{TAG|NGYF}}*{{TAG|NGZF}} values of the block are written. 
+
+The real-space mesh (NX,NY,NZ) is uniform and is spanned by the lattice vectors <math>\vec{a}, \vec{b}, \vec{c}</math> defined in the structure block. The coordinates of the mesh points can be restored via
+
+::<math>(N_x,N_y,N_z) \hat{=} \frac{N_x-1}{N_{GXF}}\mathbf{a}+\frac{N_y-1}{N_{GYF}}\mathbf{b}+\frac{N_z-1}{N_{GZF}}\mathbf{c}</math>.
+The dimensions can be increased by increasing the cutoff energy ({{TAG|ENCUT}}) or explicitly by setting the fine FFT-grid dimensions ({{TAG|NGXF}}, {{TAG|NGYF}}, {{TAG|NGZF}}).
+
+To arrange the data on the real-space grid in the unit cell, mind that the data runs fastest over NX and slowest over NZ. To be more explicit, the density is written using the following command in Fortran
+
+::<code> WRITE(IU,FORM) (((C(NX,NY,NZ),NX=1,{{TAGBL|NGXF}}),NY=1,{{TAGBL|NGYF}}),NZ=1,{{TAGBL|NGZF}}) </code>.
+{{NB|important|Remember that the values must be divided by the FFT-grid volume and the cell volume to obtain the partial charge density <math>n(r)</math> in units <math>1/\AA^3</math>.}}
+Hence,
+::<math>n(r)=data(r)/(V_{grid}*V_{cell}),     </math>
+::<math>V_{grid} = N_{GXF}*N_{GYF}*N_{GZF},  </math>
+::<math>V_{cell} = |\mathbf{a}\cdot(\mathbf{b}\times\mathbf{c})| </math>,
+where <math>n(r)</math> is the partial charge density in units 1/Å<math>^3</math>.
+
+=== Spin-polarized calculation===
+In spin-polarized calculations, two data sets are stored in the {{FILE|PARCHG}} file.
+The first set contains the total partial density (spin up + spin down), and the second is the magnetization density (spin up - spin down). Each block is separated by a blank line and a line containing the fine FFT grid dimensions {{TAG|NGXF}} {{TAG|NGYF}} {{TAG|NGZF}}.
+* Structure 
+* FFT-grid dimensions 
+* Partial charge density times FFT-grid volume (spin up + spin down)
+* FFT-grid dimensions 
+* Partial magnetization density (spin up - spin down)
+
+== Related tags and articles ==
+{{TAG|LPARD}},
+{{TAG|LPARDH5}},
+{{TAG|IBAND}},
+{{TAG|EINT}},
+{{TAG|NBMOD}},
+{{TAG|KPUSE}},
+{{TAG|LSEPB}},
+{{TAG|LSEPK}},
+[[Band-decomposed charge densities]]
+----
+[[Category:Files]][[Category:Output files]][[Category:Charge density]]

@@ -1,0 +1,32 @@
+VASP Software GmbH aims to make VASP usable by as many researchers as possible, including those who rely on assistive technology. This statement describes the accessibility characteristics of the VASP software and its documentation.
+
+== The VASP software ==
+
+VASP is a command-line program for ab initio electronic-structure calculations. Its design has the following accessibility characteristics:
+
+* It is operated entirely from the command line and through scripts, and is therefore fully keyboard-operable; no pointing device is required.
+* All input and output is plain text (together with binary data files). Plain-text content is fully compatible with screen readers and refreshable Braille displays.
+* No information is conveyed through colour, sound, or images, and the program presents no graphical user interface.
+* Text output is rendered by the user's own terminal or editor, so the user controls font, size, spacing, and colour and can scale text without loss of information.
+
+Because of this design, VASP can be installed, configured, and run without vision and without the use of a mouse.
+
+== Documentation ==
+
+The VASP manual is provided as a web-based wiki ([https://vasp.at/wiki vasp.at/wiki]), built on MediaWiki, whose standard interface is designed to meet the Web Content Accessibility Guidelines (WCAG) 2 Level AA. Hands-on tutorials are available at [https://vasp.at/tutorials/ vasp.at/tutorials]. Mathematical content is rendered as accessible markup that provides text alternatives and speech output.
+
+== Known limitations ==
+
+Some scientific figures and diagrams in the documentation may not yet have text alternatives, and some custom-styled pages may not fully meet colour-contrast guidelines. If you encounter any difficulty accessing our software or documentation, please contact us (below) and we will do our best to help.
+
+== Support and feedback ==
+
+The primary support channel for VASP is the [https://vasp.at/forum VASP Forum], available to licensed users. We ask that questions be posted there rather than sent privately: answers on the forum build a shared, searchable knowledge base that benefits the whole community.
+
+If a disability prevents you from using the forum, you are welcome to request support instead by email at support@vasp.at, and we will assist you directly. You may also email support@vasp.at at any time if you have questions about the accessibility of VASP, need information in an alternative format, or wish to report an accessibility problem.
+
+== Conformance report ==
+
+A detailed Accessibility Conformance Report — based on the VPAT 2.5 International edition and covering WCAG 2.2, U.S. Section 508, and EN 301 549 — is available on request from support@vasp.at.
+
+''Last reviewed: August 4th 2026''

@@ -1,0 +1,64 @@
+The change in polarization from the displacement of an atom is not uniquely defined in periodic systems, where atoms are repeated in different cells and the charge can be generalized.{{cite|ghosez:michenaud:gonze:1998}} Born effective charges are one way of defining this dynamical charge.
+
+= Introduction = 
+The dynamical charge is defined as the cell volume <span>'''&Omega;'''</span>, multiplied by the partial derivative of the macroscopic polarization '''P''' in the direction ''i'' with respect to a rigid displacement of the sublattice of atoms ''κ'' in the direction ''j''.
+
+However, the polarization is not uniquely defined in periodic systems and depends on the macroscopic electric field <math>\mathcal{E}_i</math> fixed by the periodic boundary conditions. The Born effective charge '''Z*''' is the partial derivative of the polarization with respect to position ''u'' for zero macroscopic electric field.{{cite|gonze:prb:1997}} As polarization is the first derivative of the total energy with respect to the macroscopic electric field, '''Z*''' may be rearranged in terms of the partial derivative of the force '''F''' in direction ''j'' on atom ''κ'' with respect to <math>\mathcal{E}_i</math>:
+
+::<math>
+Z_{\kappa,ij}^*
+=\frac{\Omega}{e} \frac{\partial \mathcal{P}_i} {\partial u_{\kappa,j}(\textbf{q=0})}
+=\frac{1}{e} \frac{\partial F_{\kappa,j}}{\partial \mathcal{E}_i},
+\qquad
+{i,j=x,y,z}
+</math>
+
+{{NB|mind|
+*The '''*''' does not denote a complex conjugate, '''Z*''' is always a real quantity. 
+*'''Z*''' is given in units of <math>\vert e \vert</math> in VASP.
+*VASP outputs <span><b>Z</b></span><sub><i>ij</i></sub><sup><span>&#8902;</span></sup> with ''i'' for the macroscopic electric field, and ''j'' for the direction of the force. In literature, <span><b>Z</b></span><sub><i>ji</i></sub><sup><span>&#8902;</span></sup> is commonly seen, with the force direction ''j'' followed by the electric field direction ''i''. Note, py4vasp follows the latter notation <span><b>Z</b></span><sub><i>ji</i></sub><sup><span>&#8902;</span></sup> for historic reasons.
+}}
+
+= How to calculate = 
+There are two ways of computing Born effective charges in VASP. The first is done using {{TAG|LCALCEPS}}, where a finite electric field is applied along the three cartesian directions and the resultant forces on the atoms are calculated:
+
+ {{TAG|LCALCEPS}} = .TRUE.
+
+The other approach is done using  {{TAG|LEPSILON}}, where the derivative of the wavefunction with respect to an electric field is calculated using [[Electric field response from density-functional-perturbation theory | density functional perturbation theory]] (DFPT):
+
+ {{TAG|LEPSILON}} = .TRUE.
+
+These may be used in combination with {{TAG|IBRION}} to obtain additional dielectric properties:
+
+ {{TAG|IBRION}} = 5 or 6 ! Calculated using finite differences.
+ {{TAG|IBRION}} = 7 or 8 ! Calculated using DFPT
+
+For more details, see the pages for each tag. The Born effective charges including local field effects will be given in the {{TAG|OUTCAR}} file:
+
+ BORN EFFECTIVE CHARGES (including local field effects) (in |e|, cummulative output)
+
+= Excluding local field effects = 
+
+Previously, the local field effects have been included, that is, changes in the orbitals due to the electric field induce changes in the Hartree- and exchange-correlation potentials. This may be limited to changes in the Hartree potential, by specifying:
+
+ {{TAG|LRPA}} = .TRUE.
+ {{TAG|LCALCEPS}} = .TRUE. ! N.B. {{TAG|LEPSILON}} does not output the final Born effective charges.
+
+This prints out the Born effective charges excluding local field effects:
+
+ BORN EFFECTIVE CHARGES (excluding local field effects) (in |e|, cummulative output)
+
+These are calculated normally but remain hidden unless explicitly specified.
+
+== Related tags and articles ==
+
+{{TAG|LEPSILON}},
+{{TAG|LCALCEPS}},
+{{TAG|IBRION}},
+{{TAG|LRPA}},
+{{TAG|Berry phases and finite electric fields}},
+[[Static linear response: theory]]
+
+==References==
+
+[[Category:Dielectric properties]][[Category:Linear response]][[Category:Howto]]

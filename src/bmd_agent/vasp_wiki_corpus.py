@@ -38,7 +38,15 @@ from urllib.parse import parse_qs, urlsplit
 
 MANIFEST_SCHEMA = "bmd_agent.vasp_wiki_corpus"
 RELEASES_SCHEMA = "bmd_agent.vasp_wiki_corpus_releases"
+# Schema version of the release ledger and of the legacy (v1) manifest. The
+# unpopulated anchor manifest is always v1, so the ledger's first entry never
+# changes.
 SCHEMA_VERSION = 1
+# Schema version written for populated corpora. v2 adds each page's upstream
+# categories and the acquisition record (discovery rules, redirects,
+# exclusions, failures and completeness).
+CURRENT_MANIFEST_SCHEMA_VERSION = 2
+MANIFEST_SCHEMA_VERSIONS = (1, 2)
 
 KIND_UNPOPULATED = "unpopulated"
 KIND_AUTHORITATIVE = "authoritative"
@@ -53,12 +61,19 @@ PAGES_DIRECTORY = "pages"
 
 UNPOPULATED_CORPUS_VERSION = "0.0.0"
 
-MAX_PAGES = 64
-MAX_PAGE_BYTES = 262_144
-MAX_TOTAL_PAGE_BYTES = 2_097_152
-MAX_MANIFEST_BYTES = 1_048_576
+# Bounds sized for the complete VASP Wiki main namespace (thousands of pages)
+# with ample headroom; MAX_PAGE_BYTES matches MediaWiki's default maximum
+# article size, so no upstream page is excluded for size alone.
+MAX_PAGES = 20_000
+MAX_PAGE_BYTES = 2_097_152
+MAX_TOTAL_PAGE_BYTES = 268_435_456
+MAX_MANIFEST_BYTES = 67_108_864
+MAX_NOTICE_BYTES = 67_108_864
+MAX_SHA256SUMS_BYTES = 8_388_608
 MAX_AUXILIARY_FILE_BYTES = 131_072
 MAX_URL_LENGTH = 2_048
+MAX_PAGE_CATEGORIES = 500
+MAX_ACQUISITION_ENTRIES = 100_000
 
 LICENSE_REVIEW_PENDING = "pending"
 LICENSE_REVIEW_APPROVED = "approved"
@@ -75,6 +90,34 @@ UNAVAILABLE_INVALID = "invalid"
 UNAVAILABLE_INTEGRITY = "integrity"
 UNAVAILABLE_LICENSE = "license"
 UNAVAILABLE_INTERNAL_ERROR = "internal_error"
+
+# Acquisition record (schema v2).
+ACQUISITION_ALL_PAGES = "mediawiki_allpages"
+ACQUISITION_EXPLICIT_TITLES = "explicit_titles"
+INCLUSION_RULES = "vasp-wiki-main-namespace-1"
+COMPLETENESS_COMPLETE = "complete"
+COMPLETENESS_INCOMPLETE = "incomplete"
+COMPLETENESS_NOT_ASSESSED = "not_assessed"
+# Closed reasons a discovered page is deliberately not preserved.
+EXCLUSION_REASONS = frozenset(
+    {
+        "license_exception",
+        "archival_character_policy",
+        "page_size_limit",
+        "content_model",
+        "revision_unavailable",
+    }
+)
+# Closed reasons a discovered page could not be acquired (makes a discovery
+# incomplete).
+FAILURE_REASONS = frozenset(
+    {
+        "missing_at_retrieval",
+        "integrity_mismatch",
+        "malformed_response",
+        "request_failed",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -97,16 +140,20 @@ class CorpusPolicy:
 # The only policy used when no policy is passed. It accepts GFDL 1.2 VASP Wiki
 # material served from the official VASP hosts only.
 #
-# license_text_sha256 is deliberately unpinned: the verbatim GFDL 1.2 text has
-# not been obtained from its authoritative source and verified yet. It must be
-# pinned, in a reviewed PR, before any populated corpus can load.
+# license_text_sha256 pins the verbatim GFDL 1.2 text as served by the FSF at
+# https://www.gnu.org/licenses/old-licenses/fdl-1.2.txt (fetched 2026-10-20,
+# 20,394 bytes, ASCII). It was checked independently against the copy that
+# Ubuntu's base-files package ships as /usr/share/common-licenses/GFDL-1.2:
+# the two are identical except that the FSF's current file gives the address
+# line as "<https://fsf.org/>" where the packaged copy has the old postal
+# address. Changing the pin needs a reviewed change.
 AUTHORITATIVE_POLICY = CorpusPolicy(
     corpus_kind=KIND_AUTHORITATIVE,
     allowed_hosts=frozenset({"vasp.at", "www.vasp.at"}),
     allowed_license_identifiers=frozenset({"GFDL-1.2-only", "GFDL-1.2-or-later"}),
     required_rights_text_fragment="GNU Free Documentation License 1.2",
     license_text_file="COPYING.GFDL-1.2.txt",
-    license_text_sha256=None,
+    license_text_sha256="2652c22ba086f92e55ae4a9f9c890ad4766ffd7814a73d318e22a597edf857a4",
 )
 
 
@@ -191,6 +238,8 @@ class PreservedPage:
     upstream_sha1: str
     license_review: PageLicenseReview
     _source: Traversable = field(repr=False, compare=False)
+    # Upstream categories at retrieval (schema v2); empty for v1 corpora.
+    categories: tuple[str, ...] = ()
 
     def read_wikitext(self) -> str:
         """Return the verbatim wikitext as inert text.
@@ -210,6 +259,51 @@ class PreservedPage:
 
 
 @dataclass(frozen=True)
+class AcquisitionExclusion:
+    title: str
+    page_id: int | None
+    revision_id: int | None
+    reason: str
+    detail: str
+
+
+@dataclass(frozen=True)
+class AcquisitionFailure:
+    title: str
+    reason: str
+    detail: str
+
+
+@dataclass(frozen=True)
+class AcquisitionRedirect:
+    title: str
+    target: str | None
+
+
+@dataclass(frozen=True)
+class OtherNamespace:
+    namespace: int
+    name: str
+    pages: int
+
+
+@dataclass(frozen=True)
+class CorpusAcquisition:
+    """How the page set was chosen and how complete it is (schema v2)."""
+
+    method: str
+    inclusion_rules: str
+    namespace: int
+    discovered_at: str
+    completeness: str
+    discovered_titles: int
+    redirects: tuple[AcquisitionRedirect, ...]
+    excluded: tuple[AcquisitionExclusion, ...]
+    failed: tuple[AcquisitionFailure, ...]
+    other_namespaces: tuple[OtherNamespace, ...]
+
+
+@dataclass(frozen=True)
 class VaspWikiCorpus:
     corpus_kind: str
     corpus_version: str
@@ -217,6 +311,7 @@ class VaspWikiCorpus:
     upstream: UpstreamSite
     license: CorpusLicense
     pages: tuple[PreservedPage, ...]
+    acquisition: CorpusAcquisition | None = None
 
     def page(self, page_id: str) -> PreservedPage | None:
         return next((page for page in self.pages if page.id == page_id), None)
@@ -286,6 +381,29 @@ def title_slug(title: str) -> str:
 
 def page_id_for_slug(slug: str) -> str:
     return f"vasp.wiki.{slug}"
+
+
+def disambiguated_slug(slug: str, page_id: int) -> str:
+    """Slug for a page whose base slug collides with another preserved page.
+
+    Every page in a colliding group gets its upstream page ID appended, so the
+    identifier depends only on the page itself, never on acquisition order.
+    """
+
+    return f"{slug}_p{page_id}"
+
+
+def assign_page_slugs(pages: Sequence[tuple[str, int]]) -> list[str]:
+    """Deterministic slugs for ``(requested_title, page_id)`` pairs."""
+
+    bases = [title_slug(title) for title, _ in pages]
+    counts: dict[str, int] = {}
+    for base in bases:
+        counts[base] = counts.get(base, 0) + 1
+    return [
+        (disambiguated_slug(base, page_id) if counts[base] > 1 else base) if base else f"p{page_id}"
+        for base, (_, page_id) in zip(bases, pages)
+    ]
 
 
 def content_file_for(slug: str, revision_id: int) -> str:
@@ -385,6 +503,7 @@ def compute_corpus_digest(manifest: Mapping[str, Any]) -> str:
         },
         "pages": [
             {
+                **({"categories": page.get("categories")} if manifest.get("schema_version") == 2 else {}),
                 **{
                     key: page.get(key)
                     for key in (
@@ -412,6 +531,13 @@ def compute_corpus_digest(manifest: Mapping[str, Any]) -> str:
             for page in manifest.get("pages") or ()
         ],
     }
+    if manifest.get("schema_version") == 2:
+        acquisition = manifest.get("acquisition")
+        view["acquisition"] = (
+            None
+            if not isinstance(acquisition, Mapping)
+            else {key: value for key, value in acquisition.items() if key != "discovered_at"}
+        )
     encoded = json.dumps(
         view,
         sort_keys=True,
@@ -490,6 +616,25 @@ def render_notice(manifest: Mapping[str, Any]) -> bytes:
             "Pages:",
         ]
     )
+    acquisition = manifest.get("acquisition") if manifest.get("schema_version") == 2 else None
+    if acquisition is not None:
+        lines[-1:] = [
+            "Acquisition:",
+            f"  method: {acquisition['method']}",
+            f"  inclusion rules: {acquisition['inclusion_rules']} (namespace {acquisition['namespace']})",
+            f"  discovered: {acquisition['discovered_at']}",
+            f"  completeness: {acquisition['completeness']}",
+            f"  titles discovered: {acquisition['discovered_titles']}",
+            f"  pages preserved: {len(manifest['pages'])}",
+            f"  pages excluded: {len(acquisition['excluded'])}",
+            f"  pages failed: {len(acquisition['failed'])}",
+            f"  redirects recorded (not preserved as pages): {len(acquisition['redirects'])}",
+        ]
+        for item in acquisition["excluded"]:
+            lines.append(f"  excluded: {item['title']} ({item['reason']}): {item['detail']}")
+        for item in acquisition["failed"]:
+            lines.append(f"  failed: {item['title']} ({item['reason']}): {item['detail']}")
+        lines.extend(["", "Pages:"])
     for page in manifest["pages"]:
         lines.extend(
             [
@@ -613,6 +758,26 @@ _PAGE_KEYS = frozenset(
     }
 )
 _PAGE_REVIEW_KEYS = frozenset({"status", "reviewer", "reviewed_on", "notes"})
+_MANIFEST_KEYS_V2 = _MANIFEST_KEYS | {"acquisition"}
+_PAGE_KEYS_V2 = _PAGE_KEYS | {"categories"}
+_ACQUISITION_KEYS = frozenset(
+    {
+        "method",
+        "inclusion_rules",
+        "namespace",
+        "discovered_at",
+        "completeness",
+        "discovered_titles",
+        "redirects",
+        "excluded",
+        "failed",
+        "other_namespaces",
+    }
+)
+_REDIRECT_KEYS = frozenset({"title", "target"})
+_EXCLUSION_KEYS = frozenset({"title", "page_id", "revision_id", "reason", "detail"})
+_FAILURE_KEYS = frozenset({"title", "reason", "detail"})
+_OTHER_NAMESPACE_KEYS = frozenset({"namespace", "name", "pages"})
 
 
 def validate_manifest(
@@ -627,11 +792,14 @@ def validate_manifest(
     allowed; everything else is still enforced.
     """
 
-    record = _object(manifest, _MANIFEST_KEYS, "manifest")
+    if not isinstance(manifest, dict):
+        raise CorpusError(UNAVAILABLE_INVALID, "manifest must be an object")
+    schema_version = manifest.get("schema_version")
+    if type(schema_version) is not int or schema_version not in MANIFEST_SCHEMA_VERSIONS:
+        raise CorpusError(UNAVAILABLE_INVALID, "manifest schema_version is not supported")
+    record = _object(manifest, _MANIFEST_KEYS_V2 if schema_version == 2 else _MANIFEST_KEYS, "manifest")
     if record["schema"] != MANIFEST_SCHEMA:
         raise CorpusError(UNAVAILABLE_INVALID, "manifest schema is not supported")
-    if _int(record["schema_version"], "manifest schema_version") != SCHEMA_VERSION:
-        raise CorpusError(UNAVAILABLE_INVALID, "manifest schema_version is not supported")
     kind = record["corpus_kind"]
     if kind not in (KIND_UNPOPULATED, KIND_AUTHORITATIVE, KIND_SYNTHETIC_FIXTURE):
         raise CorpusError(UNAVAILABLE_INVALID, "manifest corpus_kind is not recognized")
@@ -645,6 +813,8 @@ def validate_manifest(
         raise CorpusError(UNAVAILABLE_INVALID, "manifest pages must be a list")
 
     if kind == KIND_UNPOPULATED:
+        if schema_version != SCHEMA_VERSION:
+            raise CorpusError(UNAVAILABLE_INVALID, "an unpopulated corpus uses manifest schema_version 1")
         if version != UNPOPULATED_CORPUS_VERSION:
             raise CorpusError(UNAVAILABLE_INVALID, "an unpopulated corpus must be version 0.0.0")
         if record["assembly"] is not None or record["upstream"] is not None or record["license"] is not None:
@@ -675,7 +845,7 @@ def validate_manifest(
     }
     ids: list[str] = []
     for index, page in enumerate(pages):
-        _validate_page(page, index, upstream, policy, require_reviewed=require_reviewed)
+        _validate_page(page, index, upstream, policy, require_reviewed=require_reviewed, schema_version=schema_version)
         for key, values in seen.items():
             if page[key] in values:
                 raise CorpusError(UNAVAILABLE_INVALID, f"pages contain a duplicate {key}")
@@ -683,6 +853,12 @@ def validate_manifest(
         ids.append(page["id"])
     if ids != sorted(ids):
         raise CorpusError(UNAVAILABLE_INVALID, "pages must be sorted by id")
+    expected_slugs = assign_page_slugs([(page["requested_title"], page["page_id"]) for page in pages])
+    for page, slug in zip(pages, expected_slugs):
+        if page["id"] != page_id_for_slug(slug):
+            raise CorpusError(UNAVAILABLE_INVALID, "page id does not follow the deterministic identifier rule")
+    if schema_version == 2:
+        _validate_acquisition(record["acquisition"], pages)
     total = sum(page["content_bytes"] for page in pages)
     if total > MAX_TOTAL_PAGE_BYTES:
         raise CorpusError(UNAVAILABLE_INVALID, "corpus pages exceed the total size limit")
@@ -763,17 +939,31 @@ def _validate_page(
     policy: CorpusPolicy,
     *,
     require_reviewed: bool,
+    schema_version: int = SCHEMA_VERSION,
 ) -> None:
     label = f"page {index}"
-    page = _object(value, _PAGE_KEYS, label)
-    page_id = _string(page["id"], f"{label} id", max_length=100)
+    page = _object(value, _PAGE_KEYS_V2 if schema_version == 2 else _PAGE_KEYS, label)
+    page_id = _string(page["id"], f"{label} id", max_length=120)
     id_match = _PAGE_ID_RE.fullmatch(page_id)
     if id_match is None:
         raise CorpusError(UNAVAILABLE_INVALID, f"{label} id is malformed")
     slug = id_match.group(1)
     requested = _text(page["requested_title"], f"{label} requested_title", max_length=255)
-    if title_slug(requested) != slug:
+    base = title_slug(requested)
+    upstream_id = page.get("page_id")
+    if not (
+        (base and slug == base)
+        or (type(upstream_id) is int and slug == (disambiguated_slug(base, upstream_id) if base else f"p{upstream_id}"))
+    ):
         raise CorpusError(UNAVAILABLE_INVALID, f"{label} id does not derive from requested_title")
+    if schema_version == 2:
+        categories = page["categories"]
+        if not isinstance(categories, list) or len(categories) > MAX_PAGE_CATEGORIES:
+            raise CorpusError(UNAVAILABLE_INVALID, f"{label} categories must be a bounded list")
+        for category in categories:
+            _text(category, f"{label} category", max_length=255)
+        if categories != sorted(set(categories)):
+            raise CorpusError(UNAVAILABLE_INVALID, f"{label} categories must be sorted and unique")
     _text(page["title"], f"{label} title", max_length=255)
     if page["redirected_from"] is not None:
         _text(page["redirected_from"], f"{label} redirected_from", max_length=255)
@@ -829,6 +1019,90 @@ def _validate_page(
             UNAVAILABLE_LICENSE,
             f"{label} is not reviewed as free of license exceptions",
         )
+
+
+def _validate_acquisition(value: Any, pages: Sequence[Mapping[str, Any]]) -> None:
+    """Validate the acquisition record and its consistency with the pages.
+
+    A discovery-based corpus is labelled ``complete`` exactly when every
+    discovered title is either preserved or deliberately excluded for a
+    recorded reason; any failure forces ``incomplete``.
+    """
+
+    acquisition = _object(value, _ACQUISITION_KEYS, "acquisition")
+    method = acquisition["method"]
+    if method not in (ACQUISITION_ALL_PAGES, ACQUISITION_EXPLICIT_TITLES):
+        raise CorpusError(UNAVAILABLE_INVALID, "acquisition method is not recognized")
+    if acquisition["inclusion_rules"] != INCLUSION_RULES:
+        raise CorpusError(UNAVAILABLE_INVALID, "acquisition inclusion rules are not recognized")
+    if _int(acquisition["namespace"], "acquisition namespace") != 0:
+        raise CorpusError(UNAVAILABLE_INVALID, "acquisition namespace must be the main namespace")
+    _timestamp(acquisition["discovered_at"], "acquisition discovered_at")
+    discovered = _int(acquisition["discovered_titles"], "acquisition discovered_titles")
+
+    def entries(key: str, keys: frozenset[str]) -> list[Mapping[str, Any]]:
+        items = acquisition[key]
+        if not isinstance(items, list) or len(items) > MAX_ACQUISITION_ENTRIES:
+            raise CorpusError(UNAVAILABLE_INVALID, f"acquisition {key} must be a bounded list")
+        return [_object(item, keys, f"acquisition {key} entry") for item in items]
+
+    redirects = entries("redirects", _REDIRECT_KEYS)
+    for item in redirects:
+        _text(item["title"], "redirect title", max_length=255)
+        if item["target"] is not None:
+            _text(item["target"], "redirect target", max_length=255)
+    excluded = entries("excluded", _EXCLUSION_KEYS)
+    for item in excluded:
+        _text(item["title"], "excluded title", max_length=255)
+        for key in ("page_id", "revision_id"):
+            if item[key] is not None:
+                _positive_int(item[key], f"excluded {key}")
+        if item["reason"] not in EXCLUSION_REASONS:
+            raise CorpusError(UNAVAILABLE_INVALID, "exclusion reason is not recognized")
+        _text(item["detail"], "exclusion detail", max_length=500)
+    failed = entries("failed", _FAILURE_KEYS)
+    for item in failed:
+        _text(item["title"], "failed title", max_length=255)
+        if item["reason"] not in FAILURE_REASONS:
+            raise CorpusError(UNAVAILABLE_INVALID, "failure reason is not recognized")
+        _text(item["detail"], "failure detail", max_length=500)
+    others = entries("other_namespaces", _OTHER_NAMESPACE_KEYS)
+    for item in others:
+        if _int(item["namespace"], "other namespace") == 0:
+            raise CorpusError(UNAVAILABLE_INVALID, "other_namespaces must not list the main namespace")
+        _text(item["name"], "other namespace name", max_length=100)
+        if _int(item["pages"], "other namespace pages") < 0:
+            raise CorpusError(UNAVAILABLE_INVALID, "other namespace page count must not be negative")
+
+    for key, items, sort_key in (
+        ("redirects", redirects, "title"),
+        ("excluded", excluded, "title"),
+        ("failed", failed, "title"),
+        ("other_namespaces", others, "namespace"),
+    ):
+        order = [item[sort_key] for item in items]
+        if order != sorted(set(order)):
+            raise CorpusError(UNAVAILABLE_INVALID, f"acquisition {key} must be sorted and unique")
+
+    preserved = {page["title"] for page in pages}
+    excluded_titles = {item["title"] for item in excluded}
+    failed_titles = {item["title"] for item in failed}
+    redirect_titles = {item["title"] for item in redirects}
+    if preserved & excluded_titles or preserved & failed_titles or excluded_titles & failed_titles:
+        raise CorpusError(UNAVAILABLE_INVALID, "a title is recorded in more than one acquisition outcome")
+    if redirect_titles & (preserved | excluded_titles | failed_titles):
+        raise CorpusError(UNAVAILABLE_INVALID, "a redirect title is also recorded as a page")
+
+    completeness = acquisition["completeness"]
+    if method == ACQUISITION_EXPLICIT_TITLES:
+        if completeness != COMPLETENESS_NOT_ASSESSED:
+            raise CorpusError(UNAVAILABLE_INVALID, "an explicit title list cannot claim completeness")
+        return
+    if discovered != len(pages) + len(excluded) + len(failed):
+        raise CorpusError(UNAVAILABLE_INVALID, "acquisition outcomes do not account for every discovered title")
+    expected = COMPLETENESS_INCOMPLETE if failed else COMPLETENESS_COMPLETE
+    if completeness != expected:
+        raise CorpusError(UNAVAILABLE_INVALID, f"acquisition completeness must be {expected}")
 
 
 def _optional_reviewer(reviewer: Any, reviewed_on: Any, label: str) -> None:
@@ -1097,6 +1371,7 @@ def _load(root: Traversable, policy: CorpusPolicy) -> VaspWikiCorpus | CorpusUna
                     notes=review["notes"],
                 ),
                 _source=source,
+                categories=tuple(page.get("categories", ())),
             )
         )
 
@@ -1119,6 +1394,29 @@ def _load(root: Traversable, policy: CorpusPolicy) -> VaspWikiCorpus | CorpusUna
             reviewed_on=review["reviewed_on"],
         ),
         pages=tuple(pages),
+        acquisition=_loaded_acquisition(manifest.get("acquisition")),
+    )
+
+
+def _loaded_acquisition(value: Any) -> CorpusAcquisition | None:
+    if value is None:
+        return None
+    return CorpusAcquisition(
+        method=value["method"],
+        inclusion_rules=value["inclusion_rules"],
+        namespace=value["namespace"],
+        discovered_at=value["discovered_at"],
+        completeness=value["completeness"],
+        discovered_titles=value["discovered_titles"],
+        redirects=tuple(AcquisitionRedirect(item["title"], item["target"]) for item in value["redirects"]),
+        excluded=tuple(
+            AcquisitionExclusion(item["title"], item["page_id"], item["revision_id"], item["reason"], item["detail"])
+            for item in value["excluded"]
+        ),
+        failed=tuple(AcquisitionFailure(item["title"], item["reason"], item["detail"]) for item in value["failed"]),
+        other_namespaces=tuple(
+            OtherNamespace(item["namespace"], item["name"], item["pages"]) for item in value["other_namespaces"]
+        ),
     )
 
 
@@ -1128,7 +1426,7 @@ def _verify_sha256sums(root: Traversable) -> dict[str, bytes]:
     sums_node = root.joinpath(SHA256SUMS_FILE)
     if not sums_node.is_file():
         raise CorpusError(UNAVAILABLE_INTEGRITY, "SHA256SUMS is missing")
-    sums = _read_bounded(sums_node, MAX_AUXILIARY_FILE_BYTES, SHA256SUMS_FILE)
+    sums = _read_bounded(sums_node, MAX_SHA256SUMS_BYTES, SHA256SUMS_FILE)
     try:
         text = sums.decode("ascii")
     except UnicodeDecodeError as exc:
@@ -1154,9 +1452,14 @@ def _verify_sha256sums(root: Traversable) -> dict[str, bytes]:
 
     contents: dict[str, bytes] = {}
     for path, digest in expected.items():
-        limit = MAX_PAGE_BYTES if path.startswith(PAGES_DIRECTORY + "/") else (
-            MAX_MANIFEST_BYTES if path == MANIFEST_FILE else MAX_AUXILIARY_FILE_BYTES
-        )
+        if path.startswith(PAGES_DIRECTORY + "/"):
+            limit = MAX_PAGE_BYTES
+        elif path == MANIFEST_FILE:
+            limit = MAX_MANIFEST_BYTES
+        elif path == NOTICE_FILE:
+            limit = MAX_NOTICE_BYTES
+        else:
+            limit = MAX_AUXILIARY_FILE_BYTES
         node = _node_for(root, path)
         data = _read_bounded(node, limit, path)
         if sha256_hex(data) != digest:

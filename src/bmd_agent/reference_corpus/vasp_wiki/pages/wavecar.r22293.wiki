@@ -1,0 +1,20 @@
+The WAVECAR file is a binary file containing the following data:
+
+      NBAND       number of bands
+      ENCUTI      'initial' cut-off energy
+      AX          'initial' basis vectors defining the supercell
+      CELEN       ('initial') eigenvalues
+      FERWE       ('initial') Fermi-weights
+      CPTWFP      ('initial') wavefunctions
+
+Usually {{FILE|WAVECAR}} provides excellent starting wavefunctions for a continuation job. For dynamic simulation ({{TAG|IBRION}}=0) the wavefunctions in the file are usually those predicted for the next step: i.e. the file is compatible with {{FILE|CONTCAR}}. The {{FILE|WAVECAR}}, {{FILE|CHGCAR}} and the {{FILE|CONTCAR}} file can be used consistently for a molecular dynamics continuation job. For static calculations and relaxations ({{TAG|IBRION}}=-1,1,2) the written wavefunctions are the solution of the KS-equations for the last step. It is possible to avoid, that the {{FILE|WAVECAR}} is written out by setting
+
+ LWAVE  =  .FALSE.
+
+in the {{FILE|INCAR}} file.
+
+Mind: For dynamic simulations ({{TAG|IBRION}}=0) the {{FILE|WAVECAR}} file contains predicted wavefunctions compatible with {{FILE|CONTCAR}}. If you want to use the wavefunctions for additional calculations, first copy {{FILE|CONTCAR}} to {{FILE|POSCAR}} and make another static ({{TAG|ISTART}}=1; {{TAG|NSW}}=0) continuation run with {{TAG|ICHARG}}=1.
+
+----
+
+[[Category:Files]][[Category:Input files]][[Category:Output files]]

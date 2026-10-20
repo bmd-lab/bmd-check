@@ -1,0 +1,88 @@
+{{Template:Magnetism}}
+
+== Task ==
+
+Calculation of NiO, an antiferromagnet.
+
+== Input ==
+
+=== {{TAG|POSCAR}} ===
+<pre>
+AFM  NiO
+ 4.17
+ 1.0 0.5 0.5
+ 0.5 1.0 0.5
+ 0.5 0.5 1.0
+ 2 2
+Cartesian
+ 0.0 0.0 0.0
+ 1.0 1.0 1.0
+ 0.5 0.5 0.5
+ 1.5 1.5 1.5
+</pre>
+
+*AFM coupling: 4 atoms in the basis (instead of 2).
+
+=== {{TAG|INCAR}} ===
+
+ {{TAGBL|SYSTEM}} = NiO    
+  
+ {{TAGBL|ISTART}} = 0
+  
+ {{TAGBL|ISPIN}} = 2
+ {{TAGBL|MAGMOM}} = 2.0 -2.0 2*0 
+      
+ {{TAGBL|ENMAX}} = 250.0
+ {{TAGBL|EDIFF}} = 1E-3
+     
+ {{TAGBL|ISMEAR}} = -5
+     
+ {{TAGBL|AMIX}} = 0.2
+ {{TAGBL|BMIX}} = 0.00001
+ {{TAGBL|AMIX_MAG}} = 0.8
+ {{TAGBL|BMIX_MAG}} = 0.00001
+     
+ {{TAGBL|LORBIT}} = 11
+
+*Initial magnetic moments of 2μB (Ni) and 0μB (O).
+*{{TAG|AMIX}}=0.2 and {{TAG|AMIX_MAG}}=0.8 (default), {{TAG|BMIX}} and {{TAG|BMIX_MAG}} practically zero, i.e. linear mixing.
+
+=== {{TAG|KPOINTS}} ===
+<pre>
+k-points
+ 0
+gamma
+ 4  4  4 
+ 0  0  0
+</pre>
+
+== Calculation ==
+
+*The total magnetic moment should be 0 in the {{TAG|OSZICAR}} file:
+
+ DAV:  13    -0.267936242334E+02    0.12794E-03   -0.12638E-04   552   0.298E-01    0.169E-02
+ DAV:  14    -0.267936352231E+02   -0.10990E-04   -0.21775E-05   520   0.107E-01
+    1 F= -.26793635E+02 E0= -.26793635E+02  d E =0.000000E+00  mag=     0.0000
+
+*The partial and integrated magnetic moments within the PAW spheres are given in the {{TAG|OUTCAR}} file:
+
+  magnetization (x)
+   
+ # of ion     s       p       d       tot
+ ----------------------------------------
+   1       -0.012  -0.014   1.245   1.219
+   2        0.012   0.014  -1.242  -1.216
+   3        0.000  -0.001   0.000  -0.001
+   4        0.000  -0.001   0.000  -0.001
+ -----------------------------------------------
+ tot        0.000  -0.003   0.003   0.000
+
+*The example total DOS and the partial l-decomposed DOS for the d orbitals of Ni should look like the following:
+[[File:Fig NiO 1.png|1000px]]
+
+== Download ==
+[[Media:4 2 NiO.tgz| 4_2_NiO.tgz]]
+ 
+{{Template:Magnetism}}
+
+[[Category:Examples]]

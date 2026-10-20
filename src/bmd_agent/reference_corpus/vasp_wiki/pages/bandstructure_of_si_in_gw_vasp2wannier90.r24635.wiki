@@ -1,0 +1,231 @@
+{{Template:GW - Tutorial}}
+
+== Task ==
+
+Calculation of the bandstructure of Si in GW using the VASP2WANNIER90 interface.
+
+----
+'''Mind''': The procedure to compute bandstructure in GW using V2W is almost identical to the corresponding HSE one 
+described in [[Si_bandstructure|Si bandstructure]].
+
+'''Mind''': The standard procedure for GW calculations is described in 
+[[Bandgap of Si in GW|Bandgap of Si in GW]].
+----
+
+== Step 1: a DFT groundstate calculation ==
+Everything starts with a standard DFT groundstate calculation (in this case PBE).
+
+*{{TAG|INCAR}}
+
+ {{TAGBL|ISMEAR}} =  0
+ {{TAGBL|SIGMA}}  =  0.05
+ {{TAGBL|GGA}}    = PE
+
+
+*{{TAG|KPOINTS}}
+<pre>
+4x4x4
+ 0
+G
+ 4 4 4
+ 0 0 0
+</pre>
+
+*{{TAG|POSCAR}}
+<pre>
+system Si
+5.430
+0.5 0.5 0.0
+0.0 0.5 0.5
+0.5 0.0 0.5
+2
+cart
+0.00 0.00 0.00
+0.25 0.25 0.25
+</pre>
+
+== Step 2: obtain DFT virtual orbitals ==
+To obtain a {{FILE|WAVECAR}} file with a reasonable number of virtual orbitals (50-100 per atom)
+we need to restart from the previous groundstate calculation with {{TAG|ALGO}}=Exact, and manually set the
+number of bands by means of the {{TAG|NBANDS}}-tag.
+To obtain the corresponding {{FILE|WAVEDER}} file we additionally specify {{TAG|LOPTICS}}=.TRUE.
+
+*{{TAG|INCAR}}
+
+ {{TAGBL|ALGO}} = Exact
+ {{TAGBL|NBANDS}}  = 64
+ {{TAGBL|LOPTICS}} = .TRUE.
+ {{TAGBL|NEDOS}} = 2000
+     
+ {{TAGBL|ISMEAR}} =  0
+ {{TAGBL|SIGMA}}  =  0.05
+ {{TAGBL|GGA}}    = PE
+
+== Step 3: GW calculation including LWANNIER90 TAG==
+Restart from the {{FILE|WAVECAR}} and {{FILE|WAVEDER}} files of the previous calculation, with
+
+*{{TAG|INCAR}}
+
+ ## Frequency dependent dielectric tensor including
+ ## local field effects within the RPA (default) or
+ ## including changes in the DFT xc-potential ({{TAGBL|LRPA}}=.FALSE.).
+ ## N.B.: beware one first has to have done a
+ ## calculation with {{TAGBL|ALGO}}=Exact and {{TAGBL|LOPTICS}}=.TRUE.
+ ## and a reasonable number of virtual states (see above)
+ {{TAGBL|ALGO}} = GW0 ; {{TAGBL|LSPECTRAL}} = .TRUE. ; {{TAGBL|NOMEGA}} = 50
+ #{{TAGBL|LRPA}} = .FALSE. 
+ ## be sure to take the same number of bands as for
+ ## the {{TAGBL|LOPTICS}}=.TRUE. calculation, otherwise the
+ ## {{TAGBL|WAVEDER}} file is not read correctly
+ {{TAGBL|NBANDS}} = 64
+ ##VASP2WANNIER90
+ {{TAGBL|LWANNIER90}}=.TRUE.
+
+Use the wannier90.win file given below which contains all instructions needed to generate the
+necessary input files for the WANNIER90 runs (wannier90.amn, wannier90.mmn, wannier90.eig). 
+
+*wannier90.win
+<pre>
+num_wann=8
+num_bands=8
+
+exclude_bands = 9-64
+
+Begin Projections
+Si:sp3
+End Projections
+
+dis_froz_max=9
+dis_num_iter=1000
+
+guiding_centres=true
+
+# Bandstructure plot 
+#restart         =  plot
+#bands_plot      =  true
+#begin kpoint_path
+#L 0.50000  0.50000 0.5000 G 0.00000  0.00000 0.0000
+#G 0.00000  0.00000 0.0000 X 0.50000  0.00000 0.5000
+#X 0.50000  0.00000 0.5000 K 0.37500 -0.37500 0.0000
+#K 0.37500 -0.37500 0.0000 G 0.00000  0.00000 0.0000
+#end kpoint_path
+#bands_num_points 40
+#bands_plot_format gnuplot xmgrace
+
+begin unit_cell_cart
+     2.7150000     2.7150000     0.0000000
+     0.0000000     2.7150000     2.7150000
+     2.7150000     0.0000000     2.7150000
+end unit_cell_cart
+
+begin atoms_cart
+Si       0.0000000     0.0000000     0.0000000
+Si       1.3575000     1.3575000     1.3575000
+end atoms_cart
+
+mp_grid =     4     4     4
+
+begin kpoints
+     0.0000000     0.0000000     0.0000000
+     0.2500000     0.0000000     0.0000000
+     0.5000000     0.0000000     0.0000000
+     0.2500000     0.2500000     0.0000000
+     0.5000000     0.2500000     0.0000000
+    -0.2500000     0.2500000     0.0000000
+     0.5000000     0.5000000     0.0000000
+    -0.2500000     0.5000000     0.2500000
+     0.0000000     0.2500000     0.0000000
+     0.0000000     0.0000000     0.2500000
+    -0.2500000    -0.2500000    -0.2500000
+    -0.2500000     0.0000000     0.0000000
+     0.0000000    -0.2500000     0.0000000
+     0.0000000     0.0000000    -0.2500000
+     0.2500000     0.2500000     0.2500000
+     0.0000000     0.5000000     0.0000000
+     0.0000000     0.0000000     0.5000000
+    -0.5000000    -0.5000000    -0.5000000
+     0.0000000     0.2500000     0.2500000
+     0.2500000     0.0000000     0.2500000
+    -0.2500000    -0.2500000     0.0000000
+    -0.2500000     0.0000000    -0.2500000
+     0.0000000    -0.2500000    -0.2500000
+     0.0000000     0.5000000     0.2500000
+     0.2500000     0.0000000     0.5000000
+    -0.2500000    -0.2500000     0.2500000
+    -0.5000000    -0.2500000    -0.5000000
+     0.2500000     0.5000000     0.0000000
+     0.2500000    -0.2500000    -0.2500000
+    -0.5000000    -0.5000000    -0.2500000
+     0.0000000     0.2500000     0.5000000
+    -0.2500000     0.2500000    -0.2500000
+    -0.2500000    -0.5000000    -0.5000000
+     0.5000000     0.0000000     0.2500000
+    -0.5000000    -0.2500000     0.0000000
+     0.0000000    -0.5000000    -0.2500000
+    -0.2500000     0.0000000    -0.5000000
+     0.2500000     0.2500000    -0.2500000
+     0.5000000     0.2500000     0.5000000
+    -0.2500000    -0.5000000     0.0000000
+    -0.2500000     0.2500000     0.2500000
+     0.5000000     0.5000000     0.2500000
+     0.0000000    -0.2500000    -0.5000000
+     0.2500000    -0.2500000     0.2500000
+     0.2500000     0.5000000     0.5000000
+    -0.5000000     0.0000000    -0.2500000
+     0.0000000    -0.2500000     0.2500000
+     0.2500000     0.0000000    -0.2500000
+    -0.2500000    -0.2500000    -0.5000000
+     0.2500000     0.5000000     0.2500000
+     0.2500000    -0.2500000     0.0000000
+    -0.5000000    -0.2500000    -0.2500000
+     0.2500000     0.2500000     0.5000000
+     0.0000000     0.2500000    -0.2500000
+    -0.2500000    -0.5000000    -0.2500000
+     0.5000000     0.2500000     0.2500000
+    -0.2500000     0.0000000     0.2500000
+     0.0000000     0.5000000     0.5000000
+     0.5000000     0.0000000     0.5000000
+     0.2500000    -0.2500000     0.5000000
+     0.5000000     0.2500000    -0.2500000
+    -0.5000000    -0.2500000    -0.7500000
+     0.2500000    -0.5000000    -0.2500000
+    -0.2500000     0.2500000    -0.5000000
+end kpoints
+</pre>
+
+== Step 4: WANNIER90==
+
+=== Compute Wannier functions ===
+
+run wannier90: 
+
+wannier90.x wannier90
+
+This run generates the wannier90 standard output (wannier90.wout)
+and the file wannier90.chk needed for the wannier interpolation (next step) 
+ 
+=== Obtain bandstructure (Wannier interpolation) ===
+
+Uncomment the bandstructure plot flags in wannier90.win and rerun (restart) wannier90:
+
+wannier90.x wannier90
+
+This run generates the following bandstructure files which can be visualized using xmgrace or gnuplot:
+
+wannier90_band.agr
+
+wannier90_band.dat
+
+wannier90_band.gnu
+
+to plot the band structure using gnuplot:
+<code>gnuplot -persist wannier90_band.gnu</code>
+
+== Download ==
+[[Media:Si bandstructure GW.tgz| Si_bandstructure_GW.tgz]]
+
+{{Template:GW - Tutorial}}
+
+Back to the [[The_VASP_Manual|main page]].
+
+[[Category:Examples]]

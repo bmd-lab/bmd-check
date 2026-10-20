@@ -1,0 +1,33 @@
+In metadynamics,{{cite|laio:pnas:02}}{{cite|iannuzzi:prl:03}} the bias potential
+that acts on a selected number of geometric parameters (collective variables) &xi;={&xi;<sub>1</sub>, &xi;<sub>2</sub>, ...,&xi;<sub>''m''</sub>} is constructed on-the-fly during the simulation. The Hamiltonian for the metadynamics <math>\tilde{H}(q,p)</math> can be written as:
+:<math>
+\tilde{H}(q,p,t) = H(q,p) + \tilde{V}(t,\xi),
+</math>
+where <math>H(q,p)</math> is the Hamiltonian for the original (unbiased) system, and <math>\tilde{V}(t,\xi)</math> is the time-dependent bias potential. The latter term is usually defined as a sum of Gaussian hills with height ''h'' and width ''w'':
+:<math>
+\tilde{V}(t,\xi) = h \sum_{i=1}^{\lfloor t/t_G \rfloor} \exp{\left\{ -\frac{|\xi^{(t)}-\xi^{(i \cdot t_G)}|^2}{2
+w^2} \right\}}.
+</math>
+In practice, <math>\tilde{V}(t,\xi)</math> is updated by adding a new Gaussian with a time increment ''t''<sub>G</sub>, which is typically one or two orders of magnitude greater than the time step used in the MD simulation.
+
+In the limit of infinite simulation time, the bias potential is related to the free energy via:
+:<math>
+A(\xi) = - \lim_{t \to \infty} \tilde{V}(t,\xi) + const.
+</math>
+Practical hints as how to adjust the parameters used in metadynamics (''h'', ''w'', ''t''<sub>G</sub>) are given in Refs.{{cite|ensing:jpc:05}} and {{cite|laio:jpc:05}}.
+
+The error estimation in free-energy calculations with metadynamics is discussed in Ref.{{cite|laio:jpc:05}}.
+
+== Related tags and articles ==
+{{FILE|ICONST}}, {{TAG|HILLS_H}}, {{TAG|HILLS_W}}, {{TAG|HILLS_BIN}}, {{FILE|PENALTYPOT}}, {{FILE|HILLSPOT}}, {{FILE|REPORT}}
+
+[[Metadynamics calculations]],
+[[Using metadynamics to train a machine-learned force field]]
+
+== References ==
+<references/>
+
+<noinclude>
+----
+
+[[Category:Advanced molecular-dynamics sampling]][[Category:Theory]]

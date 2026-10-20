@@ -1,0 +1,12 @@
+== Task ==
+
+In this example you will determine the transition state in the flipping of NH<sub>3</sub> by means of the Nudged-Elastic-Band (NEB) Method and the Improved Dimer Method.
+
+== Download ==
+[[Media:Tutorial_ammonia_flipping.pdf| Ammonia Flipping]]: A  guide to this example.
+
+[[Media:Ammonia_flipping.tgz| ammonia_flipping.tgz]]
+
+Back to the [[The_VASP_Manual|main page]].
+
+[[Category:Examples]]

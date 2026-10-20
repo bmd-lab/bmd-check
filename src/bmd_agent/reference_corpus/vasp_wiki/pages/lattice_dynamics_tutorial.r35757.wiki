@@ -1,0 +1,10 @@
+{{Template:Lattice Dynamics - Tutorial}}
+
+This tutorial requires VASP 6.0 or higher.
+
+The tutorial is made of the following parts:
+<div style="background:var(--vdefault-bg); border:solid 1px var(--vlines); padding:0.5em 1em; margin-right:14em;">
+# [[ Band gap renormalization in diamond using one-shot method| Band gap renormalization in diamond using one-shot method]]
+</div>
+
+[[Category:Tutorials]]

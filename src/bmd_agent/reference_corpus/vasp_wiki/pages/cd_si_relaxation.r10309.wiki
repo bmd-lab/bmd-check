@@ -1,0 +1,68 @@
+{{Template:Bulk_systems - Tutorial}}
+
+== Task ==
+
+Relaxation of the internal coordinates of a perturbed cd Si structure.
+
+== Input ==
+
+=== {{TAG|POSCAR}} ===
+ cubic diamond
+    5.5
+  0.0    0.5     0.5
+  0.5    0.0     0.5
+  0.5    0.5     0.0
+   2
+ Direct
+  -0.125 -0.125 -0.125
+   0.125  0.125  0.130
+
+*Break of symmetry in standard diamond structure: change z position from 0.125 to 0.130.
+
+=== {{TAG|INCAR}} ===
+ {{TAGBL|System}} = diamond Si
+ {{TAGBL|ISTART}} = 0 ; {{TAGBL|ICHARG}}=2
+ {{TAGBL|ENCUT}}  =    240
+ {{TAGBL|ISMEAR}} = 0; {{TAGBL|SIGMA}} = 0.1;
+ {{TAGBL|NSW}}    =  10; {{TAGBL|IBRION}} =  2
+ {{TAGBL|ISIF}}   =  2
+ {{TAGBL|EDIFFG}} = -0.0001
+
+*10 relaxation steps ({{TAG|NSW}}=10).
+*Conjugate-gradient algorithm ({{TAG|IBRION}}=2).
+*Relaxation only of internal parameters ({{TAG|ISIF}}=2).
+
+=== {{TAG|KPOINTS}} ===
+ k-points
+  0
+ Monkhorst Pack
+  11 11 11
+  0  0  0
+
+== Calculation ==
+
+*Example output after 10 relaxation steps:
+ POSITION                                       TOTAL-FORCE (eV/Angst)
+ -----------------------------------------------------------------------------------
+      4.81253      4.81253      4.81250        -0.000724     -0.000724     -0.000031
+      0.68747      0.68747      0.68750         0.000724      0.000724      0.000031
+ -----------------------------------------------------------------------------------
+    total drift:                                0.000000      0.000000      0.000000
+
+*Files to watch during relaxations:
+**stdout (terminal): each electronic step is written to the terminal:
+**{{TAG|OSZICAR}}: a copy of the terminal output.
+**{{TAG|OUTCAR}}: more detailed information on every electronic and ionic step.
+
+*Other important files:
+**{{TAG|CONTCAR}}: holds the structure of the last ionic step and at the end the structural result (also very important for restarting a relaxation).
+**{{TAG|STOPCAR}}: stops a relaxation.
+
+== Download ==
+[[Media:DiamondSirel.tgz| diamondSirel.tgz]]
+ 
+{{Template:Bulk_systems}}
+
+Back to the [[The_VASP_Manual|main page]].
+
+[[Category:Examples]]

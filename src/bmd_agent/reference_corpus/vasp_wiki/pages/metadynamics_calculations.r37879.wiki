@@ -1,0 +1,32 @@
+=== Andersen thermostat ===
+
+* For a metadynamics run with Andersen thermostat, one has to:
+#Set the standard MD-related tags: {{TAG|IBRION}}=0, {{TAG|TEBEG}}, {{TAG|POTIM}}, and {{TAG|NSW}}
+#Set {{TAG|MDALGO}}=1 ({{TAG|MDALGO}}=11 in VASP 5.x), and choose an appropriate setting for {{TAG|ANDERSEN_PROB}}
+#Set the parameters {{TAG|HILLS_H}}, {{TAG|HILLS_W}}, and {{TAG|HILLS_BIN}}
+#Define collective variables in the {{FILE|ICONST}}-file, and set the <code>STATUS</code> parameter for the collective variables to 5
+#If needed, define the bias potential in the {{FILE|PENALTYPOT}}-file
+
+The actual time-dependent bias potential is written to the {{FILE|HILLSPOT}}-file, which is updated after adding a new Gaussian. At the beginning of the simulation, VASP attempts to read the initial bias potential from the {{FILE|PENALTYPOT}}-file. For the continuation of a metadynamics run, copy {{FILE|HILLSPOT}} to {{FILE|PENALTYPOT}}. The values of all collective variables for each MD step are listed in {{FILE|REPORT}}-file, check the lines after the string <tt>[[Metadynamics|Metadynamics]]</tt>.
+
+=== Nose-Hoover thermostat ===
+* For a metadynamics run with Nose-Hoover thermostat, one has to:
+#Set the standard MD-related tags: {{TAG|IBRION}}=0, {{TAG|TEBEG}}, {{TAG|POTIM}}, and {{TAG|NSW}}
+#Set {{TAG|MDALGO}}=2 ({{TAG|MDALGO}}=21 in VASP 5.x), and choose an appropriate setting for {{TAG|SMASS}}
+#Set the parameters {{TAG|HILLS_H}}, {{TAG|HILLS_W}}, and {{TAG|HILLS_BIN}}
+#Define collective variables in the {{FILE|ICONST}}-file, and set the <tt>STATUS</tt> parameter for the collective variables to 5
+#If needed, define the bias potential in the {{FILE|PENALTYPOT}}-file
+
+The actual time-dependent bias potential is written to the {{FILE|HILLSPOT}}-file, which is updated after adding a new Gaussian. At the beginning of the simulation, VASP attempts to read the initial bias potential from the {{FILE|PENALTYPOT}}-file. For the continuation of a metadynamics run, copy {{FILE|HILLSPOT}} to {{FILE|PENALTYPOT}}. The values of all collective variables for each MD step are listed in {{FILE|REPORT}}-file, check the lines after the string <tt>Metadynamics</tt>.
+
+== Related tags and sections ==
+{{FILE|ICONST}}, {{TAG|HILLS_H}}, {{TAG|HILLS_W}}, {{TAG|HILLS_BIN}}, {{FILE|PENALTYPOT}}, {{FILE|HILLSPOT}}, {{FILE|REPORT}}
+
+[[Metadynamics]], [[Using metadynamics to train a machine-learned force field]]
+
+<references/>
+
+<noinclude>
+----
+
+[[Category:Advanced molecular-dynamics sampling]][[Category:Howto]]

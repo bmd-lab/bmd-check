@@ -1,0 +1,108 @@
+The computation of the electron-phonon potential, <math>\partial_{\nu \mathbf{q}} V(\mathbf{r})</math>, is a prerequisite for the calculation of the electron-phonon matrix element:
+::<math>
+g_{mn \mathbf{k}, \nu \mathbf{q}}
+\equiv
+\langle
+\psi_{m \mathbf{k} + \mathbf{q}} |
+\partial_{\nu \mathbf{q}} V |
+\psi_{n \mathbf{k}}
+\rangle
+.
+</math>
+<math>\partial_{\nu \mathbf{q}} V</math> is computed from a supercell calculation by means of Fourier interpolation while the Bloch orbitals, <math>\psi_{n \mathbf{k}}(\mathbf{r})</math>, are computed directly in the primitive cell.
+The supercell calculation and the primitive-cell calculation are performed in two separate VASP runs.
+This page provides an overview of the supercell calculation and how the electron-phonon potential can be calculated.
+For information regarding the electron-phonon calculation in the primitive cell, consult the documentation on [[Bandgap renormalization due to electron-phonon coupling|phonon-induced bandstructure renormalization]] and on [[Transport coefficients including electron-phonon scattering|phonon-limited transport]]. 
+
+For the theory on the electron-phonon potential, see the end of the self-energy section of the [[Electron-phonon interactions theory#Electron_self-energy|theory page]].
+{{Available|6.5.0}}
+{{NB|important|This feature requires [[:Category:HDF5_support | HDF5 support]].}}
+{{NB|tip|The entire workflow of initializing a calculation, computing the electron-phonon potential in the supercell and performing subsequent electron-phonon calculations in the primitive cell can be facilitated by <tt>velph</tt>. <tt>velph</tt> is a command-line tool included in the [https://github.com/phonopy/phelel phelel] python package. It helps guide you through the process step by step and ensures a certain level of consistency between the required VASP calculations.}}
+
+== Finite displacements in the supercell ==
+
+[[File:Elphon-workflow.png|400px|thumb|right|General workflow when running electron-phonon calculations using perturbation theory. Notice that both the "VASP only" workflow as well as the "VASP + phelel" workflow produce the same kind of data in {{FILE|phelel_params.hdf5}}.]]
+
+The electron-phonon potential is computed from finite atomic displacements in a sufficiently large supercell.
+In this case, sufficient means that the effects of an atomic displacement become negligible at about half the supercell size.
+Usually, converging the phonon frequencies is a good way of finding a supercell that is sufficiently large.
+Polar materials can exhibit long-range electrostatic interactions that go beyond reasonable supercell sizes.
+In this case, a [[Bandgap renormalization due to electron-phonon coupling#Special treatment of the dipole interaction for polar materials|correction scheme]] exists that explicitly treats the long-range dipole interactions and works with smaller cells.
+
+Currently, there are two complementary ways to calculate the electron-phonon potential.
+One relies solely on VASP, while the other uses VASP in combination with [https://github.com/phonopy/phelel phelel].
+Both approaches calculate the derivative of the Kohn-Sham potential in real space via the displacement of atoms.
+However, they may differ in terms of flexibility and computational performance.
+Below, we describe the general workflow of each approach and highlight their advantages and disadvantages.
+
+Regardless of which approach is chosen, the output is always written to the {{FILE|phelel_params.hdf5}} binary file.
+This file can then be read during a VASP calculation in the primitive unit cell to compute electron-phonon interactions.
+
+=== VASP internal driver ===
+
+This way of calculating the electron-phonon potential is activated by setting {{TAG|ELPH_POT_GENERATE|True}} in the {{FILE|INCAR}} file.
+It utilizes the VASP-internal finite-difference driver that is activated by setting {{TAG|IBRION|6}} in the {{FILE|INCAR}} file.
+The atomic displacement directions are automatically determined by VASP.
+As usual, {{TAG|POTIM}} and {{TAG|NFREE}} can be used to control the displacement amount and finite-difference stencil, respectively.
+This is the same procedure used to calculate [[phonons from finite differences]] and many of the same considerations regarding performance and accuracy apply in this case.
+Therefore, phonon frequencies are a great way to test the convergence with respect to supercell size.
+{{NB|mind|Currently, VASP generates more displacements with {{TAG|ELPH_POT_GENERATE|True}} and {{TAG|IBRION|6}} than would be required in principle. This will be improved in a future version of the code.}}
+
+Once the electron-phonon potential is obtained, it is automatically mapped to the primitive cell.
+The results are stored in the {{FILE|phelel_params.hdf5}} file.
+By default, the primitive cell used for this mapping is the one determined by VASP during the supercell calculation.
+It is possible to choose a different primitive unit cell by explicitly specifying its lattice vectors using the {{TAG|ELPH_POT_LATTICE}} {{FILE|INCAR}} tag.
+{{NB|mind|The cell specified via {{TAG|ELPH_POT_LATTICE}} must be a valid primitive cell of the underlying lattice.}}
+In any case, the relevant primitive-cell structure is written to the {{FILE|CONTCAR_ELPH}} file.
+This file can be used as the {{FILE|POSCAR}} of the subsequent electron-phonon calculation in the primitive cell.
+This way, it is guaranteed that the primitive-cell calculation is compatible with the information contained in the {{FILE|phelel_params.hdf5}} file.
+
+The electron-phonon potential is stored on a real-space FFT grid in the {{FILE|phelel_params.hdf5}} file.
+It is currently necessary to match the FFT grid dimensions of this potential to the FFT grid dimensions ({{TAG|NGX}}, {{TAG|NGY}}, {{TAG|NGZ}}) of the primitive cell that is used to perform the subsequent electron-phonon calculation.
+By default, VASP determines appropriate FFT grid dimensions automatically during the supercell calculation based on the current {{TAG|ENCUT}}.
+The result should be compatible with a primitive-cell calculation that uses the same {{TAG|ENCUT}}.
+{{NB|tip|The {{TAG|PREC}} {{FILE|INCAR}} tag influences the size of the FFT mesh. Therefore, it is recommended to choose the same {{TAG|PREC}} for both the supercell as well as the primitive-cell calculation.}}
+It is possible to manually supply the FFT grid dimensions of the target unit cell during the supercell calculation via {{TAG|ELPH_POT_FFT_MESH}}.
+
+Information regarding the primitive cell and the FFT grid dimensions for electron-phonon calculations is also reported in the {{FILE|OUTCAR}} file and the {{FILE|vaspout.h5}} file.
+The format is explained on the {{TAG|ELPH_POT_GENERATE}} page.
+
+=== VASP and phelel ===
+
+In this approach to calculating the electron-phonon potential, the ionic displacements are determined externally using [https://github.com/phonopy/phelel phelel].
+For people who are familiar with phonon calculations using VASP and [https://github.com/phonopy/phonopy phonopy], this workflow will look very familiar.
+In general, this allows for greater flexibility.
+Here, we demonstrate a common workflow that suffices for most purposes.
+For a complete list of features, we refer to the documentation of [https://github.com/phonopy/phelel phelel].
+
+As an example,
+<pre>
+phelel -d --dim 2 2 2 -c POSCAR-unitcell --pm
+</pre>
+automatically determines displacement directions for a 2x2x2 supercell based on symmetry considerations.
+{{NB|tip|We recommend the use of the <tt>--pm</tt> option, which generates positive and negative displacements for each displacement direction.}}
+For each displacement, phelel creates a corresponding supercell {{FILE|POSCAR}} file (<tt>POSCAR-XXX</tt>, where <tt>XXX</tt> labels the different displacements).
+In addition, the file <tt>SPOSCAR</tt> is created which contains the supercell geometry in equilibrium.
+
+For each of the generated POSCAR files, create a separate directory and run VASP there with {{TAG|ELPH_PREPARE|True}} set in the {{FILE|INCAR}} file.
+This setting instructs VASP to write the potential as well as other important information to disk.
+Finally, run phelel to combine all the data from the individual directories to obtain the electron-phonon potential, for example,
+<pre>
+phelel --fft-mesh 18 18 18 --cd perfect/ disp-001/ disp-002/
+</pre>
+Here, <tt>perfect</tt>, <tt>disp-001</tt> and <tt>disp-002</tt> are the directories corresponding to the equilibrium and displaced supercell calculations, respectively.
+<tt>--fft-mesh</tt> specifies the FFT grid dimensions ({{TAG|NGX}}, {{TAG|NGY}}, {{TAG|NGZ}}) to be used in the final electron-phonon calculation in the primitive cell.
+The electron-phonon potential is Fourier interpolated from the FFT grid in the supercell to the supplied grid via a non-uniform FFT.
+The results are written to the {{FILE|phelel_params.hdf5}} file.
+
+== Practical hints ==
+* You cannot know a priori how large a supercell to use; convergence tests must be performed. Even very large supercells can have noise, so it is important to start with a small cell and then work up to denser k- and q-points meshes, as well as larger supercells.
+* If you have imaginary frequencies during an electron-phonon calculation, the calculation will simply stop. This is an indication of improper convergence. You can work around this using {{TAG|ELPH_IGNORE_IMAG_PHONONS}} to ignore the imaginary modes. This may be useful even for stable structures with small imaginary modes.
+
+== Related tags and articles ==
+* [[Bandgap renormalization due to electron-phonon coupling|Band-structure renormalization]]
+* [[Transport coefficients including electron-phonon scattering|Transport calculations]]
+* {{FILE|phelel_params.hdf5}}
+* [[Electron-phonon interactions from Monte-Carlo sampling]]
+
+[[Category:Electron-phonon interactions]][[Category:Howto]]

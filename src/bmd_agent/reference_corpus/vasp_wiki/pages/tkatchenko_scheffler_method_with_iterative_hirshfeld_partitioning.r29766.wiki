@@ -1,0 +1,56 @@
+The {{TAG|Tkatchenko-Scheffler method}}, which uses fixed neutral atoms as a reference to estimate the effective volumes of atoms-in-molecule (AIM) and to calibrate their polarizabilities and dispersion coefficients, fails to describe the structure and the energetics of ionic solids. As shown in references {{cite|bucko:jctc:13}} and {{cite|bucko:jcp:14}}, this problem can be solved by replacing
+the conventional Hirshfeld partitioning used to compute properties of interacting atoms by the iterative scheme proposed by Bultinck{{cite|bultinck:jcp:07}}. In this iterative Hirshfeld algorithm (HI), the neutral reference atoms are replaced with ions with fractional charges determined together with the AIM charge densities in a single iterative procedure. The algorithm is initialized with a promolecular density defined by non-interacting neutral atoms. The iterative procedure then runs in the following steps:
+
+*The Hirshfeld weight function for the step <math>i</math> is computed as
+
+:<math>w_A^{i}({\mathbf{r}}) = {n^{i}_A({\mathbf{r}})}/\left({\sum_B n^{i}_B({\mathbf{r}})}\right)</math>
+
+where the sum extends over all atoms in the system.
+
+*The number of electrons per atom is determined using
+
+:<math> N_{A}^{i+1} = N_{A}^{i} + \int \left[ n_{A}^{i}(\mathbf{r}) - w_{A}^i(\mathbf{r})\,n(\mathbf{r}) \right]\,d^{3}\mathbf{r}.</math>
+
+*New reference charge densities are computed using
+
+:<math>n^{i+1}_A(\mathbf{r})  = n^{\text{lint}(N^i_A)}(\mathbf{r})\left [ \text{uint}(N^i_A)-N^i_A\right ] + n^{\text{uint}(N_A^i)}({\mathbf{r}})\left [ N^i_A - \text{lint}(N^i_A)\right ]</math>
+
+where <math>\text{lint}(x)</math> expresses the integer part of <math>x</math> and <math>\text{uint}(x)=\text{lint}(x)+1</math>.
+
+Steps (1) to (3) are iterated until the difference in the electronic populations between two subsequent steps (<math>\Delta_{A}^{i} = \vert N_{A}^{i}-N_{A}^{i+1}\vert</math>) is less than a predefined threshold for all atoms. The converged iterative Hirshfeld weights (<math>w_{A}^{i}</math>) are then used to define the AIM properties needed to evaluate the dispersion energy (see {{TAG|Tkatchenko-Scheffler method}}).
+
+The TS-HI method is described in detail in reference {{cite|bucko:jctc:13}} and its performance in optimization of various crystalline systems is examined in reference {{cite|bucko:jcp:14}}.
+
+== Usage ==
+
+The Tkatchenko-Scheffler method with iterative Hirshfeld partitioning (TS-HI) is invoked by setting {{TAG|IVDW}}=21. The convergence criterion for iterative Hirshfeld partitioning (in e) can optionally be defined via the parameter {{TAG|HITOLER}} (the default value is 5e-5). Other optional parameters controlling the input for the calculation are as in the conventional {{TAG|Tkatchenko-Scheffler method}}. The default value of the adjustable parameter {{TAG|VDW_SR}} is 0.95 and corresponds to the PBE functional.
+{{NB|mind|
+*This method requires the use of {{TAG|POTCAR}} files from the PAW dataset version 52 or later.
+*The input reference data for non-interacting atoms are available only for elements of the first six rows of the periodic table except of the lanthanides. If the system contains other elements, the user must provide the free-atomic parameters for all atoms in the system via {{TAG|VDW_ALPHA}}, {{TAG|VDW_C6}}, {{TAG|VDW_R0}} (see {{TAG|Tkatchenko-Scheffler method}} defined in the {{TAG|INCAR}} file.
+*The charge-density dependence of gradients is neglected.
+*The DFT-TS/HI method is incompatible with the setting {{TAG|ADDGRID}}{{=}}''.TRUE.''.
+*It is essential that a sufficiently dense FFT grid (controlled via {{TAG|NGXF}}, {{TAG|NGYF}} and {{TAG|NGZF}}) is used in the DFT-TS/HI - we strongly recommend to use {{TAG|PREC}}{{=}}''Accurate''} for this type of calculations (in any case, avoid using {{TAG|PREC}}{{=}}''Low'').
+*Defaults for the parameters controlling the damping function ({{TAG|VDW_S6}}, {{TAG|VDW_SR}}, {{TAG|VDW_D}}) are available only for the PBE functional. If a functional other than PBE is used, the value of {{TAG|VDW_SR}} must be specified in the {{TAG|INCAR}} file.
+*Ewald's summation in the calculation of <math>E_{disp}</math> (controlled via {{TAG|LVDW_EWALD}}) implemented according to reference {{cite|kerber:jcc:08}} is available as of VASP.5.3.4.
+*Hirshfeld charges for all configurations generated in a calculation are written out in the {{TAG|OUTCAR}} file. The corresponding table is introduced by the expression ''Hirshfeld charges:''.}}
+
+== Related tags and articles ==
+{{TAG|HITOLER}},
+{{TAG|VDW_SR}},
+{{TAG|VDW_ALPHA}},
+{{TAG|VDW_C6}},
+{{TAG|VDW_R0}},
+{{TAG|VDW_S6}},
+{{TAG|VDW_D}},
+{{TAG|LVDW_EWALD}},
+{{TAG|IVDW}},
+{{TAG|Tkatchenko-Scheffler method}},
+{{TAG|Self-consistent screening in Tkatchenko-Scheffler method}},
+{{TAG|Many-body dispersion energy}},
+{{TAG|Many-body dispersion energy with fractionally ionic model for polarizability}}
+
+== References ==
+<references/>
+
+----
+[[Category:Exchange-correlation functionals]][[Category:van der Waals functionals]][[Category:Theory]]

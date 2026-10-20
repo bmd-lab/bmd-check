@@ -1,0 +1,7 @@
+The {{TAG|IBZKPT}} file is compatible with the {{TAG|KPOINTS}} file and is  generated if the automatic k-mesh generation is selected in the {{TAG|KPOINTS}} file. {{TAG|IBZKPT}} contains the k-point coordinates and weights (and if the tetrahedron method was selected additional tetrahedron connection tables are used) in the "Entering all k-points explicitly" format used for providing k-points "by hand". This file can also be generated with the external tool, ''kpoints''.
+
+{{TAG|IBZKPT}} maybe copied to {{TAG|KPOINTS}} to save time, if one {{TAG|KPOINTS}} set is used several times.
+
+----
+
+[[Category:Files]][[Category:Output files]]

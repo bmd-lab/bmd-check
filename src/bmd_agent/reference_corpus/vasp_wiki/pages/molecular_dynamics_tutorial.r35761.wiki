@@ -1,0 +1,15 @@
+{{Template:Molecular dynamics - Tutorial}}
+
+The tutorial is made of the following parts:
+<div style="background:var(--vdefault-bg); border:solid 1px var(--vlines); padding:0.5em 1em; margin-right:14em;">
+# [[Liquid Si - Standard MD|Liquid Si - Standard MD]]
+# [[Liquid Si - Freezing|Liquid Si - Freezing]]
+# [[Nuclephile Substitution CH3Cl - Standard MD|Nuclephile Substitution CH3Cl - Standard MD]]
+# [[Nuclephile Substitution CH3Cl - mMD1|Nuclephile Substitution CH3Cl - mMD1]]
+# [[Nuclephile Substitution CH3Cl - mMD2|Nuclephile Substitution CH3Cl - mMD2]]
+# [[Nuclephile Substitution CH3Cl - mMD3|Nuclephile Substitution CH3Cl - mMD3]]
+# [[Nuclephile Substitution CH3Cl - SG|Nuclephile Substitution CH3Cl - SG]]
+# [[Nuclephile Substitution CH3Cl - BM|Nuclephile Substitution CH3Cl - BM]]
+</div>
+
+[[Category:Tutorials]]

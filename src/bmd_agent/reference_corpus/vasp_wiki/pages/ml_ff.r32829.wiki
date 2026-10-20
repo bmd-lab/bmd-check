@@ -1,0 +1,6 @@
+{{DISPLAYTITLE:ML_FF}}
+This file contains the machine-learned force field, necessary for prediction-only mode ({{TAG|ML_MODE|run}}). Its format is identical to the {{TAG|ML_FFN}} file written out during training, for further details please have a look at the documentation there.
+
+----
+
+[[Category:Files]][[Category:Machine-learned force fields]][[Category:Input files]]

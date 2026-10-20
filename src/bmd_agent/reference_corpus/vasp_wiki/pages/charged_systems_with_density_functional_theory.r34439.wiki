@@ -1,0 +1,126 @@
+On this page, we describe technical issues with computing the energies of charged systems with periodic density functional theory (DFT) calculations.
+We first introduce the problem of divergence of the electrostatic energy in DFT calculations and illustrate how this divergence is removed for charge neutral computations.
+We then discuss why this divergence is present for charged systems.
+Finally, we present methods which have been implemented in VASP that allow for calculations of charged bulk, surface and molecular systems.
+
+== Treating divergence in charge neutral calculations ==
+
+VASP utilizes efficient fast Fourier transforms (FFT) to compute the electrostatic potential from the charge density using the Poisson equation, 
+
+<math display="block">
+V(\mathbf{r}) = 4\pi \int \frac{\rho(\mathbf{r}^\prime)}{\left | \mathbf{r} - \mathbf{r}^\prime \right|} d\mathbf{r}^\prime,
+</math>
+
+where <math display="inline">\mathbf{r}</math> and <math display="inline">\mathbf{r}^\prime</math> are all points in real space.
+Fourier transforming the Poisson equation to reciprocal space,
+
+<math display="block">
+V(\mathbf{G}) = \frac{4\pi}{\mathrm{G}^2} \rho(\mathbf{G}),
+</math>
+
+where <math display="inline">\mathbf{G}</math> is the reciprocal lattice vector and <math display="inline">\mathrm{G}</math> is its norm.
+
+An obvious issue with computing <math display="inline">V(\mathbf{G})</math> is that it diverges for <math display="inline">\mathrm{G}\to 0</math>.
+This divergence is handled in charge neutral DFT calculations by cancelling out individual divergences for the total electrostatic energy,{{cite|ihm:jpcss:1979}} which is the sum of electron-electron, ion-electron and ion-ion energies
+
+<math display="block">
+E_{\mathrm{electrostatic}} = E_{\mathrm{electron-electron}} + E_{\mathrm{ion-electron}} + E_{\mathrm{ion-ion}}.
+</math>
+
+Individually, these terms have the following functional forms,
+
+<math display="block">
+E_{\mathrm{electron-electron}} = \frac{1}{2} \sum_{\mathrm{G}} \rho_{\mathrm{electron}}(\mathbf{G}) V_{\mathrm{electron}}(\mathbf{G}),
+</math>
+
+where <math display="inline">\rho_{\mathrm{electron}}</math> and <math display="inline">V_{\mathrm{electron}}</math> are the electronic charge density and potential respectively.
+
+<math display="block">
+E_{\mathrm{ion-electron}} = -\sum_{\mathrm{G}} \rho_{\mathrm{ion}}(\mathbf{G}) V_{\mathrm{electron}}(\mathbf{G}),
+</math>
+
+where <math display="inline">\rho_{\mathrm{ion}}</math> is the ion charge density.
+VASP does not explicitly compute <math display="inline">E_{\mathrm{ion-electron}}</math>, but the potential of the ion is reflected through the eigenvalues.
+The ion-ion interactions are treated by Ewald summation
+<math display="block">
+E_{\mathrm{ion-ion}} = E_{\mathrm{long-range}} + E_{\mathrm{short-range}} + E_{\mathrm{self}} + E_{\mathrm{homogeneous}},
+</math>
+
+where <math display="inline">E_{\mathrm{long-range}}</math> is the only component which sums over the <math display="inline">\mathrm{G}</math> vectors and has the form,
+
+<math display="block">
+E_{\mathrm{ion-ion}} = \frac{1}{2} \sum_{\mathrm{G}} \rho_{\mathrm{ion}}(\mathbf{G}) V_{\mathrm{ion}}(\mathbf{G}).
+</math>
+
+The summed <math display="inline">\mathrm{G}=0</math> terms of <math display="inline">E_{\mathrm{electron-electron}}</math>, <math display="inline">E_{\mathrm{ion-electron}}</math> and <math display="inline">E_{\mathrm{ion-ion}}</math> are given by,
+
+<math display="block">
+E_{\mathrm{electrostatic}}(\mathbf{G}=0) = \frac{1}{2}\rho_{\mathrm{electron}}(\mathbf{G}=0) V_{\mathrm{electron}}(\mathbf{G}=0) - \rho_{\mathrm{ion}}(\mathbf{G}=0) V_{\mathrm{electron}}(\mathbf{G}=0) + \frac{1}{2}\rho_{\mathrm{ion}}(\mathbf{G}=0) V_{\mathrm{ion}}(\mathbf{G}=0),
+</math>
+
+which, can be expressed through the reciprocal space Poisson equation as,
+<math display="block">
+E_{\mathrm{electrostatic}}(\mathbf{G}=0) =  \frac{4\pi}{\mathrm{G}^2} \left [\frac{1}{2}\rho_{\mathrm{electron}}(\mathbf{G}=0)^2 - \rho_{\mathrm{ion}}(\mathbf{G}=0)^2 + \frac{1}{2}\rho_{\mathrm{ion}}(\mathbf{G}=0)^2 \right].
+</math>
+
+Under the condition that <math display="inline">\rho_{\mathrm{electron}}(\mathbf{G}=0)=\rho_{\mathrm{ion}}(\mathbf{G}=0)</math>, the individual divergences would cancel out and the total energy is convergent.
+Since the <math display="inline">\mathrm{G}=0</math> term of a Fourier transformed quantity is its average, the above condition is satisfied when the average electron and ion charge density are the same, i.e. the system is charge neutral.
+
+== Divergences in charged calculations ==
+
+The total energy does not converge when <math display="inline">\rho_{\mathrm{electron}}(\mathbf{G}=0) \neq \rho_{\mathrm{ion}}(\mathbf{G}=0)</math>, i.e., when the system is not charge neutral.
+Alternatively, we can think of this divergence as coming a compensating uniformly smeared out charge density, <math display="inline">\delta \rho</math> with energy <math display="inline">E_{\mathrm{compensating}}</math>
+
+<math display="block">
+E_{\mathrm{compensating}} = \frac{4\pi}{\mathrm{G}^2} \left [ \delta \rho^2 \right]
+</math>
+
+which cancels out the divergent terms in <math display="inline">E_{\mathrm{electrostatic}}(\mathbf{G}=0)</math>.
+
+The consequences of adding a uniform compensating charge is system specific.
+For highly screened systems, the potential coming from a moderate compensating charge presents an acceptable amount of error.
+Conversely, systems containing vacuum (such as 2D materials, surfaces and molecules) have little screening and hence are more susceptible to artifacts caused by this compensating charge.
+
+== Treating charged systems in practice ==
+
+We implement{{cite|vijay:prb:2025}} two separate methods to deal with charged systems.
+These methods are specific to the dimensionality of the system that is being computed.
+
+Bulk charged systems in orthorhombic cells can be treated by applying analytical monopole-monolpole corrections (see {{TAG|LMONO}} for further practical details).
+
+Surfaces and other two dimensional materials are treated with Coulomb kernel truncation methods.
+These methods replace the Coulomb kernel <math display="inline"> v(\mathbf{G})</math>, i.e., the <math display="inline">\frac{4\pi}{\mathrm{G}^2}</math> in <math display="inline">V(\mathbf{G})</math> with a 2D kernel{{cite|rozzi:prb:2006}} (<math display="inline"> v_{\text{2D}}(\mathbf{G})</math>) that removes electrostatic interactions between non-periodic replicas along the surface normal,{{cite|sohier:prb:2017}} 
+
+<math display="block">
+    v_{\text{2D}}(\mathbf{G}) = 
+    \begin{cases}
+        4\pi / \mathrm{G}^2  \left[ 1 - e^{-\mathrm{G}_{\parallel}R} \left ( \cos(\mathrm{G}_\perp R_\mathrm{c}) - \mathrm{G}_\perp / \mathrm{G}_{\parallel} \sin(\mathrm{G}_{\perp}R_\mathrm{c}) \right ) \right] \quad & \mathrm{G} \neq 0 \\
+        4\pi / \mathrm{G}_\perp^2\left[ 1 - \cos(\mathrm{G}_\perp R_\mathrm{c}) - \mathrm{G}_{\perp}R_\mathrm{c} \sin(\mathrm{G}_\perp R_\mathrm{c}) \right] \quad & \mathrm{G}_{\parallel} = 0 \\
+        -2\pi R_\mathrm{c}^2 \quad & \mathrm{G}=0
+    \end{cases}
+</math>
+
+where <math display="inline">\mathrm{G}_{\parallel}</math> is the norm of the <math display="inline">\mathbf{G}</math> vector parallel to the surface and <math display="inline">\mathrm{G}_{\perp}</math> is the <math display="inline">\mathbf{G}</math> vector along the surface normal.
+A similar change can be made to the Coulomb kernel to treat charged molecules (so-called 0D systems with <math display="inline"> v_{\text{0D}}(\mathbf{G}</math>)) to remove interactions with periodic replicas in all directions,
+
+<math display="block">
+v_{\text{0D}}(\mathbf{G}) = 
+\begin{cases}
+        4\pi/\mathrm{G}^2 \left( 1 - \cos\left(\mathrm{G}R_\mathrm{c}\right) \right) & \quad \mathrm{G}\neq 0 \\
+        2\pi R_\mathrm{c}^2 & \quad \mathrm{G} = 0
+\end{cases}
+</math>
+
+See {{TAG|KERNEL_TRUNCATION/LTRUNCATE}} (available as of VASP.6.5.0) for further details on applying these Coulomb truncation methods in practice.
+
+== Related tags and articles ==
+{{TAG|NELECT}},
+{{TAG|KERNEL_TRUNCATION/LTRUNCATE}},
+{{TAG|KERNEL_TRUNCATION/LCOARSEN}},
+{{TAG|KERNEL_TRUNCATION/IDIMENSIONALITY}},
+{{TAG|KERNEL_TRUNCATION/ISURFACE}},
+{{TAG|LMONO}}
+
+==References==
+
+[[Category:Theory]][[Category:Electrostatics]]

@@ -1,0 +1,168 @@
+The spin texture is the momentum-resolved expectation value of the spin, <math>\langle\boldsymbol{\sigma}(\mathbf{k})\rangle</math>, of the [[Band-structure calculation using density-functional theory|Kohn-Sham]] orbitals. In crystals that lack inversion symmetry, [[LSORBIT|spin-orbit coupling]] lifts the spin degeneracy of the bands and locks the spin direction to the crystal momentum '''k'''. The resulting winding patterns of the in-plane spin, such as the Rashba and Dresselhaus textures, are a direct fingerprint of the underlying symmetry. This page describes how to compute the spin texture as a noncollinear calculation with spin-orbit coupling, sampled on a two-dimensional '''k''' plane, and how to read out and plot the <math>\sigma_x</math>, <math>\sigma_y</math>, and <math>\sigma_z</math> spin projections with {{py4vasp}}.
+{{NB|mind|{{py4vasp}} reads the {{FILE|vaspout.h5}} file, which VASP writes only when it is compiled with HDF5 support.|:}}
+
+The procedure applies to any inversion-asymmetric system once the relevant spin-split bands and the appropriate '''k''' plane have been identified.
+
+== Step-by-step instructions ==
+
+=== Step 1: Compute the self-consistent ground state ===
+
+Set up a self-consistent noncollinear calculation with spin-orbit coupling and run it with the <code>vasp_ncl</code> executable. In addition to the tags for [[Setting up an electronic minimization]], the relevant {{FILE|INCAR}} tags here are:
+
+ {{TAGBL|LSORBIT}} = .TRUE.       ! spin-orbit coupling (also sets LNONCOLLINEAR)
+ {{TAGBL|MAGMOM}} = 9*0           ! three components per atom; here three atoms, no initial moment
+ {{TAGBL|SAXIS}} = 0 0 1          ! spin-quantization axis (default)
+ {{TAGBL|GGA_COMPAT}} = .FALSE.   ! improves the numerical precision of GGA with SOC
+ {{TAGBL|LASPH}} = .TRUE.         ! aspherical one-center contributions
+ {{TAGBL|LMAXMIX}} = 4            ! 4 (d electrons) or 6 (f electrons): write the charge density to higher l
+ {{TAGBL|LCHARG}} = .TRUE.        ! write the converged density for the restart
+
+{{TAG|LSORBIT}}=.TRUE. switches on spin-orbit coupling and automatically sets {{TAG|LNONCOLLINEAR}}=.TRUE., so the calculation treats the full 2×2 spin density. In the noncollinear case, {{TAG|MAGMOM}} takes three components per atom; the example uses a nonmagnetic starting guess. The spin-quantization axis is fixed by {{TAG|SAXIS}}, and all spin projections are reported in this basis. Keeping symmetry switched on for the ground state speeds up the self-consistent run.
+{{NB|important|Set {{TAG|LMAXMIX|4}} for d-electron systems and {{TAG|LMAXMIX|6}} for f-electron systems so that the one-center PAW charge densities are written to the {{FILE|CHGCAR}} file for the non-self-consistent restart.|:}}
+
+=== Step 2: Compute the band structure and identify the Rashba-split bands ===
+
+[[File:Spin-texture-band-structure.png|thumbnail|400px|Example band structure along a high-symmetry path through the time-reversal-invariant point. The spin-split pairs are degenerate at the point and split away from it, with the band extrema displaced off the point. This example is bulk BiTeI along ''H''-''A''-''L''.]]
+
+Before sampling a plane, compute the one-dimensional band structure along a high-symmetry path and locate the spin splitting. Follow the procedure in [[Band-structure calculation using density-functional theory]] to set up and plot the band structure; restart from the converged density of Step 1.
+
+Choose a path that passes through the time-reversal-invariant point where you expect the splitting. The Rashba signature in the band structure is:
+
+* The spin-split bands are '''Kramers-degenerate''' at the time-reversal-invariant point and '''split''' as '''k''' moves away from it.
+* The dispersion shows the characteristic '''Rashba shape''': the band extremum is displaced off the high-symmetry point, so the band develops a local extremum at the point and a ring of true extrema around it (the "camelback" for a conduction band).
+
+This identification tells you which bands carry the texture and on which point to center the planar mesh in the following steps. The spin texture is a symmetry effect and is well-defined even for small splittings, so a small splitting does not prevent resolving the texture. However, if the Rashba splitting is smaller than expected, it may indicate a problem with the setup, such as an inaccurate geometry or a too-small bandgap.
+
+=== Step 3: Choose the '''k''' plane from the crystal symmetry ===
+
+The spin texture is a two-dimensional quantity, so the non-self-consistent run samples a planar '''k''' mesh rather than a path. Using the band structure from Step 2, pick the band extremum where the spin splitting appears &mdash; it does not have to be the largest splitting &mdash; as the point on which to center the mesh.
+
+Sample a regular mesh in the plane perpendicular to the axis around which the texture is organized, with a single subdivision along the out-of-plane direction (for example <code>n n 1</code>). Center the plane on the chosen extremum through the {{FILE|KPOINTS}} shift. The components to plot are the two in-plane spin components (for example <math>\sigma_x</math> and <math>\sigma_y</math>): a nonzero in-plane winding (a vortex or anti-vortex) is the Rashba signature, and the out-of-plane component is close to zero near the center.
+
+For how to find that axis for your crystal from its symmetry, and what to do when the cell is not oriented with the axis along a Cartesian direction, see [[#Symmetry requirements and cell orientation|Symmetry requirements and cell orientation]] below.
+
+=== Step 4: Run the non-self-consistent calculation on the planar mesh ===
+
+Create a directory for the planar run and copy the input files together with the converged density:
+
+{{CB|mkdir -p texture
+cp INCAR POSCAR POTCAR CHGCAR texture/.
+cd texture|:}}
+
+Provide the planar '''k''' mesh in the {{FILE|KPOINTS}} file. The shift selects the plane that contains the extremum identified in Step 2. If the band extremum is at the <math>\Gamma</math> point, no shift is needed. Otherwise, choose the shift so that a mesh point coincides with the extremum: shift the out-of-plane component to select the plane that contains the extremum, and shift the in-plane components if the extremum is not at the projected zone center.
+
+The following is an example for bulk BiTeI, where the extremum (the ''A'' point) lies at the zone boundary along the out-of-plane direction, so the third component is shifted to 1/2:
+
+ Planar mesh (example: BiTeI A-plane)
+ 0
+ Gamma
+ 11 11 1
+ 0 0 0.5
+
+Add the following tags to the {{FILE|INCAR}} file from Step 1 for a restart at fixed density:
+
+ {{TAGBL|ICHARG}} = 11        ! restart from CHGCAR, density held fixed
+ {{TAGBL|ISYM}} = -1          ! keep the full planar mesh
+ {{TAGBL|LORBIT}} = 11        ! write the spin projections
+ {{TAGBL|LWAVE}} = .FALSE.
+ {{TAGBL|LCHARG}} = .FALSE.
+
+{{TAG|ICHARG|11}} reads the converged charge density and keeps it fixed. {{TAG|ISYM|-1}} switches off symmetry, which is essential here: with symmetry on, VASP reduces the planar mesh to the irreducible wedge, but the quiver plot requires the full planar mesh. {{TAG|LORBIT|11}} writes the site- and orbital-resolved spin projections that {{py4vasp}} reads.
+
+To refine the texture, increase the mesh density (for example, to 21×21×1); the plane always spans the full Brillouin zone, and the shift only selects the fixed component.
+
+=== Step 5: Plot the spin texture with py4vasp ===
+
+[[File:Spin-texture-bitei-full-bz.png|thumbnail|400px|Example of the <code>to_quiver</code> output over the full Brillouin zone: the in-plane spin arrows wind around the band extremum, and the threefold pattern reflects the crystal symmetry. This example is bulk BiTeI on a plane through the top face of the Brillouin zone.]]
+
+{{py4vasp|url=calculation/band/#from_path-to_quiver}} draws the in-plane spin as a quiver plot. Run the following in a Python notebook:
+
+<syntaxhighlight lang="python">
+import py4vasp
+calc = py4vasp.Calculation.from_path("/path/to/calculation")
+conduction_band = 29  # replace with the index of the conduction band in your calculation
+calc.band.to_quiver(f"sigma_x~sigma_y(band={conduction_band})")
+</syntaxhighlight>
+
+The arguments of <code>to_quiver</code> are <code>selection</code>, which names the two in-plane spin components and the band index, <code>supercell</code>, which replicates the plane periodically, and <code>normal</code> which rotates the cell in the plane. Refer to the {{py4vasp|url=calculation/band/#from_path-to_quiver}} documentation for the details.
+
+== Troubleshooting ==
+
+A spin-texture plot is hard to judge in isolation. Probe a few explicit '''k''' points near the center of the plane and read out the spin components directly to isolate the physics from any meshing or plotting artifact.
+
+=== Probe explicit '''k''' points near the center ===
+
+Pick a few '''k''' points a small distance from the band extremum and read out the spin components directly. First, provide an explicit Cartesian {{FILE|KPOINTS}} list with small displacements along <math>\pm x</math> and <math>\pm y</math>:
+
+ Explicit k points near the band extremum
+ 4
+ Cartesian
+   0.01  0.00  0.00  1
+  -0.01  0.00  0.00  1
+   0.00  0.01  0.00  1
+   0.00 -0.01  0.00  1
+
+Set the third component so that the points lie on the plane of the extremum, as in Step 4, and mind the Cartesian-unit caveat noted under [[#Recommendations and advice|Recommendations]]. Run this with the same restart {{FILE|INCAR}} as Step 4.
+
+Then read the spin components and print one of them for the band of interest:
+
+<syntaxhighlight lang="python">
+import py4vasp
+calc = py4vasp.Calculation.from_path("/path/to/calculation")
+spin = calc.band.read("x, y, z")  # keys "x","y","z"; each array has shape [k point, band]
+# read() returns a 0-based array, while the band index in the to_quiver selection
+# string is 1-based, so subtract one here
+print(spin["x"][:, conduction_band - 1])  # sigma_x at every k point for the conduction band
+</syntaxhighlight>
+
+The expected pattern depends on the type of spin-orbit coupling:
+
+* '''Rashba''' (polar, <math>C_{nv}</math>): the spin is tangential, perpendicular to '''k''' in the plane, winding in a single circular sense, with <math>\sigma_z\approx0</math> near the center. For a point along the Cartesian ''x'' axis only <math>\sigma_y</math> is nonzero, and along ''y'' only <math>\sigma_x</math>.
+* '''Dresselhaus''' (bulk-inversion asymmetry, for example zinc-blende): the pattern is not a simple circle; the spin direction follows the cubic angular dependence, so the perpendicular-to-'''k''' rule does not hold in the same way.
+
+The idea of sampling near the center and checking the component signs against the expected symmetry is general; only the expected pattern changes with the type of coupling.
+
+== Symmetry requirements and cell orientation ==
+
+[[File:Rashba-dresselhaus.png|thumbnail|400px|Spin textures of the Rashba (left) and Dresselhaus (right) spin-orbit fields: arrows give the spin direction along a constant-k circle for each effective Hamiltonian - tangential/chiral for Rashba, mirror-symmetric for Dresselhaus]]
+
+Step 3 samples a plane perpendicular to a particular axis. Assuming the crystal symmetry is known, this section explains how to find that axis, how to confirm that a spin texture is allowed at all, and how to orient the cell so that the planar mesh and the in-plane spin components are set up consistently.
+
+=== Which symmetry allows a spin texture ===
+
+A spin texture requires broken inversion symmetry, and the type of texture is fixed by the point group:
+
+* '''Rashba''' textures require a '''polar''' point group, that is, one with a unique polar axis (the polar classes, such as <math>C_{2v}</math>, <math>C_{3v}</math>, <math>C_{4v}</math>, and <math>C_{6v}</math>). The Rashba spin-orbit field, and hence the in-plane winding, lies in the plane '''perpendicular to the polar axis'''.
+* '''Dresselhaus''' textures arise from bulk inversion asymmetry in crystals that are non-centrosymmetric but '''not''' polar, such as zinc-blende (<math>T_d</math>). The texture is anisotropic rather than a simple tangential winding, so the plane is chosen to expose that pattern (for example a (001) '''k''' plane).
+
+If the crystal is centrosymmetric, the bands are spin-degenerate and there is no spin texture to compute.
+
+=== Locating the axis and orienting the cell ===
+
+For a Rashba system the plane to sample is perpendicular to the polar axis, which is the unique direction left invariant by all symmetry operations of the point group (the principal rotation axis of <math>C_{nv}</math>). A regular <code>n n 1</code> mesh samples the plane spanned by the first two reciprocal lattice vectors, and the {{py4vasp}} <code>sigma_x~sigma_y</code> selection assumes the plane normal points along the Cartesian ''z'' axis. Two points therefore need checking:
+
+* '''The orientation in the {{FILE|POSCAR}} may differ from the standard setting.''' The cell can be written with its lattice vectors rotated relative to the conventional crystallographic orientation, so the polar axis does not necessarily lie along the third lattice vector or along a Cartesian axis. Determine where the polar axis actually points in your {{FILE|POSCAR}}.
+* '''The polar axis must align with a Cartesian axis.''' To use <code>n n 1</code> with the <math>\sigma_x</math>&ndash;<math>\sigma_y</math> in-plane components, the polar axis (the plane normal) must lie along Cartesian ''z''. If it does not, either reorient the cell &mdash; rotate the lattice vectors so the polar axis is along ''z'' &mdash; and use <code>n n 1</code>, or choose the mesh that places the single subdivision along the matching direction (<code>n n 1</code>, <code>n 1 n</code>, or <code>1 n n</code>) and plot the corresponding pair of in-plane components. This concerns the orientation of the real-space cell, which is separate from the units of an explicit <code>Cartesian</code> {{FILE|KPOINTS}} list discussed under [[#Recommendations and advice|Recommendations and advice]].
+
+As an example, BiTeI is trigonal (space group <math>P3m1</math>, point group <math>C_{3v}</math>), so it is polar and the polar axis is the ''c'' axis. The plane to sample is the <math>k_x</math>&ndash;<math>k_y</math> plane. In the conventional hexagonal setting the ''c'' axis is along Cartesian ''z'', so an <code>n n 1</code> mesh together with the <code>sigma_x~sigma_y</code> selection works directly.
+
+== Recommendations and advice ==
+
+* '''Use the noncollinear executable.''' Spin-orbit coupling requires <code>vasp_ncl</code>; the standard or gamma-only executables do not include it.
+* '''Mind the k-point units.''' A <code>Cartesian</code> {{FILE|KPOINTS}} list is given in units of <math>2\pi/\text{SCALE}</math>, where SCALE is the {{FILE|POSCAR}} scaling factor. A value of 0.05 then corresponds to <math>0.05\cdot2\pi\approx0.31</math> Å<sup>-1</sup>, which can fall far outside the linear Rashba region and into a regime of warping with a spurious <math>\sigma_z</math>. A <code>Reciprocal</code> (fractional) list avoids the <math>2\pi</math> factor, but its axes are the reciprocal lattice vectors, which are non-orthogonal for a hexagonal cell. There, <math>\mathbf{b}_1</math> is 30° off the Cartesian ''x'' axis, so a fractional <math>(\delta, 0, *)</math> point is not along ''x'' and its tangential spin acquires a nonzero <math>\sigma_x</math> even for an ideal Rashba state. To test the "only <math>\sigma_y</math> along ''x''" rule, use small <code>Cartesian</code> coordinates so the point truly lies on the Cartesian axis.
+* '''Place the plane correctly in Cartesian coordinates.''' In a <code>Cartesian</code> list the third coordinate is also scaled by <math>2\pi/\text{SCALE}</math>. To sit on a plane at fractional <math>k_z=1/2</math> use <math>k_z=0.5/c</math> rather than 0.5.
+* '''to_quiver needs a full regular mesh.''' The quiver routine reads the grid dimensions from the mesh metadata and rejects an explicit '''k''' list. The plotted plane therefore always spans the whole Brillouin zone; refine the texture by increasing the mesh density, not by narrowing the window. The routine plots the in-plane components only and does not color the arrows by <math>\sigma_z</math>.
+* '''Keep symmetry off for the spin-texture calculation.''' Set {{TAG|ISYM|-1}} so that all '''k''' points are kept; the full mesh is needed for plotting.
+
+== Related tags and articles ==
+
+[[Band-structure calculation using density-functional theory]]
+
+Files: {{FILE|KPOINTS}}, {{FILE|vaspout.h5}}, {{FILE|PROCAR}}
+
+Tags: {{TAG|LSORBIT}}, {{TAG|LNONCOLLINEAR}}, {{TAG|SAXIS}}, {{TAG|MAGMOM}}, {{TAG|LORBIT}}, {{TAG|ISYM}}, {{TAG|ICHARG}}, {{TAG|LMAXMIX}}, {{TAG|GGA_COMPAT}}, {{TAG|LASPH}}
+
+[[Category:Howto]]
+[[Category:Spin-orbit coupling]]
+[[Category:Noncollinear magnetism]]
+[[Category:Band structure]]

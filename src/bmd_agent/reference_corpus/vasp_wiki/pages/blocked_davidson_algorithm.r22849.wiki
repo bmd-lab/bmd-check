@@ -1,0 +1,44 @@
+The workflow of the blocked-Davidson iterative matrix diagonalization scheme implemented in {{VASP}} is as follows:{{cite|kresse:cms:1996}}{{cite|kresse:prb:96}}
+
+* Take a subset (block) of <math>n_1</math> orbitals out of the total set of {{TAG|NBANDS}} orbitals:
+::<math> \{ \psi_n| n=1,..,N_{\rm bands}\}\Rightarrow \{ \psi^1_k| k=1,..,n_1\}</math>.
+* Extend the subspace spanned by <math>\{\psi^1\}</math> by adding the preconditioned residual vectors of <math>\{\psi^1\}</math>:
+::<math>
+\left \{ \psi^1_k \, / \,  g^1_k =  \left (1- \sum_{n=1}^{N_{\rm bands}} | \psi_n \rangle \langle\psi_n | {\bf S} \right) {\bf K} \left ({\bf H} -  \epsilon_{\rm app} {\bf S} \right ) \psi^1_k \, | \, k=1,..,n_1 \right \}.
+</math>
+* Rayleigh-Ritz optimization ("subspace rotation") within the <math>2n_1</math>-dimensional space spanned by <math>\{\psi^1/g^1\}</math>, to determine the <math>n_1</math> lowest eigenvectors:
+::<math>{\rm diag}\{\psi^1/g^1\} \Rightarrow \{ \psi^2_k| k=1,..,n_1\}</math>
+* Extend the subspace with the residuals of <math>\{\psi^2\}</math>:
+::<math>
+\left \{ \psi^2_k \,/ \,  g^1_k \, / \, g^2_k =  \left (1- \sum_{n=1}^{N_{\rm bands}} | \psi_n \rangle \langle\psi_n | {\bf S} \right ) {\bf K} \left ({\bf H} -  \epsilon_{\rm app}  {\bf S} \right)  \psi^2_k  \, | \, k=1,..,n_1 \right \}.
+</math>
+* Rayleigh-Ritz optimization ("subspace rotation") within the <math>3n_1</math>-dimensional space spanned by <math>\{\psi^1/g^1/g^2\}</math>:
+::<math>{\rm diag}\{\psi^1/g^1/g^2\} \Rightarrow \{ \psi^3_k| k=1,..,n_1\}</math>
+* If need be the subspace may be extended by repetition of this cycle of adding residual vectors and Rayleigh-Ritz optimization of the resulting subspace:
+::<math>{\rm diag}\{\psi^1/g^1/g^2/../g^{d-1}\}\Rightarrow \{ \psi^d_k| k=1,..,n_1\}</math>
+: Per default {{VASP}} will not iterate deeper than <math>d=4</math>, though it may break off even sooner when certain criteria that measure the convergence of the orbitals have been met.
+* When the iteration is finished, store the optimized block of orbitals back into the set:
+::<math>\{ \psi^d_k| k=1,..,n_1\} \Rightarrow \{ \psi_k| k=1,..,N_{\rm bands}\}</math>.
+* Move on to the next block <math>\{ \psi^1_k| k=n_1+1,..,2 n_1\}</math>.
+* When {{TAG|LDIAG}}=.TRUE. (default), a Rayleigh-Ritz optimization in the complete subspace <math>\{ \psi_k| k=1,..,N_{\rm bands}\}</math> is performed after all orbitals have been optimized.
+
+
+The blocksize <math>n_1</math> used in the blocked-Davidson algorithm can be set by means of the {{TAG|NSIM}} tag.
+In principle <math>n_1= 2\times</math> {{TAG|NSIM}}, but for technical reasons it needs to be dividable by an integer ''N'':
+:<math>
+n_1 = {\rm int}\left(\frac{2*{\rm NSIM} + N - 1}{N}\right) N
+</math>
+where <math>N</math> is the "number of band groups per k-point group":
+:<math>
+N = \frac{{\rm \#\; of\; MPI\; ranks}}{{\rm IMAGES}*{\rm KPAR}*{\rm NCORE}}
+</math>
+(see [[Parallelization#Basic_parallelization|the section on parallelization basics]]).
+
+As mentioned before, the optimization of a block of orbitals is stopped when either the maximum iteration depth ({{TAG|NRMM}}), or a certain convergence threshold has been reached. The latter may be fine-tuned by means of the {{TAG|EBREAK}}, {{TAG|DEPER}}, and {{TAG|WEIMIN}} tags. Note: we do not recommend you to do so! Rather rely on the defaults instead.
+
+The blocked-Davidson algorithm is approximately a factor of 1.5-2 slower than the [[RMM-DIIS]], but more robust.
+
+== References ==
+<references/>
+----
+[[Category:Electronic minimization]][[Category:Theory]]

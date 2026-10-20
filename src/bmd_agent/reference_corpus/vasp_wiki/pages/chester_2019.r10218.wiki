@@ -1,0 +1,86 @@
+== Lectures ==
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_Basics1.pdf DFT, PW, and PAW]: "VASP: The basics(1). DFT, plane waves, PAW, ...".
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_Basics2.pdf electronic convergence, BZ sampling]: "VASP: The basics(2). electronic convergence, BZ sampling ...".
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_Hybrids.pdf Hybrid functionals]: "VASP: Hybrid functionals".
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_Dielectric.pdf Dielectric properties]: "VASP: Dielectric response. Perturbation theory, linear response, and finite electric fields".
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_RPA_Kaltak.pdf Beyond DFT: RPA]: "VASP: beyond DFT. The Random-Phase-Approximation".
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_HPC.pdf Performance]: "VASP: running on HPC resources".
+
+== Allocating Computing Nodes and Environment Setup ==
+An interactive shell should be allocated after login. 
+The following command allocates an interactive node with 8 CPUs for 4 hours
+ qsub -IVl select=1:ncpus=8,walltime=4:0:0,place=scatter:excl -A y15 
+After successful allocation, one has to setup the environment as follows. 
+
+To have access to the vasp binaries, the corresponding module has to be loaded into the environment. 
+Furthermore, the job scripts found in the tutorial tar files (job.sh, doall.sh, etc) work only if the environment variables "vasp_std, vasp_gam, vasp_ncl" are defined.
+Enter following commands in the terminal window after login, to setup up the environment.
+ module load vasp
+ export vasp_std="mpirun -ppn 8 -np 8 /lustre/home/y07/vasp5/5.4.4-intel17-mpt214/bin/vasp_std"
+ export vasp_gam="mpirun -ppn 8 -np 8 /lustre/home/y07/vasp5/5.4.4-intel17-mpt214/bin/vasp_gam"
+ export vasp_ncl="mpirun -ppn 8 -np 8 /lustre/home/y07/vasp5/5.4.4-intel17-mpt214/bin/vasp_ncl"
+
+== Submitting jobs ==
+Alternative to an interactive shell, one may submit jobs to the cluster as follows
+ qsub vasp.job
+where the jobfile "vasp.job" reads
+ #!/bin/bash --login
+ 
+ #PBS -N VASP-Test
+ #PBS -l select=1:ncpus=36
+ #PBS -l place=scatter:excl
+ #PBS -l walltime=00:30:00
+ #PBS -A y15 
+ 
+ cd $PBS_O_WORKDIR 
+ module load vasp
+ mpiexec_mpt -ppn 36 -n 36 vasp_std | tee vasp.out
+== Tutorials ==
+
+For the beginners: [[Input_and_Output_-_a_short_Intro| A short introduction to the common Input and Output files.]]
+
+*[[Atoms_and_Molecules_-_Tutorial|Atoms and Molecules]]
+*[[Bulk_Systems_-_Tutorial|Simple Bulk Systems]]
+*[[Surface_Science_-_Tutorial|A bit of Surface Science]]
+*[[Hybrid_functionals_-_Tutorial|Hybrid Functionals]]
+*[[Optical_properties_and_dielectric_response_-_Tutorial|Optical Properties and Dielectric Response]]
+*[[GW_and_ACFDT_-_Tutorial|The Random-Phase-Approximation: GW and ACFDT]]
+*[[BSE_-_Tutorial|The Bethe-Salpeter equation]]
+*[[Magnetism_-_Tutorial|Magnetism]]
+
+== Further Examples ==
+==== Nudge Elastic Band Method and (constrained) Molecular Dynamics ====
+
+*[[Liquid Si - Standard MD]]
+
+*[[Transition State Search of Ammonia]]
+
+*[[Adsorption of H2O on TiO2]]
+
+==== Magnetism in NiO ====
+
+*[[NiO GGA]]
+
+*[[NiO GGA+U]]
+
+*[[NiO HSE06]]
+
+*[[Estimation of J magnetic coupling]]
+
+*[[Including the Spin-Orbit Coupling]]
+
+*[[Determining the Magnetic Anisotropy]]
+
+*[[Constraining the local magnetic moments]]
+
+==== NMR calculations ====
+
+*[[alpha-SiO2]]
+
+*[[alpha-AlF3]]

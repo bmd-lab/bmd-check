@@ -1,0 +1,21 @@
+{{DISPLAYTITLE:vaspout.h5}}
+The {{FILE|vaspout.h5}} file is a hierarchical HDF5 file containing the inputs and outputs of a VASP calculation.
+
+To analyze the data in this file we recommend using {{py4vasp}}.
+
+This file is only produced if your VASP version was compiled with [[:Category:HDF5 support|HDF5 support]].
+
+== Contents of the file ==
+At the highest level, the {{FILE|vaspout.h5}} has the following HDF5 groups:
+
+# <tt>input</tt> - contains the parsed information of the {{FILE|INCAR}}, {{FILE|KPOINTS}}, and {{FILE|POSCAR}} files, as well as a textual copy of the {{FILE|POTCAR}} file. These are the actual inputs used by the calculation, which are not necessarily equivalent to the information given in the input files (e.g., if conflicting tags are used in the {{FILE|INCAR}} file).
+# <tt>original</tt> - contains a textual copy of the provided {{FILE|KPOINTS}}, {{FILE|INCAR}}, and {{FILE|POSCAR}} files that were provided to start the calculation.
+# <tt>intermediate</tt> - contains information from MD and ionic relaxation calculations, including the positions of the ions, forces, stresses, and total energies for each ionic step.
+# <tt>results</tt> - contains the final quantities of the calculation like the density of states, electronic eigenvalues, linear-response functions, etc...
+# <tt>version</tt> - keeps track of which version of VASP was used to produce this file. This is needed for compatibility reasons with older files.
+{{NB|warning|Since the {{FILE|vaspout.h5}} file contains the full {{FILE|POTCAR}} file data, which are covered by the licence agreement, users are not allowed to make this file available to people who are not currently registered as licenced VASP users without removing these data first!}}
+
+== Related tags and sections ==
+{{FILE|vaspin.h5}}, {{FILE|vaspwave.h5}}, {{FILE|OUTCAR}}
+
+[[Category:Files]][[Category:Output files]][[Category:HDF5 support]]

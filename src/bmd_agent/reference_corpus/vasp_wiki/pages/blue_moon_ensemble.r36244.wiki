@@ -1,0 +1,28 @@
+In general, [[:Category:Constrained molecular dynamics|constrained molecular dynamics]] generates biased statistical averages. The blue moon ensemble average, also known as constrained-reaction-coordinate-dynamic (CRCD) ensemble, connects constrained and unconstrained molecular dynamics, cf. [[Blue_moon_ensemble_calculations|blue moon ensemble calculations]]. It shows that the correct average for a quantity <math>a(\xi)</math> can be obtained using the formula:
+:<math>
+a(\xi)=\frac{\langle |\mathbf{Z}|^{-1/2} a(\xi^*) \rangle_{\xi^*}}{\langle |\mathbf{Z}|^{-1/2}\rangle_{\xi^*}},
+</math>
+where <math>{\xi}</math> is the reaction coordinate, <math>\xi^*</math> restrains the reference coordinate, e.g. to a transition state, where the associate velocity is <math>\dot{\xi^*} = 0</math>, the <math>\langle ... \rangle_{\xi^*}</math> stands for the statistical average of the quantity enclosed in angle brackets computed for a constrained ensemble, and <math>Z</math> is a mass metric tensor defined as:
+:<math>
+Z_{\alpha,\beta}={\sum}_{i=1}^{3N} m_i^{-1} \nabla_i \xi_\alpha \cdot \nabla_i \xi_\beta, \, \alpha=1,...,r, \, \beta=1,...,r,
+</math>
+It can be shown that the free energy gradient can be computed using the equation: {{Cite|carter:kapral:1989}}{{Cite|denotter:briels:2000}}{{Cite|darve:pohorille:2010}}{{Cite|fleurat:ziegler:2005}}
+:<math>
+\Bigl(\frac{\partial A}{\partial \xi_k}\Bigr)_{\xi^*}=\frac{1}{\langle|Z|^{-1/2}\rangle_{\xi^*}}\langle |Z|^{-1/2} [\lambda_k +\frac{k_B T}{2 |Z|} \sum_{j=1}^{r}(Z^{-1})_{kj} \sum_{i=1}^{3N} m_i^{-1}\nabla_i \xi_j \cdot \nabla_i |Z|]\rangle_{\xi^*},
+</math>
+where <math>A</math> is the free energy, <math>k_B</math> is the Boltzmann constant, <math>T</math> is the temperature, and <math>\lambda_{\xi_k}</math> is the Lagrange multiplier associated with the parameter <math>{\xi_k}</math> used in the [[Constrained molecular dynamics|SHAKE algorithm]] {{Cite|ryckaertt:jcp:1977}}
+
+The free-energy difference between states (1) and (2) can be computed by integrating the free-energy gradients over a connecting path, e.g. using the Simpson method{{cite|simpson:web}}:
+:<math>
+{\Delta}A_{1 \rightarrow 2} = \int_{{\xi(1)}}^{{\xi(2)}}\Bigl( \frac{\partial {A}} {\partial \xi} \Bigr)_{\xi^*} \cdot d{\xi}.
+</math>
+Note that as the free energy is a state quantity, the choice of path connecting (1) with (2) is irrelevant. As an example, when calculating the transition state, if (1) were set to the reactant and (2) to the transition state, then <math>{\Delta}A_{1 \rightarrow 2}</math> would be the activation free energy for the reaction.
+
+== Related tags and articles ==
+{{FILE|ICONST}}, {{TAG|SHAKEMAXITER}}, {{TAG|SHAKETOL}}, {{TAG|SHAKETOLSOFT}}, {{TAG|LBLUEOUT}}, {{FILE|REPORT}}
+
+[[Blue moon ensemble calculations]]
+
+==References==
+
+[[Category:Advanced molecular-dynamics sampling]][[Category:Theory]]

@@ -1,0 +1,4 @@
+{{TAGDEF|NCORES_PER_BAND|[integer]|1}}
+
+Description: {{TAG|NCORES_PER_BAND}} determines the number of compute cores that work on an individual orbital.
+{{NB|deprecated|Use the equivalent and more compact {{TAG|NCORE}} instead.}}

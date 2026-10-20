@@ -1,0 +1,214 @@
+{{Available|6.5.0}}
+
+Universal machine-learned force fields (uMLFF, or alternatively: uMLIP for "universal machine-learned interatomic potentials") offer a fast alternative to the computational demands of DFT. Pre-trained uMLFFs can be used as an alternative to [[:Category:Machine-learned_force_fields|{{VASP}}-native force fields]] to drive any {{VASP}} simulation that uses or could use prediction-only mode ({{TAG|ML_MODE|run}}). This includes [[:Category:Molecular_dynamics|molecular dynamics simulations]], [[Structure optimization|ionic optimization]] (see {{TAG|IBRION}}), and [[:Category:Advanced_molecular-dynamics_sampling|advanced sampling techniques]].
+
+We utilize the [[Plugins]] feature to call pre-trained uMLFF models via Python and have them calculate forces and stresses.
+{{NB|important|When employing uMLFFs, the accuracy and reliability of your calculations and results may vary. Thorough validation is advised.}}
+
+== Model selection ==
+
+A dedicated list of publicly available models, including performance benchmarks, can be found, for example, at the Materials Project's Matbench Discovery.<ref>[https://matbench-discovery.materialsproject.org/ Matbench Discovery], Materials Project.</ref> As a general rule of thumb, choose a model with good relevant metrics that was trained on a broad choice of datasets. Between models with similar metrics, choose a model with fewer parameters for faster inference.
+
+== Step-by-step instructions ==
+
+Implementations vary between models. Always confirm how to call a particular model in Python directly before invoking it via the plugin; this allows for easier and more comprehensive debugging. Step 2 below works through three example models.
+
+=== Step 1: Compiling with Plugins support ===
+
+To use [[Plugins]], follow the [[Makefile.include#Plugins (optional)|instructions on the Makefile.include wiki page]]. Note that a re-compilation of VASP is required to enable Plugins support.
+
+=== Step 2: Setting up vasp_plugin.py ===
+
+Most models specify how to call them from Python. The instructions for how to install the corresponding packages and load their <code>calculator</code> instances will differ from model to model, but the <code>vasp_plugin.py</code> file should always contain (at least) the following:
+
+<syntaxhighlight lang=py>
+calculator = ...                                # different for each model
+
+from vasp.force_field import AseForceField      # VASP force field wrapper class
+force_field = AseForceField(calculator)         # apply wrapper class
+
+def force_and_stress(constants, additions):     # to compute force and stress via the uMLFF model instead of VASP's DFT routines
+    force_field.force_and_stress(constants, additions)
+</syntaxhighlight>
+
+Copy or move the <code>vasp_plugin.py</code> file to your calculation folder. The following three examples show how to run different models. Use a dedicated Python virtual environment to install the required packages.
+{{NB|mind|These examples are chosen for demonstration purposes and are not recommendations.}}
+
+==== Example A: Model inference with the tensorpotential package (GRACE) ====
+
+: To wire up GRACE force fields via the [[Plugins]] infrastructure, check GRACE's documentation:<ref>GRACE documentation: [https://gracemaker.readthedocs.io/en/latest/gracemaker/install/#setting-up-the-environment Setting up the environment].</ref> we need a Python environment with the <code>tensorpotential</code> package installed. GRACE provides examples for loading and running their foundation models,<ref>GRACE tutorial: [https://github.com/ICAMS/grace-tutorial/blob/main/3-foundation-models/1-python-ase/using-grace-fm.ipynb using-grace-fm.ipynb].</ref> which we adapt in <code>vasp_plugin.py</code>:
+
+: <syntaxhighlight lang=py>
+from tensorpotential.calculator.foundation_models import GRACEModels, grace_fm
+calculator = grace_fm(GRACEModels.GRACE_2L_OMAT)
+
+from vasp.force_field import AseForceField  # VASP force field wrapper class
+force_field = AseForceField(calculator)         # apply wrapper class
+
+def force_and_stress(constants, additions):     # to compute force and stress via the uMLFF model instead of VASP's DFT routines
+    force_field.force_and_stress(constants, additions)
+</syntaxhighlight>
+
+: Before running this code, you may need to download the model:
+: {{CB|grace_models download GRACE_2L_OMAT|:}}
+: List all available foundation models with:
+: {{CB|grace_models list|:}}
+: If you want to use a different model, remember to also update the <code>GRACEModels</code> enum in <code>vasp_plugin.py</code>.
+: {{NB|important|To run a fine-tuned GRACE model, follow the GRACE tutorial notebook for accessing these via the <code>TPCalculator</code> class.<ref>GRACE fine-tuning tutorial: [https://github.com/ICAMS/grace-tutorial/blob/main/3-foundation-models/3a-finetuning/validate.ipynb validate.ipynb].</ref> In <code>vasp_plugin.py</code>, use that calculator and point it to your fine-tuned model.}}
+: {{NB|mind|GRACE force fields can also be run via a special compiler flag, documented on a [[Running GRACE force fields in VASP|separate wiki page]]. Future development might break feature parity, but as of {{VASP}} 6.6.0, both the [[plugins]] and the compiler-flag approach offer the same inference-only functionality.}}
+
+==== Example B: Model inference with the UPET package ====
+
+: For the UPET package, the documentation clarifies how to load different models.<ref>UPET documentation: [https://github.com/lab-cosmo/upet lab-cosmo/upet].</ref> Install the package into your environment and follow their instructions in <code>vasp_plugin.py</code>:
+
+: <syntaxhighlight lang=py>
+from upet.calculator import UPETCalculator
+calculator = UPETCalculator(model="pet-mad-s", version="1.5.0", device="cuda")
+
+from vasp.force_field import AseForceField      # VASP force field wrapper class
+force_field = AseForceField(calculator)         # apply wrapper class
+
+def force_and_stress(constants, additions):     # to compute force and stress via the uMLFF model instead of VASP's DFT routines
+    force_field.force_and_stress(constants, additions)
+</syntaxhighlight>
+
+: Note that most models offer device choices depending on your CPU/GPU setup and preferences.
+
+==== Example C: Model inference with the DeePMD-Kit package ====
+
+: For the DPA-3.1-3M-FT model, the checkpoint must be downloaded separately from the package, as linked on its Matbench Discovery page.<ref>DPA-3.1-3M-FT model page: [https://matbench-discovery.materialsproject.org/models/dpa-3.1-3m-ft Matbench Discovery].</ref> That page links to the DeePMD-kit package.<ref>DeePMD-kit: [https://github.com/deepmodeling/deepmd-kit deepmodeling/deepmd-kit]; see the [https://docs.deepmodeling.com/projects/deepmd/en/stable/getting-started/install.html#install-python-interface-with-pip pip installation instructions].</ref> The checkpoint has a <code>.pth</code> file extension, which indicates the PyTorch workflow is the one we need.
+
+: The DeePMD-kit instructions are relatively straightforward, so adapt them for <code>vasp_plugin.py</code>:
+
+: <syntaxhighlight lang=py>
+from deepmd.calculator import DP
+calculator = DP(model="/path/to/dpa-3.1-3m-ft.pth")
+
+from vasp.force_field import AseForceField      # VASP force field wrapper class
+force_field = AseForceField(calculator)         # apply wrapper class
+
+def force_and_stress(constants, additions):     # to compute force and stress via the uMLFF model instead of VASP's DFT routines
+    force_field.force_and_stress(constants, additions)
+</syntaxhighlight>
+
+=== Step 3: Setting up your INCAR ===
+
+Add the following tags to your {{FILE|INCAR}} file (the rest of your prior setup can stay largely the same):
+
+ {{TAG|PLUGINS/FORCE_AND_STRESS|True}}
+ {{TAG|PLUGINS/ML_MODE|run}}
+
+Note that this can also be written differently:
+
+ PLUGINS {
+    FORCE_AND_STRESS = True
+    ML_MODE = run
+ }
+
+You may find one or the other style more intuitive to read; they are functionally identical.
+{{NB|important|The {{TAG|ML_MODE}} and {{TAG|PLUGINS/ML_MODE}} tags differ in scope and purpose. {{TAG|ML_MODE}} controls {{FILE|ML_FF}} interaction (not relevant here). {{TAG|PLUGINS/ML_MODE}} specifically controls whether plugin-computed forces are added to VASP-computed forces or substitute them entirely. {{TAG|PLUGINS/ML_MODE|run}} ensures substitution.}}
+
+=== Step 4: Run calculation ===
+
+Start your calculation the same way you usually would. If everything works as expected, you should notice a significant speedup and no electronic steps showing up in your {{FILE|OUTCAR}}.
+{{NB|mind|A valid {{FILE|POTCAR}} is required to start the calculation, even though uMLFFs will not use it.}}
+
+== Example calculation: Si diamond ==
+
+We demonstrate the approach for a cell structure optimization of an out-of-equilibrium Si diamond lattice. Set up a calculation folder with the following files:
+
+==== {{FILE|INCAR}} ====
+ SYSTEM = Si diamond
+ PLUGINS {
+   FORCE_AND_STRESS = True
+   ML_MODE = run
+ }
+ IBRION = 2        # conjugate-gradient ionic relaxation
+ ISIF   = 3        # relax ions + cell shape + cell volume
+ NSW    = 200      # max ionic steps
+ EDIFFG = -0.01    # control force-convergence criterion
+ POTIM  = 0.2      # CG trial step
+ KSPACING = 0.25
+ LWAVE  = .FALSE.
+ LCHARG = .FALSE.
+
+==== {{FILE|POSCAR}} ====
+ Si diamond (lattice intentionally off-equilibrium to give the optimizer work)
+ 1.0
+     5.5000000000000000    0.0000000000000000    0.0000000000000000
+     0.0000000000000000    5.5000000000000000    0.0000000000000000
+     0.0000000000000000    0.0000000000000000    5.5000000000000000
+   Si
+    8
+ Direct
+  0.0000000000000000  0.0000000000000000  0.0000000000000000
+  0.5000000000000000  0.5000000000000000  0.0000000000000000
+  0.5000000000000000  0.0000000000000000  0.5000000000000000
+  0.0000000000000000  0.5000000000000000  0.5000000000000000
+  0.2500000000000000  0.2500000000000000  0.2500000000000000
+  0.7500000000000000  0.7500000000000000  0.2500000000000000
+  0.7500000000000000  0.2500000000000000  0.7500000000000000
+  0.2500000000000000  0.7500000000000000  0.7500000000000000
+
+==== {{FILE|POTCAR}} ====
+Required for VASP to run. Use an Si {{FILE|POTCAR}}; it will not actually be used for the calculation.
+
+==== vasp_plugin.py ====
+We use [[Running universal machine-learned force fields#Example A: Model inference with the tensorpotential package (GRACE)|a GRACE model]] for this demonstration:
+: <syntaxhighlight lang=py>
+from tensorpotential.calculator.foundation_models import GRACEModels, grace_fm
+calculator = grace_fm(GRACEModels.GRACE_2L_OMAT)
+
+from vasp.force_field import AseForceField  # VASP force field wrapper class
+force_field = AseForceField(calculator)         # apply wrapper class
+
+def force_and_stress(constants, additions):     # to compute force and stress via the uMLFF model instead of VASP's DFT routines
+    force_field.force_and_stress(constants, additions)
+</syntaxhighlight>
+
+Then run:
+{{CB|mpirun -np 1 vasp_std|:}}
+
+VASP output should look something like:
+
+   1 F= -.47087326E+02 E0= -.47087326E+02  d E =-.470873E+02
+ curvature:   0.00 expect dE= 0.000E+00 dE for cont linesearch  0.000E+00
+ trial: gam= 0.00000 g(F)=  0.470E-39 g(S)=  0.513E-01 ort = 0.000E+00 (trialstep = 0.100E+01)
+ search vector abs. value=  0.513E-01
+   2 F= -.47121998E+02 E0= -.47121998E+02  d E =-.346718E-01
+ trial-energy change:   -0.034672  1 .order   -0.034453   -0.051264   -0.017642
+ step:   1.5247(harm=  1.5247)  dis= 0.00000  next Energy=   -47.126408 (dE=-0.391E-01)
+   3 F= -.47126526E+02 E0= -.47126526E+02  d E =-.391998E-01
+ curvature:  -0.76 expect dE=-0.474E-05 dE for cont linesearch -0.474E-05
+ trial: gam= 0.00000 g(F)=  0.946E-39 g(S)=  0.622E-05 ort =-0.565E-03 (trialstep = 0.110E+01)
+ search vector abs. value=  0.622E-05
+ reached required accuracy - stopping structural energy minimisation
+
+Notice especially the lack of electronic steps in the optimization. The {{FILE|CONTCAR}} shows the relaxed lattice:
+
+==== {{FILE|CONTCAR}} ====
+ Si diamond
+   1.0000000000000000
+     5.4461607390008595    0.0000000000000000    0.0000000000000000
+     0.0000000000000000    5.4461607390008595   -0.0000000000000000
+     0.0000000000000000   -0.0000000000000000    5.4461607390008595
+ ...
+
+== Recommendations and advice ==
+
+* All else being equal, try picking models with good benchmark metrics, broader training datasets, and fewer parameters. The number of parameters directly affects inference speed.
+
+== Related tags and articles ==
+
+[[Plugins]], [[Running GRACE force fields in VASP]]
+
+Files: [[Makefile.include#Plugins (optional)|Makefile.include]]
+
+Tags: {{TAG|PLUGINS/ML_MODE}}, {{TAG|PLUGINS/FORCE_AND_STRESS}}
+
+== References ==
+<references/>
+
+[[Category:Howto]]
+[[Category:Machine-learned force fields]]
+[[Category:Forces]]

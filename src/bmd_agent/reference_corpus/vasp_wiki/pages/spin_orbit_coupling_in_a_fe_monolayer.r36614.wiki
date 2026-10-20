@@ -1,0 +1,54 @@
+{{Template:Magnetism}}
+
+== Task ==
+
+Spin-orbit coupling (SOC) in a freestanding Fe monolayer. This example is carried out in total analogy to {{TAG|Spin-orbit coupling in a Ni monolayer}}.
+
+== Input ==
+
+=== {{TAG|POSCAR}} ===
+<pre>
+fcc Fe 100 surface
+ 3.45
+   .50000   .50000   .00000
+  -.50000   .50000   .00000
+   .00000   .00000  5.00000
+  1
+Cartesian
+   .00000   .00000   .00000
+</pre>
+
+=== {{TAG|INCAR}} ===
+
+ {{TAGBL|SYSTEM}}        = Fe (100) monolayer
+ {{TAGBL|ISTART}}        = 0
+ {{TAGBL|ENCUT}}         = 270.00
+ {{TAGBL|LNONCOLLINEAR}} = .TRUE.
+ {{TAGBL|MAGMOM}}        = 0.0 0.0 3.0
+ {{TAGBL|VOSKOWN}}       = 1
+ {{TAGBL|LSORBIT}}       = .TRUE.
+      
+ {{TAGBL|LMAXMIX}}       = 4
+
+*For the second calculation, switch to in-plane magnetiztion by setting {{TAG|MAGMOM}}= 3.0 0.0 0.0.
+
+=== {{TAG|KPOINTS}} ===
+<pre>
+k-points
+ 0
+Monkhorst-Pack
+9 9 1
+0 0 0
+</pre>
+
+== Calculation ==
+
+*From the energy differences of the calculations using in plane and out of plane magnetization we see that the easy axis lies (in contrast to Ni) out of plane:
+<math>E_{\textrm{MAE}}=E(m_{\perp})-E(m_{\parallel})=-0.2 \, \textrm{meV}</math>
+
+== Download ==
+[[Media:4 4 SOI Fe.tgz| 4_4_SOI_Fe.tgz]]
+ 
+{{Template:Magnetism}}
+
+[[Category:Examples]][[Category:Spin-orbit coupling]]

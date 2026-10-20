@@ -1,0 +1,82 @@
+Description: Constraining the local magnetic moments on NiO.
+
+To orient locally each spin, a penalty energy <math>E_p</math> is added, inversely proportional to the <math>\lambda</math> ([[LAMBDA]]) parameter. Thus, the process has to begin with a low [[LAMBDA]], which is increased step by step.
+
+For additional information, go to the [[I_CONSTRAINED_M|I_CONSTRAINED_M]] page.
+
+''<u>Exercise :</u>'' Verify the <math>E_p=f(1/\lambda)</math> relation by constraining the spin directions. Check the efficiency of the method by constraining only the direction, then the direction and the size of spins.
+
+----
+*{{TAG|INCAR}}
+
+ NiO GGA+U Constr.
+   {{TAGBL|SYSTEM}}        = "NiO"
+    
+ Electronic minimization
+   {{TAGBL|ENCUT}}         = 450
+   {{TAGBL|EDIFF}}         = 1E-5
+   {{TAGBL|LORBIT}}        = 11
+   {{TAGBL|LREAL}}         = .False.
+   {{TAGBL|ISYM}}          = -1
+   {{TAGBL|NELMIN}}        = 6
+   {{TAGBL|LSORBIT}}       = .True.
+   {{TAGBL|GGA_COMPAT}}    = .FALSE.
+    
+ DOS
+   {{TAGBL|ISMEAR}}    = -5
+    
+ Magnetism
+   {{TAGBL|ISPIN}}     = 2
+   {{TAGBL|I_CONSTRAINED_M}} = 1  # direction
+   # {{TAGBL|I_CONSTRAINED_M}} = 2  # size and direction
+   {{TAGBL|M_CONSTR}}  = 2 0 0 0 -2 0 6*0
+   {{TAGBL|LAMBDA}}    = 1
+   {{TAGBL|RWIGS}}     = 1.30 0.70 
+     
+ Orbital moment
+   {{TAGBL|LORBMOM}}  = T
+     
+ Mixer
+   {{TAGBL|AMIX}}      = 0.2
+   {{TAGBL|BMIX}}      = 0.00001
+   {{TAGBL|AMIX_MAG}}  = 0.8
+   {{TAGBL|BMIX_MAG}}  = 0.00001
+     
+ GGA+U
+   {{TAGBL|LDAU}}      = .TRUE.
+   {{TAGBL|LDAUTYPE}}  = 2
+   {{TAGBL|LDAUL}}     = 2 -1
+   {{TAGBL|LDAUU}}     = 5.00 0.00
+   {{TAGBL|LDAUJ}}     = 0.00 0.00
+   {{TAGBL|LDAUPRINT}} = 1
+   {{TAGBL|LMAXMIX}}   = 4 
+ 
+*{{TAG|KPOINTS}}
+<pre>
+k-points
+ 0
+gamma
+ 4  4  4 
+ 0  0  0
+</pre>
+
+*{{TAG|POSCAR}}
+<pre>
+NiO
+ 4.17
+ 1.0 0.5 0.5
+ 0.5 1.0 0.5
+ 0.5 0.5 1.0
+ 2 2
+Cartesian
+ 0.0 0.0 0.0
+ 1.0 1.0 1.0
+ 0.5 0.5 0.5
+ 1.5 1.5 1.5
+</pre>
+
+== Download ==
+[[Media:Nio_constr.tgz| nio_constr.tgz]]
+----
+
+[[Category:Examples]]

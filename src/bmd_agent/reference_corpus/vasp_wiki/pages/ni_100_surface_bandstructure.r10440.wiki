@@ -1,0 +1,100 @@
+{{Sur_sci - Tutorial}}
+
+== Task == 
+
+Calculation of the bandstructure of a Ni (100) surface.
+
+== Input ==
+
+=== {{TAG|POSCAR}} ===
+<pre>
+fcc (100) surface                       
+   3.53000000000000     
+     0.5000000000000000    0.5000000000000000    0.0000000000000000
+    -0.5000000000000000    0.5000000000000000    0.0000000000000000
+     0.0000000000000000    0.0000000000000000    5.0000000000000000
+   Ni
+     5
+Selective dynamics
+Direct
+  0.0000000000000000  0.0000000000000000  0.0000000000000000   F   F   F
+  0.5000000000000000  0.5000000000000000  0.1000000000000014   F   F   F
+  0.0000000000000000  0.0000000000000000  0.2000000000000028   F   F   F
+  0.5000000000000000  0.5000000000000000  0.3004245271852446   T   T   T
+  0.0000000000000000 -0.0000000000000000  0.3959414474619545   T   T   T
+ 
+  0.00000000E+00  0.00000000E+00  0.00000000E+00
+  0.00000000E+00  0.00000000E+00  0.00000000E+00
+  0.00000000E+00  0.00000000E+00  0.00000000E+00
+  0.00000000E+00  0.00000000E+00  0.00000000E+00
+  0.00000000E+00  0.00000000E+00  0.00000000E+00
+</pre>
+
+=== {{TAG|INCAR}} ===
+
+   {{TAGBL|ICHARG}} = 11
+ general:
+   {{TAGBL|SYSTEM}} = clean (100) nickel surface
+   {{TAGBL|ENMAX}}  = 270
+   {{TAGBL|ISMEAR}} = 2 ; {{TAGBL|SIGMA}} = 0.2
+   {{TAGBL|ALGO}} = Normal
+     
+ spin:
+   {{TAGBL|ISPIN}} = 2
+   {{TAGBL|MAGMOM}} = 5*1
+     
+   {{TAGBL|LORBIT}} = 11
+
+*{{TAG|ICHARG}}=11: Read in charge density (1) and do not update it (+10) - non-selfconsistent run.
+*N.B.: You need to topy the {{TAG|CHGCAR}} file of example {{TAG|Ni 100 surface DOS}} into the directory where you want to run this calculation.
+
+=== {{TAG|KPOINTS}} ===
+<pre>
+kpoints for band-structure G-X-M-G
+  13
+reziprok
+   .00000   .00000   .00000    1
+   .12500   .00000   .00000    1
+   .25000   .00000   .00000    1
+   .37500   .00000   .00000    1
+   .50000   .00000   .00000    1
+
+   .50000   .12500   .00000    1
+   .50000   .25000   .00000    1
+   .50000   .37500   .00000    1
+   .50000   .50000   .00000    1
+
+   .37500   .37500   .00000    1
+   .25000   .25000   .00000    1
+   .12500   .12500   .00000    1
+   .00000   .00000   .00000    1
+</pre>
+
+[[File:Fig Ni 100 surfband 1.png|200px]]
+*13 k points along line <math>\Gamma - X - M - \Gamma</math>.
+*The coordinates are given in reciprocal coordinates.
+*Each point has weight 1.
+
+== Calculation ==
+
+*In the {{TAG|OUTCAR}} file the status message on the actual job (non-selfconsistent calculation) is given:
+ ...
+ Static calculation
+ charge density remains constant during run
+ spin polarized calculation
+ ...
+
+*The bandstructure can be plotted using p4vasp:
+[[File:Fig Ni 100 surfband 3.png|800px]]
+<!--
+*The example output for the projected bandstructure consists mainly out of bulk like bands. The Yelllow dots mark the surface loclizations:
+[[File:Fig Ni 100 surfband 2.png|300px]]
+-->
+
+== Download ==
+[[Media:Ni100clean_band.tgz| Ni100clean_band.tgz]]
+ 
+{{Sur_sci}}
+
+
+[[Category:Examples]]

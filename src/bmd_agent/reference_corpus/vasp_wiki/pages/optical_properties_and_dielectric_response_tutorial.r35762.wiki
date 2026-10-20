@@ -1,0 +1,10 @@
+{{Template:optics_dielectric - Tutorial}}
+
+The tutorial is made of the following parts:
+<div style="background:var(--vdefault-bg); border:solid 1px var(--vlines); padding:0.5em 1em; margin-right:14em;">
+# [[dielectric properties of SiC|dielectric properties of SiC]]
+# [[dielectric properties of Si|dielectric properties of Si]]
+# [[ionic contributions to the frequency dependent dielectric function of NaCl|ionic contributions to the frequency dependent dielectric function of NaCl]]
+</div>
+
+[[Category:Tutorials]]

@@ -1,0 +1,136 @@
+{{Template:Bulk_systems - Tutorial}}
+
+== Task ==
+
+In this example you will determine the interlayer binding energy of graphite in its experimental structure using the MBD@rsSCS method of Tchatchenko ''et al.'' to account for van der Waals interactions.
+
+Semilocal DFT at the GGA level underestimates long-range dispersion interactions.
+In the case of graphite, PBE predicts the interlayer binding energy of ~1 meV/atom which is too small compared to the RPA reference of 0.048 eV/atom <ref name="lebegue"/>.
+In contrast, the pairwise correction scheme of Tkatchenko and Scheffler, overestimates  this quantity strongly (0.083 eV/atom, see the [[Graphite TS binding energy]] example).
+Here we show that this problem can be eliminated by if many-body effects in dispersion energy are taken into account using the MBD@rsSCS method of Tchatchenko et al. (see [[Many-body dispersion energy]]).
+
+== Input ==
+
+=== POSCAR ===
+*Graphite:
+ graphite
+ 1.0
+ 1.22800000 -2.12695839  0.00000000
+ 1.22800000  2.12695839  0.00000000
+ 0.00000000  0.00000000  6.71
+ 4
+ direct
+    0.00000000  0.00000000  0.25000000
+    0.00000000  0.00000000  0.75000000
+    0.33333333  0.66666667  0.25000000
+    0.66666667  0.33333333  0.75000000
+ 
+*Graphene:
+ graphite
+ 1.0
+ 1.22800000 -2.12695839  0.00000000
+ 1.22800000  2.12695839  0.00000000
+ 0.00000000  0.00000000  20.
+ 2
+ direct
+    0.00000000  0.00000000  0.25000000
+    0.33333333  0.66666667  0.25000000
+
+=== INCAR ===
+
+ {{TAGBL|IVDW}} = 202           
+ {{TAGBL|LVDWEXPANSION}} =.TRUE. 
+ {{TAGBL|NSW}} = 1 
+ {{TAGBL|IBRION}} = 2
+ {{TAGBL|ISIF}} = 4
+ {{TAGBL|PREC}} = Accurate
+ {{TAGBL|EDIFFG}} = 1e-5
+ {{TAGBL|LWAVE}} = .FALSE.
+ {{TAGBL|LCHARG}} = .FALSE.
+ {{TAGBL|ISMEAR}} = -5
+ {{TAGBL|SIGMA}} = 0.01
+ {{TAGBL|EDIFF}} = 1e-6
+ {{TAGBL|ALGO}} = Fast
+ {{TAGBL|NPAR}} = 2
+
+=== KPOINTS ===
+
+*Graphite:
+ Monkhorst Pack
+ 0
+ gamma
+ 16 16 8
+ 0 0 0
+
+*Graphene:
+ Monkhorst Pack
+ 0
+ gamma
+ 16 16 1
+ 0 0 0
+
+
+== Running this example ==
+
+To run this example, execute the <code>run.sh</code> bash-script:
+<pre>
+#
+# To run VASP this script calls $vasp_std
+# (or posibly $vasp_gam and/or $vasp_ncl).
+# These variables can be defined by sourcing vaspcmd
+. vaspcmd 2> /dev/null
+
+#
+# When vaspcmd is not available and $vasp_std,
+# $vasp_gam, and/or $vasp_ncl are not set as environment
+# variables, you can specify them here
+[ -z "`echo $vasp_std`" ] && vasp_std="mpirun -np 8 /path-to-your-vasp/vasp_std"
+[ -z "`echo $vasp_gam`" ] && vasp_gam="mpirun -np 8 /path-to-your-vasp/vasp_gam"
+[ -z "`echo $vasp_ncl`" ] && vasp_ncl="mpirun -np 8 /path-to-your-vasp/vasp_ncl"
+
+#
+# The real work starts here
+#
+
+# Here the work starts
+rm results.dat
+
+drct=$(pwd)
+
+for i in graphene graphite
+do
+  cd $drct/$i
+  $vasp_std
+done
+
+cd $drct
+
+# obtain total energy for graphite 
+en2=$(grep "free  ene" graphite/OUTCAR |tail -1|awk '{print $5}') 
+
+# obtain total energy for graphene
+en1=$(grep "free  ene" graphene/OUTCAR |tail -1|awk '{print $5}')
+
+# compute interlayer binding energy (eV/atom)
+deltaE=$(echo print $en2/4 - $en1/2 |python)
+
+echo "Binding energy (eV/atom): " $deltaE >results.dat
+</pre>
+
+Note that the calculation is performed in two steps (two separate single-point calculations) in which the energy for bulk graphite and for graphene are obtained.
+The binding energy is computed automatically and it is written in the file <code>results.dat</code>.
+(N.B.: for the latter ''python'' needs to be available.)
+
+The computed value of 0.050 eV/A is now fairly close to the RPA reference of 0.048 eV/atom <ref name="lebegue"/>.
+
+== Download ==
+[[Media:GraphiteBinding mbd.tgz| graphiteBinding_mdb.tgz]]
+
+== References ==
+<references>
+<ref name="lebegue">[https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.105.196401 S. Lebègue, J. Harl, Tim Gould, J. G. Ángyán, G. Kresse, and J. F. Dobson, Phys. Rev. Lett. 105, 196401 (2010).]</ref>
+</references>
+ 
+{{Template:Bulk_systems}}
+
+[[Category:Examples]]

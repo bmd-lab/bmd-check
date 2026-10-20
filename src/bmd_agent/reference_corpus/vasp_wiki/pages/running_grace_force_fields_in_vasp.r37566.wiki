@@ -1,0 +1,65 @@
+{{available|6.6.0}}
+Pre-trained [https://gracemaker.readthedocs.io/ GRACE] machine-learned force fields can be used as an alternative to [[:Category:Machine-learned_force_fields|{{VASP}}-native force fields]] to drive essentially every {{VASP}} simulation which uses the the prediction-only mode {{TAG|ML_MODE|run}}. This includes [[:Category:Molecular_dynamics|molecular dynamics simulations]], [[Structure_optimization|ionic optimization]] (see {{TAG|IBRION}}) and [[:Category:Advanced_molecular-dynamics_sampling|advanced sampling techniques]]. To be able to use GRACE force fields {{VASP}} must be built with [[VASPml_library|VASPml]] (<code>-Dlibvaspml</code>) '''and''' GRACE support (<code>-DVASPML_ENABLE_GRACE</code>), for details see the [[Makefile.include#VASPml_(experimental)|build customization options]]. {{NB|warning|Due to an incompatibility in the interface layer GRACE force fields from versions 0.5.8 and newer of <code>tensorpotential</code> cannot be used together with {{VASP}} 6.6.0. For this {{VASP}} version please use force fields from <code>tensorpotential</code> 0.5.7. Be aware that for these models the <code>metadata.json</code> file generation step is mandatory (see box below). This [[Known_issues#KnownIssue95 | known issue 95]] was resolved in {{VASP}} 6.6.1 which was tested with <code>tensorpotential</code> 0.5.9 and 0.6.0.}}
+
+== Models ==
+
+The easiest way to obtain [https://gracemaker.readthedocs.io/en/latest/gracemaker/foundation/ GRACE models] is to download them via the [https://pypi.org/project/tensorpotential/ tensorpotential package], directly with <code>pip</code> or within a dedicated [https://en.wikipedia.org/wiki/Conda_(package_manager) conda] environment. {{NB|tip|The <code>tensorpotential</code> package is '''not''' a runtime dependency of {{VASP}} but the most convenient way of listing and retrieving available models. Besides downloading a model the package is neither required for compiling nor for running {{VASP}} with GRACE force fields.}} Install <code>tensorpotential</code> and all its dependencies simply with:
+
+ pip install tensorpotential==0.6.0
+
+After installation the command line tool <code>grace_models</code> becomes available. First, inspect available models with
+
+ grace_models list
+
+which will produce output like this:
+<syntaxhighlight lang="bash">
+...
+Available models:
+...
+================================================================================
+GRACE-2L-OMAT
+	DESCRIPTION: A two-layer semi-local GRACE model, fitted on the OMat24 dataset, with fixed 6 A cutoff.
+	PATH: /fsc/home/singraber/.cache/grace/GRACE-2L-OMAT
+	CHECKPOINT: AVAILABLE, BUT NOT DOWNLOADED
+	LICENSE: Academic Software License
+================================================================================
+...
+</syntaxhighlight>
+[https://gracemaker.readthedocs.io/en/latest/gracemaker/foundation/ Select a model] and download it with the following command:
+
+ grace_models download [MODEL_NAME]
+
+Given the example model above the command would be <code>grace_models download GRACE-2L-OMAT</code>. The GRACE model will be automatically downloaded and unpacked to the directory <code>~/.cache/grace/</code>. {{NB|deprecated|{{VASP}} requires the file <code>metadata.json</code> to be present inside the model directory. This file is automatically shipped with <code>tensorpotential</code> for models created since version 0.5.9. If you have an older version and the file is not present, please try to upgrade <code>tensorpotential</code> and re-download the models. Or, alternatively, create it from the <code>metadata.yaml</code> file with a Python script containing the following code snippet: <syntaxhighlight lang="python" line>
+#!/usr/bin/env python
+import yaml
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+
+with path.open() as f:
+    data = yaml.safe_load(f)
+
+with path.with_suffix(".json").open('w') as f:
+    json.dump(data, f)
+</syntaxhighlight>Save the Python code in a file, e.g. <code>grace_yaml2json.py</code>, and run it with: <syntaxhighlight lang="shell">python grace_yaml2json.py ~/.cache/grace/MODEL_NAME/metadata.yaml</syntaxhighlight> This will automatically generate the missing JSON file in the model directory.||Hint for models created with <code>tensorpotential</code> version < 0.5.9:}}
+
+== Select GRACE model in {{VASP}} ==
+
+In the {{FILE|INCAR}} file the GRACE force field method must be selected via {{TAG|ML_TYPE|grace}} and the model may be specified via {{TAG|ML_GRACE_MODEL}}. A minimal block of tags could look like this:
+
+ ...
+ # MD related settings, etc.
+ ...
+ # ML force field settings
+ {{TAGBL|ML_LMLFF}}       = .TRUE.
+ {{TAGBL|ML_LIB}}         = .TRUE.
+ {{TAGBL|ML_MODE}}        = run
+ {{TAGBL|ML_TYPE}}        = grace
+ {{TAGBL|ML_GRACE_MODEL}} = GRACE-2L-OMAT
+ ...
+{{NB|important|The GRACE force field predictions are automatically offloaded to the GPU if one is available. However, currently parallelism via MPI is not supported when running GRACE force fields. Hence, start {{VASP}} with <code>mpirun -np 1 ...</code>.}}
+
+[[Category:Machine-learned force fields]]
+[[Category:Howto]]

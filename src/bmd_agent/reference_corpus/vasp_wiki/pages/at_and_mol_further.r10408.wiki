@@ -1,0 +1,19 @@
+{{Template:At_and_mol - Tutorial}}
+
+*How does the energy change when one decreases {{TAG|SIGMA}} to 0.001 in the {{TAG|INCAR}} file starting from the [[O_atom? Why?
+
+*Try to copy {{FILE|CONTCAR}} to {{FILE|POSCAR}} after running the example {{TAG|O_dimer}}. Why is the calculation so fast?
+
+*Try to play with the parameter {{TAG|POTIM}} for the example {{TAG|O_dimer}}. What is the optimal value?
+
+*What is the reason for the imaginary frequency in the example {{TAG|CO_vibration}}? Does the behaviour improve when the step width (smaller or larger) is changed? Also try to improve the precision to which the ground state is converged ({{TAG|EDIFF}}=1E-5). What happens if the accuracy of the calculations is improved ({{TAG|PREC}}=''Accurate'').
+
+*Try to use the conjugate gradient algorithm to the <math>\mathrm{H}_{2}\mathrm{O}</math> molecule (example [[H2O]]).
+
+*Calculate the vibrational frequencies of the <math>\mathrm{H}_{2}\mathrm{O}</math> molecule (example [[H2O]]) after relaxation (example [[H2O vibration]]). Why does one find 3 modes that have small frequencies? Try {{TAG|EDIFF}}=1E-5 instead of {{TAG|EDIFF}}=1E-4.
+
+ 
+{{Template:At_and_mol}}
+
+
+[[Category:Examples]]
