@@ -1,0 +1,137 @@
+Let’s consider three types of static perturbations
+# atomic displacements <math display="inline">u_m</math> with <math>m=I\alpha</math> with <math>I=\{1..N_\text{atoms}\}</math> and <math>\alpha=\{1..3\}</math>
+# homogeneous strains <math display="inline">\eta_j</math> with <math display="inline">j=\{1..6\}</math> 
+# static electric field <math display="inline">\mathcal{E}_\alpha</math> with <math display="inline">\alpha=\{1..3\}</math>
+
+By performing a Taylor expansion of the total energy <math display="inline">E</math> in terms of these perturbations we obtain{{cite|wu:prb:2005}}
+:<math>
+\begin{aligned}
+E(u,\mathcal{E},\eta) =
+&E_0 + \\
+&\frac{\partial E}{\partial u_m} u_m +
+\frac{\partial E}{\partial \mathcal{E}_\alpha} \mathcal{E}_\alpha+
+\frac{\partial E}{\partial \eta_j} \eta_j + \\
+&\frac{1}{2} \frac{\partial^2 E}
+            {\partial u_m \partial u_n  }
+            u_m u_n +
+\frac{1}{2} \frac{\partial^2 E}
+            {\partial \mathcal{E}_\alpha \partial \mathcal{E}_\beta }
+            \mathcal{E}_\alpha \mathcal{E}_\beta +
+\frac{1}{2} \frac{\partial^2 E}
+            {\partial \eta_j \partial \eta_k}
+            \eta_j \eta_k + \\
+&\frac{\partial^2 E}{\partial u_m \partial \mathcal{E}_\alpha}
+u_m \mathcal{E}_\alpha  + 
+\frac{\partial^2 E}{\partial u_m \partial \eta_j}
+u_m \eta_j + 
+\frac{\partial^2 E}{\partial \mathcal{E}_\alpha \partial \eta_j}
+\mathcal{E}_\alpha \eta_j + 
+\text{terms of higher order}
+\end{aligned}
+</math>
+
+
+The derivatives of the energy with respect to an electric field are the polarization, with respect to atomic displacements are the forces, with respect to changes in the lattice vectors are the stress tensor.
+
+<math display="block">
+P_\alpha = -\frac{\partial E}{\partial \mathcal{E}_\alpha}
+\qquad \text{polarization}
+</math>
+
+<math display="block">
+F_m = -\Omega_0\frac{\partial E}{\partial u_m}
+\qquad \text{forces}
+</math>
+
+<math display="block">
+\sigma_j = \frac{\partial E}{\partial \eta_j}
+\qquad \text{stresses}
+</math>
+
+This leads to the following ‘clamped-ion’ or ‘frozen-ion’ definitions:
+
+<math display="block">
+\overline{\chi}_{\alpha\beta} =
+- \frac{\partial^2 E}{\partial \mathcal{E}_\alpha \partial \mathcal{E}_\beta} |_{u,\eta}
+\qquad \text{dielectric susceptibility}
+</math>
+
+<math display="block">
+\overline{C}_{jk} =
+\frac{\partial^2 E}{\partial \eta_j \partial \eta_k} |_{u,\mathcal{E}}
+\qquad \text{elastic tensor}
+</math>
+
+<math display="block">
+\Phi_{mn}=\Omega_0 \frac{\partial^2 E}{\partial u_m \partial u_n} |_{\mathcal{E},\eta}
+\qquad \text{force-constants}
+</math>
+
+<math display="block">
+\overline{e}_{\alpha k} =
+\frac{\partial^2 E}{\partial \mathcal{E}_\alpha \partial \eta_k} |_{u}
+\qquad \text{piezoelectric tensor}
+</math>
+
+<math display="block">
+Z^*_{m\alpha}=-\Omega_0 \frac{\partial^2 E}{\partial u_m \partial \mathcal{E}_\alpha} |_{\eta}
+\qquad \text{Born effective charges}
+</math>
+
+<math display="block">
+\Xi_{mj}=-\Omega_0 \frac{\partial^2 E}{\partial u_m \partial \eta_j} |_{\mathcal{E}}
+\qquad \text{force response internal strain tensor}
+</math>
+
+
+To compare with experimental results, however, the static response properties should take into account the ionic relaxation. This follows from the Taylor expansion above by looking at the ionic positions where the energy is minimal:
+
+<math display="block">
+\tilde{E}(\mathcal{E},\eta) = \text{min}_u E(u,\mathcal{E},\eta)
+</math>
+
+The physical ‘relaxed-ion’ tensors are 
+
+<math display="block">
+\begin{aligned}
+\chi_{\alpha\beta} &= \overline{\chi}_{\alpha\beta} +
+\Omega_0^{-1} Z^*_{m\alpha} (\Phi)^{-1}_{mn} Z^*_{n\beta}
+\qquad \text{dielectric susceptibility}\\
+C_{jk} &= \overline{C}_{jk} +
+\Omega_0^{-1} \Xi_{mj} (\Phi)^{-1}_{mn} \Xi_{nk}
+\qquad \text{elastic tensor}\\
+e_{\alpha j} &= \overline{e}_{\alpha j} +
+\Omega_0^{-1}Z^*_{m\alpha} (\Phi)^{-1}_{mn} \Xi_{nj}
+\qquad \text{piezoelectric tensor}
+\end{aligned}
+</math>
+
+The second term on the right-hand side of each of these equations is called the ionic contributions to the dielectric susceptibility, elastic tensor, and piezoelectric tensor.
+
+The ionic contributions to the dielectric tensor are: <math display="block">
+\epsilon^{\text{ion}}_{ij}=\frac{4\pi}{\Omega}
+\sum_{kl}
+Z^*_{ik}
+\Phi^{-1}_{kl}
+Z^*_{lj}
+</math>
+
+The ionic contributions to the elastic tensor <math display="block">
+C^{\text{ion}}_{ik}=
+\sum_{kl}
+\Xi_{ij}
+\Phi^{-1}_{jk}
+\Xi_{kl}
+</math>
+
+The ionic contributions to the piezoelectric tensor <math display="block">
+e^{\text{ion}}_{ij}=
+\sum_{kl}
+Z^*_{ij}
+\Phi^{-1}_{jk}
+\Xi_{kl}
+</math>
+
+== References ==
+
+[[Category:Linear response]][[Category:Theory]][[Category:Forces]][[Category:Dielectric properties]]

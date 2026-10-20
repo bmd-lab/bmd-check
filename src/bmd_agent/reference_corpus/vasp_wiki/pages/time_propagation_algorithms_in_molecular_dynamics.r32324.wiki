@@ -1,0 +1,61 @@
+In [[MD|molecular dynamics simulations]], the ionic positions <math>\mathbf{r}_{i}(t)</math> and velocities <math>\mathbf{v}_{i}(t)</math> are monitored as functions of time <math>t</math>. This time dependence is obtained by integrating Newton's equations of motion. When integrating the equations of motions it is important to use symplectic algorithms which conserve the phase-space volume. To solve the equations of motion under symplectic conditions, various integration algorithms have been developed. The time dependence of a particle can be expressed in a Taylor expansion
+::<math>
+\mathbf{r}_{i}(t+\Delta t) = \mathbf{r}_{i}(t) + \mathbf{v}_{i}(t)\Delta t + \frac{\mathbf{F}_{i}}{2m}(t)\Delta t^{2} + \frac{\partial^{3} \mathbf{r}_{i}(t)}{\partial t^{3}}\Delta t^{3} + \mathcal{O}(\Delta t^{4})
+</math>
+A backward propagation in time by a time step <math>\Delta t</math> can be obtained in a similar way
+::<math>
+\mathbf{r}_{i}(t-\Delta t) = \mathbf{r}_{i}(t) - \mathbf{v}_{i}(t)\Delta t + \frac{\mathbf{F}_{i}}{2m}(t)\Delta t^{2} - \frac{\partial^{3} \mathbf{r}_{i}(t)}{\partial t^{3}}\Delta t^{3} + \mathcal{O}(\Delta t^{4})
+</math>
+Adding these two equation gives and rearrangement gives the Verlet algorithm
+::<math>
+\mathbf{r}_{i}(t+\Delta t) = 
+2\mathbf{r}_{i}(t)-\mathbf{r}_{i}(t-\Delta t)+\frac{\mathbf{F}_{i}}{2m}(t)\Delta t^{2}+\mathcal{O}(\Delta t ^{3})
+</math>
+The Verlet algorithm can be rearranged to the Velocity-Verlet algorithm by inserting <math>\mathbf{v}_{i}(t)=\frac{\mathbf{r}_{i}(t)-\mathbf{r}_{i}(t-\Delta t)}{\Delta t}</math>
+::<math>
+\mathbf{r}_{i}(t+\Delta t) = 
+\mathbf{r}_{i}(t)+ \mathbf{v}_{i}(t)\Delta t+\frac{\mathbf{F}_{i}}{2m}(t)\Delta t^{2}.
+</math>
+== Velocity-Verlet integration scheme ==
+The Velocity-Verlet algorithm can be decomposed into the following steps:
+<ol>
+  <li><math>\mathbf{v}_{i}(t + \frac{1}{2}\Delta t)=\mathbf{v}_{i}(t)+\frac{\mathbf{F}_{i}(t)}{2m_{i}}\Delta t</math></li>
+  <li><math>\mathbf{r}_{i}(t + \Delta t) = \mathbf{r}_{i}(t) + \mathbf{v}_{i}(t + \frac{1}{2}\Delta t)\Delta t</math></li>
+  <li>compute forces <math> \mathbf{F}_{i}(t)</math> from density functional theory or machine learning</li>
+  <li><math>\mathbf{v}_{i}(t + \Delta t)=\mathbf{v}_{i}(t+\frac{1}{2}\Delta t)+\frac{\mathbf{F}_{i}(t+\Delta t)}{2m_{i}}\Delta t</math></li>
+</ol>
+From these equations it can be seen that the velocity and the position vectors are synchronous in time.
+
+== Leap-Frog integration scheme ==
+Another form of the Verlet algorithm can be written in the form of the Leap-Frog algorithm. The Leap-Frog algorithm consists of the following steps:
+<ol>
+  <li> compute forces <math> \mathbf{F}_{i}(t)</math> from density functional theory or machine learning </li>
+  <li><math>\mathbf{v}_{i}(t + \frac{1}{2}\Delta t)=\mathbf{v}_{i}(t- \frac{1}{2}\Delta t)+\frac{\mathbf{F}_{i}(t)}{m_{i}}\Delta t</math></li>
+  <li><math>\mathbf{r}_{i}(t + \Delta t) = \mathbf{r}_{i}(t) + \mathbf{v}_{i}(t + \frac{1}{2}\Delta t)\Delta t</math></li>
+</ol>
+In this form the velocity and the position vectors are asynchronous in time.
+
+== Thermostats and used integrators ==
+{|class="wikitable" style="margin:aut 
+! MDALGO !! thermostat !! integration algorithm
+|- 
+|style="text-align:center;"| 0  || [[Nosé-Hoover thermostat|Nosé-Hoover]] || style="text-align:center;"| [[#Velocity-Verlet integration scheme|Velocity-Verlet]]
+|-
+|style="text-align:center;"| 1  || [[Andersen thermostat|Andersen]] || style="text-align:center;"| [[#Leap-Frog integration scheme|Leap-Frog]]
+|- 
+|style="text-align:center;"| 2  || [[Nosé-Hoover thermostat|Nosé-Hoover]] || style="text-align:center;"| [[#Leap-Frog integration scheme|Leap-Frog]]
+|- 
+|style="text-align:center;"| 3  || [[Langevin thermostat|Langevin]] || style="text-align:center;"| [[#Velocity-Verlet Integration scheme|Velocity-Verlet]]
+|- 
+|style="text-align:center;"| 4  || [[Nosé-Hoover chain thermostat|Nosé-Hoover chain]] || style="text-align:center;"| [[#Velocity-Verlet integration scheme|Velocity-Verlet]] 
+|- 
+|style="text-align:center;"| 5  || [[CSVR thermostat|CSVR]] || style="text-align:center;"| [[#Leap-Frog integration scheme|Leap-Frog]] 
+|- 
+|style="text-align:center;"| 5  || [[MDALGO#MDALGO=13: Multiple Andersen thermostats|Multiple Andersen]] || style="text-align:center;"| [[#Leap-Frog integration scheme|Leap-Frog]] 
+|}
+
+== Related tags and articles ==
+
+{{TAG|IBRION}}, {{TAG|MDALGO}}, [[Thermostats]]
+
+[[Category:Theory]][[Category:Molecular dynamics]][[Category:Thermostats]]

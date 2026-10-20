@@ -1,0 +1,33 @@
+In the DFT-ulg method of Kim et al.{{cite|kim:jpcl:2012}}, the correction term takes the form:
+
+:<math>E_{\mathrm{disp}} = -\frac{1}{2}  s_{lg}\sum_{i=1}^{N_{at}} \sum_{j=1}^{N_{at}}  \sum_{\mathbf{L}} {}^{\prime}  \frac{C_{6ij}}{r_{ij,L}^{6}+b_{lg}(R_{0}^{ij})^{6}} </math>
+
+where the first two summations are over all <math>N_{at}</math> atoms in the unit cell and the third summation is over all translations of the unit cell <math>{\mathbf{L}}=(l_1,l_2,l_3)</math> where the prime indicates that <math>i\not=j</math> for <math>{\mathbf{L}}=0</math>.  <math>C_{6ij}</math> denotes the dispersion coefficient for the atom pair <math>ij</math>, <math>{r}_{ij,\mathbf{L}}</math> is the distance between atom <math>i</math> located in the reference cell <math>\mathbf{L}=0</math> and atom <math>j</math> in the cell <math>L</math>.
+
+== Usage ==
+
+The DFT-ulg method can be activated by setting {{TAG|IVDW}}=3. The parameters in the DFT-ulg method (see Ref. {{cite|kim:jpcl:2012}} for details) that can be modified are listed below.
+
+*{{TAG|VDW_RADIUS}}=50.0 : cutoff radius (in <math>\AA</math>) for pair interactions
+*{{TAG|VDW_S6}}=0.7012 : global scaling parameter <math>s_{lg}</math>
+*{{TAG|VDW_D}}=0.6966 :  universal correction parameter <math>b_{lg}</math>
+*{{TAG|VDW_C6}}=[real array] : <math>C_6</math> parameters (<math>\mathrm{Jnm}^{6}\mathrm{mol}^{-1}</math>) for each species defined in the {{TAG|POSCAR}} file
+*{{TAG|VDW_R0}}=[real array] : <math>R_0</math> parameters (<math>\AA</math>) for each species defined in the {{TAG|POSCAR}} file
+*{{TAG|LVDW_EWALD}}=''.FALSE.'' : the lattice summation in <math>E_{\mathrm{disp}}</math> expression is computed by means of Ewald's summation (''.TRUE.'' ) or via a real space summation over all atomic pairs within cutoff radius {{TAG|VDW_RADIUS}} (''.FALSE.'').  (available in VASP.5.3.5 and later)
+{{NB|mind|The default value of the parameter <math>s_{lg}</math> (0.7012) was determined in conjunction with the PBE {{TAG|GGA}} functional{{cite|kim:jpcl:2012}}. Therefore, it is not recommended to use the DFT-ulg dispersion correction with a {{TAG|GGA}} functional other than PBE, unless <math>s_{lg}</math> is reoptimized.}}
+
+== Related tags and articles ==
+{{TAG|VDW_RADIUS}},
+{{TAG|VDW_S6}},
+{{TAG|VDW_D}},
+{{TAG|VDW_C6}},
+{{TAG|VDW_R0}},
+{{TAG|LVDW_EWALD}},
+{{TAG|IVDW}},
+{{TAG|DFT-D2}}
+
+== References ==
+<references/>
+
+----
+[[Category:Exchange-correlation functionals]][[Category:van der Waals functionals]][[Category:Theory]][[Category:Howto]]

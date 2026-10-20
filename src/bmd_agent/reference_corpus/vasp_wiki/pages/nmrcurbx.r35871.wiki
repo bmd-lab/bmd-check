@@ -1,0 +1,7 @@
+{{Available|6.6.0}}
+The {{FILE|NMRCURBX}} file contains the NMR current density in atomic units (hartree bohr<math>^2</math>). It is written if {{TAG|WRT_NMRCUR}} is set. The format is the same as {{FILE|CHGCAR}} with a header to define the grid and then 3 blocks that correspond to <math>j_x</math>, <math>j_y</math>, and <math>j_z</math>.
+
+== Related tags and articles ==
+{{TAG|WRT_NMRCUR}}, {{TAG|LCHIMAG}}, {{TAG|LLRAUG}}
+
+[[Category:Files]][[Category:Output files]][[Category:NMR]]

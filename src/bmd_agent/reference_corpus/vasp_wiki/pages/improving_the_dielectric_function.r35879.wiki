@@ -1,0 +1,132 @@
+{{Template:BSE - Tutorial}}
+
+== Task == 
+
+Calculate the dielectric function of Si using an averaging over multiple grids or a model-BSE to improve k-sampling in BSE calculations.
+
+== Input ==
+
+ Si
+  5.4300
+ 0.5 0.5 0.0
+ 0.0 0.5 0.5
+ 0.5 0.0 0.5
+ 2
+ cart
+ 0.00 0.00 0.00 
+ 0.25 0.25 0.25 
+
+=== {{FILE|INCAR}} ===
+*This is the {{TAG|INCAR}} file for the basic DFT calculation:
+ {{TAGBL|System}}  = Si
+ {{TAGBL|PREC}} = Normal ; {{TAGBL|ENCUT}} = 250.0
+ {{TAGBL|ISMEAR}} = 0 ; {{TAGBL|SIGMA}} = 0.01
+ {{TAGBL|KPAR}} = 2
+ {{TAGBL|EDIFF}} = 1.E-8
+
+=== {{FILE|KPOINTS}} ===
+ Automatic
+  0
+ Gamma
+  4 4 4 
+  0 0 0
+
+== Calculation == 
+
+The calculated spectra can be improved in two ways:
+
+* Averaging over multiple grids:
+:Compute ''N'' independent dielectric functions using BSE (or any other method), using ''shifted'' grids of '''k'''-points, and take the average over the results.
+
+* Model-BSE:
+:Use a parametrized model<ref name="bokdam:scr:6"/><ref name="liu:bse"/> for the dielectric screening, and DFT eigenenergies moved with a ''scissor'' operator, instead of RPA screening and GW quasiparticle energies.
+
+=== Averaging over multiple grids ===
+*Construct shifted k-point grid with the same density.
+*<math>n\times n\times n</math> k-point grid <math>\rightarrow</math> <math> X_{n} </math> irreducible k-points <math> {K_{n}} </math> with weights <math> W_{n} </math>. We do <math> x_{n} </math> calculations on a <math> m\times m\times m </math> grid, shifted of Gamma by <math> K_{n} </math>.
+*Extract the dielectric function of each calculation and average over them with respect to the weights <math> W_{n} </math>:
+We have now effectively constructed the result for a <math> (n\times m) \times (n\times m) \times (n\times m)</math> grid. But interactions of range longer than <math> m </math> times the supercell size have been ignored.
+*In our example we use <math>n=4</math> and <math>m=4</math>: Effectively we use <math>16\times 16\times 16</math> k-points.
+[[File:Fig BSE example2 1.png|500px]]
+*In the script ''doall-average.sh'' the scheme is written for <math>n=4</math> and <math>n=\textrm{\$NKPT}</math>. At the end the dielectric functions are extracted and averaged accordingly. You can choose up to which level of theory (DFT, RPA, BSE) the dielectric function is computed by commenting out the corresponding lines in the script (default is all the way up to BSE).
+*Because of the shifted grids we have to use density functional perturbation theory to calculate the derivatives of the wave functions with respect to <math>\mathbf{k}</math> and not the finite difference scheme. We also have to switch off all k-points symmetry in all {{TAG|INCAR}} files. These two important parameters look like the following in the {{TAG|INCAR}} file:
+ {{TAGBL|PREC}} = Normal ; {{TAGBL|ENCUT}} = 250.0
+  
+ {{TAGBL|ALGO}} = EXACT ; {{TAGBL|NELM}} = 1
+ {{TAGBL|ISMEAR}} = 0 ; {{TAGBL|SIGMA}} = 0.01
+ {{TAGBL|KPAR}} = 2
+ 
+ {{TAGBL|NBANDS}} = 32 # The number of bands in the consecutive BSE calculation should be the same!  
+ {{TAGBL|LOPTICS}} = .TRUE.; {{TAGBL|LPEAD}} = .FALSE.
+ {{TAGBL|ISYM}} = -1
+ {{TAGBL|OMEGAMAX}} = 40
+*Finally the averaging over multiple grids should should give spectra that are in much closer agreement than the calculations using <math> 4\times 4\times 4</math> k-points:
+[[File:Fig BSE example2 2.png|500px]]
+
+=== Model-BSE ===
+The dielectric function <math> \epsilon^{-1}_{\mathbf{G},\mathbf{G'}} (\mathbf{q})</math> is replaced by the local model function:
+
+:<math> {\varepsilon}_{\mathbf{G},\mathbf{G}}^{-1}(\mathbf{q})=1-(1-{{\varepsilon}_{\infty}^{-1}})\text{exp}(-\frac{|\mathbf{q+G}|^2}{4{\lambda}^2})</math>.
+
+This makes the screened Coulomb kernel diagonal <math>(\mathbf{G}=\mathbf{G'})</math> in the screened Coulomb potential:
+
+:<math> W^{cv\mathbf{k}}_{c'v'\mathbf{k}} = \frac{4\pi e^{2}}{\Omega} \sum\limits_{\mathbf{G}}  \frac{\epsilon^{-1}_{\mathbf{G},\mathbf{G}}(\mathbf{0})}{|\mathbf{G}|^{2}}B^{c\mathbf{k}}_{c'\mathbf{k}}(\mathbf{G}) [B^{v\mathbf{k}}_{v'\mathbf{k}}(\mathbf{G})]^* </math>,
+
+where <math> B^{n\mathbf{k}}_{n'\mathbf{k}}(\mathbf{G}) </math> denote Bloch integrals of the cell-periodic part of the Bloch waves.
+
+* In addition to a model dielectric function we need approximate quasiparticle energies and wave functions. 
+:Approximation:
+:* Use DFT single particle eigenvalues + SCISSOR (SCISSOR=GW band gap - DFT band gap).
+:* Use DFT single particle orbitals.
+*Extract <math> \mathbf{G}=\mathbf{G'}</math> dielectric function from the {{TAG|vasprun.xml}} file from the previous GW calculation using the script ''./extract_die_G.sh vasprun.xml > dieG_g6x6x6-GW0.dat''' or view the attached file ''dieG_g6x6x6-GW0.dat''. Use {{TAG|AEXX}}=0.088 for <math> \epsilon^{-1}_{\infty}</math> and {{TAG|HFSCREEN}}=1.26 for <math> \lambda</math>.Then fit the model to get:
+[[File:Fig BSE example2 4.png|500px]]
+*Check the GW+BSE and DFT+mBSE calculations for constistency:
+[[File:Fig BSE example2 5.png|500px]]
+
+*The sequence of calculations as given in the script ''doall-model.sh'' consists of two steps:
+:*Step 1: standard DFT calculation. The {{TAG|INCAR}} file (INCAR.DFT) for this step looks as follows:
+ {{TAGBL|PREC}} = Normal ; {{TAGBL|ENCUT}} = 250.0
+ {{TAGBL|ISMEAR}} = 0 ; {{TAGBL|SIGMA}} = 0.01
+ {{TAGBL|EDIFF}} = 1.E-8
+ {{TAGBL|NBANDS}} = 16
+ {{TAGBL|PRECFOCK}} = Normal
+  
+ #WAVEDER file must be made:
+ {{TAGBL|LOPTICS}} = .TRUE.
+ {{TAGBL|LPEAD}} = .TRUE.
+ {{TAGBL|OMEGAMAX}} = 40
+
+:* Step2: model BSE calculation. The {{TAG|INCAR}} file (INCAR.mBSE) for this step looks as follows:
+ {{TAGBL|PREC}} = Normal ; {{TAGBL|ENCUT}} = 250.0
+  
+ {{TAGBL|ALGO}} = TDHF
+ {{TAGBL|ANTIRES}} = 0 ; {{TAGBL|SIGMA}} = 0.01
+ {{TAGBL|ENCUTGW}} = 150
+  
+ {{TAGBL|EDIFF}} = 1.E-8
+ {{TAGBL|NBANDS}} = 16
+ {{TAGBL|NBANDSO}} = 4
+ {{TAGBL|NBANDSV}} = 8
+ {{TAGBL|OMEGAMAX}} = 20
+ 
+ {{TAGBL|PRECFOCK}} = Normal
+ 
+ {{TAGBL|LMODELHF}} = .TRUE.
+ {{TAGBL|HFSCREEN}} = 1.26
+ {{TAGBL|AEXX}} = 0.088
+ {{TAGBL|SCISSOR}} = 0.69
+*Finally the result of the DFT+mBSE should be of similar accuracy as the GW+BSE calculations when compared to experiment:
+[[File:Fig BSE example2 6.png|500px]]
+
+== Download ==
+[[Media:Si improve eps.tgz| Si_improve_eps.tgz]]
+
+== References ==
+<references>
+<ref name="bokdam:scr:6">[https://www.nature.com/articles/srep28618 M.Bokdam  et al., Scientific Reports 6, 28618 (2016).]</ref>
+<ref name="liu:bse">[https://journals.aps.org/prmaterials/abstract/10.1103/PhysRevMaterials.2.075003 P.Liu  et al., Phys. Rev. Materials 2, 075003 (2018).]</ref>
+</references>
+
+{{Template:BSE}}
+
+[[Category:Examples]]

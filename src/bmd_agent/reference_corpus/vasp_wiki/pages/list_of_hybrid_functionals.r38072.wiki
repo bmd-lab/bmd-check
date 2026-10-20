@@ -1,0 +1,186 @@
+A certain number of [[Hybrid functionals: formalism|unscreened and screened hybrid functionals]] are available in VASP, and furthermore if VASP is [[Makefile.include#Libxc_.28optional.29|compiled]] with the library of exchange-correlation functionals Libxc, then most of the existing hybrid functionals can be used{{cite|libxc_list}}. Examples of {{FILE|INCAR}} files are shown below. Since VASP.6.4.0 it is possible to use hybrid functionals that mix meta-GGA and Hartree-Fock exchange. Note that it is in general recommended to use the PBE {{FILE|POTCAR}} files for hybrid functionals.
+
+=== Range-separated hybrid functionals ===
+
+<span id="HSE06">
+*HSE06{{cite|krukau:jcp:06}}
+ {{TAG|LHFCALC}} = .TRUE.
+ {{TAG|GGA}} = PE
+ {{TAG|HFSCREEN}} = 0.2
+
+:with the default values {{TAG|AEXX}}=0.25, {{TAG|AGGAX}}=1-{{TAG|AEXX}}=0.75, {{TAG|AGGAC}}=1, and {{TAG|ALDAC}}=1.
+</span>
+
+<span id="HSE03">
+*HSE03{{cite|heyd:jcp:03}}{{cite|heyd:jcp:04}}{{cite|heyd:jcp:06}}
+ {{TAG|LHFCALC}} = .TRUE.
+ {{TAG|GGA}} = PE
+ {{TAG|HFSCREEN}} = 0.3
+
+:with the default values {{TAG|AEXX}}=0.25, {{TAG|AGGAX}}=1-{{TAG|AEXX}}=0.75, {{TAG|AGGAC}}=1, and {{TAG|ALDAC}}=1.
+</span>
+
+<span id="HSEsol">
+*HSEsol{{cite|schimka:jcp:11}}
+ {{TAG|LHFCALC}} = .TRUE.
+ {{TAG|GGA}} = PS
+ {{TAG|HFSCREEN}} = 0.2
+
+:with the default values {{TAG|AEXX}}=0.25, {{TAG|AGGAX}}=1-{{TAG|AEXX}}=0.75, {{TAG|AGGAC}}=1, and {{TAG|ALDAC}}=1.
+</span>
+
+<span id="RS-DDH">
+*Dielectric-dependent hybrid (DDH) RS-DDH{{cite|skone:prb:2016}}
+ {{TAG|LHFCALC}} = .TRUE.
+ {{TAG|LMODELHF}} = .TRUE.
+ {{TAG|AEXX}} = <math>\varepsilon_{\infty}^{-1}</math>
+ {{TAG|BEXX}} = 0.25
+ {{TAG|HFSCREEN}} = <math>\mu</math>
+ {{TAG|GGA}} = PE
+
+:where <math>\varepsilon_{\infty}^{-1}</math> is the inverse dielectric constant and <math>\mu</math> is the range-separation parameter. See a detailed description of the DDH functionals in the documentation for the {{TAG|LMODELHF}} tag as well as [[Hybrid_functionals:_formalism#HF_exchange_at_short_range_and_long_range_%28error-function_screening%29_with_different_mixings|here]].
+</span>
+
+<span id="DD-RSH-CAM">
+*Dielectric-dependent hybrid (DDH) DD-RSH-CAM,{{cite|chen2018nonempirical}}DSH{{cite|cui2018doubly}}
+ {{TAG|LHFCALC}} = .TRUE.
+ {{TAG|LMODELHF}} = .TRUE.
+ {{TAG|AEXX}} = <math>\varepsilon_{\infty}^{-1}</math>
+ {{TAG|HFSCREEN}} = <math>\mu</math>
+ {{TAG|GGA}} = PE
+
+:with the default value {{TAG|BEXX}}=1 and where <math>\varepsilon_{\infty}^{-1}</math> is the inverse dielectric constant and <math>\mu</math> is the range-separation parameter. See a detailed description of the DDH functionals in the documentation for the {{TAG|LMODELHF}} tag as well as [[Hybrid_functionals:_formalism#HF_exchange_at_short_range_and_long_range_%28error-function_screening%29_with_different_mixings|here]].
+</span>
+
+<span id="RSHXLDA">
+*RSHXLDA{{cite|gerber:jcp:2007}}
+ {{TAG|LHFCALC}} = .TRUE.
+ {{TAG|LRHFCALC}} = .TRUE.
+ {{TAG|GGA}} = CA (or PZ)
+ {{TAG|HFSCREEN}} = 0.75 # Optimal value for solids
+ {{TAG|ALDAC}} = 1.0     # Necessary since correlation is by default not included when {{TAG|AEXX}}=1
+
+:with the default value {{TAG|AEXX}}=1.
+</span>
+
+<span id="RSHXPBE">
+*RSHXPBE{{cite|gerber:cpl:2005}}
+ {{TAG|LHFCALC}} = .TRUE.
+ {{TAG|LRHFCALC}} = .TRUE.
+ {{TAG|GGA}} = PE
+ {{TAG|HFSCREEN}} = 0.91 # Optimal value for the enthalpies of formation of molecules
+ {{TAG|ALDAC}} = 1.0     # Necessary since correlation is by default not included when {{TAG|AEXX}}=1
+ {{TAG|AGGAC}} = 1.0     # Necessary since correlation is by default not included when {{TAG|AEXX}}=1
+
+:with the default values {{TAG|AEXX}}=1.
+</span>
+
+<span id="sX-LDA">
+*sX-LDA{{cite|bylander:prb:90}}
+ {{TAG|LHFCALC}} = .TRUE.
+ {{TAG|LTHOMAS}} = .TRUE.
+ {{TAG|GGA}} = CA (or PZ)
+ {{TAG|HFSCREEN}} = <math>k_{\rm TF}</math>
+ {{TAG|ALDAC}} = 1.0     # Necessary since correlation is by default not included when {{TAG|AEXX}}=1
+ {{TAG|AGGAC}} = 1.0     # Necessary since correlation is by default not included when {{TAG|AEXX}}=1
+
+:with the default value {{TAG|AEXX}}=1 and where <math>k_{\rm TF}</math> is the Thomas-Fermi screening. More details can be found at {{TAG|LTHOMAS}} as well as [[Hybrid_functionals:_formalism#HF_exchange_at_short_range_(exponential_screening)|here]].
+</span>
+
+=== Unscreened hybrid functionals ===
+
+<span id="PBE0">
+*PBE0 (PBEh){{cite|perdew:jcp:1996}}{{cite|ernzerhof:jcp:99}}{{cite|adamo:jcp:1999}}
+ {{TAG|LHFCALC}} = .TRUE.
+ {{TAG|GGA}} = PE
+
+:with the default values {{TAG|AEXX}}=0.25, {{TAG|AGGAX}}=1-{{TAG|AEXX}}=0.75, {{TAG|AGGAC}}=1, and {{TAG|ALDAC}}=1.
+</span>
+
+<span id="B3LYP">
+*B3LYP{{cite|stephens:jpc:94}} with VWN3 (or VWN5) for LDA correlation
+ {{TAG|LHFCALC}} = .TRUE. 
+ {{TAG|GGA}}     = B3 (or B5)
+ {{TAG|AEXX}}    = 0.2
+ {{TAG|AGGAX}}   = 0.72 
+ {{TAG|AGGAC}}   = 0.81 
+ {{TAG|ALDAC}}   = 0.19
+
+:with the default value {{TAG|ALDAX}}=1-{{TAG|AEXX}}=0.8.
+</span>
+
+<span id="B3PW91">
+*B3PW91{{cite|becke:jcp:93}} (using Libxc, see the tag {{TAG|LIBXC1}})
+ {{TAG|LHFCALC}} = .TRUE.
+ {{TAG|GGA}} = LIBXC
+ {{TAG|LIBXC1}} = HYB_GGA_XC_B3PW91 # or 401
+ {{TAG|AEXX}} = 0.2
+</span>
+
+<span id="B1-WC">
+*B1-WC{{cite|bilc:prb:08}} (using Libxc, see the tag {{TAG|LIBXC1}})
+ {{TAG|LHFCALC}} = .TRUE.
+ {{TAG|GGA}} = LIBXC
+ {{TAG|LIBXC1}} = HYB_GGA_XC_B1WC # or 412
+ {{TAG|AEXX}} = 0.16
+</span>
+
+<span id="SCAN0">
+*SCAN0
+ {{TAG|LHFCALC}} = .TRUE.
+ {{TAG|METAGGA}} = SCAN
+
+:with the default values {{TAG|AEXX}}=0.25, {{TAG|AMGGAX}}=1-{{TAG|AEXX}}=0.75, and {{TAG|AMGGAC}}=1.
+</span>
+
+<span id="DDH">
+*DDH{{Cite|alkauskas:pssb:2011}}{{Cite|skone:prb:2014}}
+ {{TAG|LHFCALC}} = .TRUE.
+ {{TAG|GGA}} = PE
+ {{TAG|AEXX}} = <math>\varepsilon_{\infty}^{-1}</math>
+</span>
+
+<span id="DD-r2SCANH">
+*DD-r<sup>2</sup>SCANH{{Cite|riemelmoser:natcomm:2026}}
+ {{TAG|LHFCALC}} = .TRUE.
+ {{TAG|METAGGA}} = R2SCAN
+ {{TAG|AEXX}} = <math>\varepsilon_{\infty}^{-1}</math>
+</span>
+
+<span id="Hartree-Fock">
+*Hartree-Fock (no correlation)
+ {{TAG|LHFCALC}} = .TRUE. 
+ {{TAG|AEXX}}    = 1
+</span>
+
+:with the default values {{TAG|AGGAX}}=1-{{TAG|AEXX}}=0, {{TAG|ALDAC}}=0, and {{TAG|AGGAC}}=0.
+
+{{NB|mind|Note the default values when {{TAG|LHFCALC}}{{=}}.TRUE.:
+*{{TAG|ALDAX}}, {{TAG|AGGAX}} and {{TAG|AMGGAX}} are set to 1-{{TAG|AEXX}}.
+*{{TAG|ALDAC}}, {{TAG|AGGAC}} and {{TAG|AMGGAC}} are set to 0 if {{TAG|AEXX}}{{=}}1 or to 1 if {{TAG|AEXX}}<math>\neq</math>1.}}
+
+== Related tags and articles ==
+{{TAG|GGA}},
+{{TAG|METAGGA}},
+{{TAG|LIBXC1}},
+{{TAG|LIBXC2}},
+{{TAG|AEXX}},
+{{TAG|BEXX}},
+{{TAG|ALDAX}},
+{{TAG|ALDAC}},
+{{TAG|AGGAX}},
+{{TAG|AGGAC}},
+{{TAG|AMGGAX}},
+{{TAG|AMGGAC}},
+{{TAG|LHFCALC}},
+{{TAG|HFSCREEN}},
+{{TAG|LMODELHF}},
+{{TAG|LTHOMAS}},
+{{TAG|LRHFCALC}},
+[[Hybrid_functionals:_formalism|Hybrid functionals: formalism]]
+
+== References ==
+<references/>
+
+----
+[[Category:Exchange-correlation functionals]][[Category:Hybrid_functionals]][[Category:Howto]]

@@ -1,0 +1,173 @@
+An imaginary (soft) phonon mode signals that the current structure is a saddle point on the potential-energy surface: displacing atoms along the mode eigenvector lowers the total energy. This page describes how to detect imaginary modes, locate the instability in the Brillouin zone, choose an appropriate working supercell, and follow the system to the true energy minimum using the intrinsic-reaction-coordinate (IRC) method or a frozen-phonon scan.
+{{NB|mind|An unrelaxed or poorly converged cell can produce spurious imaginary modes from [[Pulay stress]] or residual forces. If imaginary modes appear unexpectedly, first tighten the ionic relaxation ({{TAG|ISIF}}{{=}}3, tight {{TAG|EDIFFG}}) and recompute the phonons before drawing conclusions.}}
+
+== Step-by-step instructions ==
+
+=== Step 1: Compute phonon frequencies ===
+
+Run a finite-differences phonon calculation on the structure of interest. The same {{FILE|INCAR}} setup applies whether you use the primitive cell (Γ-point modes only) or a supercell (to access zone-boundary modes):
+
+ {{TAG|IBRION}} = 6        ! exploit crystal symmetry (use IBRION=5 to disable symmetry)
+ {{TAG|NFREE}}  = 2        ! central differences (±POTIM)
+ {{TAG|POTIM}}  = 0.015    ! displacement amplitude (Å)
+ {{TAG|PREC}}   = Accurate
+ {{TAG|EDIFF}}  = 1E-8     ! tight convergence for reliable forces
+ {{TAG|NSW}}    = 1
+ {{TAG|LWAVE}}  = .FALSE.
+ {{TAG|LCHARG}} = .FALSE.
+
+Scale the '''k'''-point mesh inversely with supercell size. For example, if the primitive cell uses an 8×8×8 mesh, a 2×2×2 supercell needs 4×4×4.
+
+Imaginary modes appear in {{FILE|OUTCAR}} labelled <code>f/i=</code>, while stable modes are labelled <code>f=</code>:
+
+<pre>
+f/i=   7.234 THz   45.423 2PiTHz  241.31 cm-1    29.92 meV
+</pre>
+
+The full displacement eigenvector for each mode is printed in the block "Eigenvectors and eigenvalues of the dynamical matrix" that follows the frequency list.
+
+Alternatively, read frequencies and eigenvectors directly with {{py4vasp}}:
+
+<syntaxhighlight lang="python">
+import py4vasp, numpy as np
+calc = py4vasp.Calculation.from_path(".")
+mode_data = calc.phonon.mode.read()
+freqs = mode_data["frequencies"]   # complex eV; imag > 0 → imaginary mode
+evecs = mode_data["eigenvectors"]  # (n_modes, n_atoms, 3), mass-weighted
+</syntaxhighlight>
+
+=== Step 2: Classify the modes ===
+
+Stable modes have a non-zero real part; imaginary (unstable) modes have a non-zero imaginary part. Three acoustic modes always appear near zero — this is a numerical artefact of the finite-differences procedure, not a structural instability.
+
+{| class="wikitable"
+! Imaginary part (meV) !! Interpretation
+|-
+| < 0.5 || Acoustic mode — numerical noise, can be ignored
+|-
+| > 5–20 || Genuine soft mode → structural instability
+|}
+
+To identify the softest genuine optical mode with {{py4vasp}}:
+
+<syntaxhighlight lang="python">
+# Threshold to exclude acoustic zeros
+optical_soft = np.where(freqs.imag * 1000 > 0.5)[0]   # imaginary part > 0.5 meV
+most_soft    = optical_soft[np.argmax(freqs[optical_soft].imag)]
+soft_vec     = evecs[most_soft]   # (n_atoms, 3) mass-weighted displacement pattern
+</syntaxhighlight>
+
+If no mode exceeds the threshold, the structure is dynamically stable at the computed '''q'''-points.
+
+=== Step 3 (optional): Map instabilities to the primitive cell via the phonon band structure ===
+
+If Step 1 was run on a supercell, the interatomic force constants can be Fourier-interpolated onto a dense '''q'''-path in the primitive-cell Brillouin zone. This reveals at which '''q'''-vectors the instabilities live and informs the choice of the smallest working cell in Step 4. Imaginary branches are conventionally plotted as negative frequencies.
+
+See [[Computing_the_phonon_dispersion_and_DOS]] for the two-step procedure: a force-constants run followed by a dispersion run with {{TAG|LPHON_DISPERSION}}{{=}}.TRUE. and a {{FILE|QPOINTS}} file in line-mode format.
+{{NB|tip|For cubic perovskite ABO₃ structures the key high-symmetry points are: Γ (0,0,0) — ferroelectric uniform polar displacement; R (½,½,½) — antiferrodistortive octahedron tilts; X (½,0,0) — cell-doubling along one axis; M (½,½,0) — cell-doubling along two axes. The labels and fractional coordinates depend on the space group of the specific structure.}}
+{{NB|mind|This calculation does not include the macroscopic electric field responsible for LO-TO splitting near Γ. Ferroelectric branches are therefore degenerate at Γ and absolute optical frequencies near Γ may differ from experiment. To capture LO-TO splitting, obtain Born effective charges and the high-frequency dielectric tensor via {{TAG|LEPSILON}}{{=}}.TRUE. or {{TAG|LCALCEPS}}{{=}}.TRUE. and supply them via {{TAG|PHON_BORN_CHARGES}} and {{TAG|PHON_DIELECTRIC}}. This does not affect soft-mode identification.}}
+
+=== Step 4: Determine the working supercell ===
+
+VASP always displaces atoms at Γ, so the instability must fold to Γ in the chosen supercell.
+
+* '''Γ instability in the primitive cell''' — use the primitive cell as-is; no supercell is needed.
+* '''Zone-boundary instability''' — the '''q'''-vector of the soft mode determines the minimum supercell. For a mode at '''q''' = (''h'', ''k'', ''l'') in primitive-cell fractional coordinates, a supercell of dimensions (1/''h'' × 1/''k'' × 1/''l'') folds that '''q''' to Γ. For example, the X-point at (½, 0, 0) requires a 2×1×1 supercell, not a 2×2×2.
+
+If the supercell from Step 1 is larger than the minimum required, build the smaller cell and repeat Step 1. For zone-boundary modes the displacement eigenvector must be applied with alternating signs across the supercell images: atoms in the first primitive-cell image are displaced along +'''e''', atoms in the second image along −'''e''', and so on.
+
+=== Step 5: Extract the eigenvector and set up the IRC starting structure ===
+
+The intrinsic-reaction-coordinate (IRC) method requires the soft-mode eigenvector as a ''dimer-axis block'' appended to the {{FILE|POSCAR}}. Use the high-symmetry saddle-point structure directly — no pre-displacement is needed because the forces are zero there by symmetry.
+
+Extract the eigenvector from {{py4vasp}} as shown in Step 2, or read it from {{FILE|OUTCAR}}: locate the block "Eigenvectors and eigenvalues of the dynamical matrix", find the entry labelled <code>f/i=</code> for the imaginary mode, and copy the three Cartesian components listed for each atom.
+
+Append the eigenvector to the {{FILE|POSCAR}} after a blank line following the last atomic position:
+
+<pre>
+BaTiO3 cubic (saddle point) + soft-mode dimer axis
+4.00
+ 1.0 0.0 0.0
+ 0.0 1.0 0.0
+ 0.0 0.0 1.0
+Ba Ti O
+1 1 3
+Direct
+ 0.000000  0.000000  0.000000
+ 0.500000  0.500000  0.500000
+ 0.500000  0.500000  0.000000
+ 0.500000  0.000000  0.500000
+ 0.000000  0.500000  0.500000
+
+ -0.000156 -0.000282 -0.008871
+ -0.012002 -0.021743 -0.684118
+  0.005261  0.009530  0.592257
+  0.005261  0.018823  0.299850
+  0.010391  0.009530  0.299850
+</pre>
+
+For zone-boundary modes, negate the dimer-block rows that correspond to the second (and every alternating) primitive-cell image in the supercell.
+
+=== Step 6: Follow the IRC to the energy minimum ===
+
+{{TAG|IBRION}}{{=}}40 activates the intrinsic-reaction-coordinate method of Hratchian and Schlegel. Starting from the saddle point, VASP propagates the structure along the steepest-descent path in mass-weighted coordinates using a damped-velocity-Verlet algorithm — no manual displacement or energy-surface mapping is required.
+
+ {{TAG|IBRION}}       = 40
+ {{TAG|ISIF}}         = 2    ! cell fixed during the IRC path
+ IRC_DIRECTION        = 1    ! +1 or −1 to choose which minimum to follow
+ {{TAG|NSW}}          = 200  ! safety cap; IRC_STOP terminates the run earlier
+ IRC_STOP             = 3    ! stop after energy rises for N consecutive steps
+ IRC_VNORM0           = ...  ! velocity norm (Å/fs); controls step size
+ IRC_DELTA0           = ...  ! path-accuracy tolerance (Å)
+ IRC_MAXSTEP          = ...  ! upper bound on the adaptive time step (fs)
+ IRC_MINSTEP          = ...  ! lower bound on the adaptive time step (fs)
+
+The displacement per IRC step is approximately IRC_VNORM0 × IRC_MAXSTEP. For a shallow double well (condensation energy ~10 meV) a step of ≤ 0.01 Å resolves the profile well. Increase IRC_VNORM0 if the run is very slow; decrease it if the energy profile is jagged. Set IRC_DELTA0 to roughly half the typical step displacement. Starting values of IRC_VNORM0 = 0.02 Å/fs and IRC_DELTA0 = 0.01 Å are a reasonable first attempt.
+
+The IRC path and energies are recorded in {{FILE|OUTCAR}} as:
+
+<pre>
+IRC (A):  0.05023  E(eV):  -135.7812
+</pre>
+{{NB|mind|If no <code>IRC (A):</code> lines appear in {{FILE|OUTCAR}}, the dimer-axis block in the {{FILE|POSCAR}} was not read correctly. Check that a blank line separates the last atomic coordinate from the first eigenvector row, and that there is exactly one row per atom.}}
+
+'''Manual alternative (frozen-phonon scan):''' If an explicit map of the double-well potential is required, generate structures displaced along the soft-mode eigenvector at several amplitudes λ. Start with roughly ±0.05 Å and widen the range until ΔE(λ) = ''E''(λ) − ''E''(0) clearly rises on both sides. For each displaced structure run a static calculation ({{TAG|IBRION}}{{=}}−1, {{TAG|NSW}}{{=}}0). Reuse the {{FILE|WAVECAR}} from the λ = 0 reference as a starting guess ({{TAG|ISTART}}{{=}}1) to accelerate SCF convergence. Plot ΔE(λ) to read the condensation energy and identify λ<sub>min</sub>, then proceed to Step 7 using the {{FILE|POSCAR}} at λ<sub>min</sub>.
+
+=== Step 7: Relax from the determined minimum ===
+
+Use the final ionic configuration from the IRC run ({{FILE|CONTCAR}}) or the displaced {{FILE|POSCAR}} at λ<sub>min</sub> from the frozen-phonon scan as the starting geometry. The relaxation procedure is identical in both cases:
+
+ {{TAG|IBRION}}  = 2    ! conjugate-gradient relaxation
+ {{TAG|ISIF}}    = 3    ! relax atoms, cell shape, and volume
+ {{TAG|NSW}}     = ...  ! set large enough to reach convergence
+ {{TAG|EDIFFG}}  = ...  ! force-convergence threshold (negative value, eV/Å)
+
+Choose {{TAG|NSW}} and {{TAG|EDIFFG}} according to the required accuracy. For production calculations {{TAG|EDIFFG}}{{=}}−0.01 is a common target; tighten to {{TAG|EDIFFG}}{{=}}−0.001 if the relaxed structure will be used as input for a follow-up phonon calculation (Step 8).
+{{NB|mind|The frozen-phonon scan constrains displacements to a single mode eigenvector. Even at the energy minimum along λ, forces transverse to the scan direction may be non-zero when the mode is degenerate. The full {{TAG|ISIF}}{{=}}3 relaxation in this step removes all residual forces and optimises the cell shape simultaneously.}}
+
+=== Step 8: Verify the stability of the relaxed structure ===
+
+Re-run Step 1 on the fully relaxed geometry using the same finite-differences setup. Confirm that no <code>f/i=</code> modes remain in {{FILE|OUTCAR}}. The symmetry lowering associated with the structural transition typically lifts the degeneracy responsible for the original instability, but competing instabilities at other '''q'''-vectors may still be present and should be checked — in particular if a supercell phonon dispersion (Step 3) showed multiple imaginary branches.
+
+== Recommendations and advice ==
+
+* Always verify that the structure is fully relaxed before computing phonons. Residual forces from a geometry optimisation that converged on NSW rather than EDIFFG are a frequent source of spurious imaginary modes.
+* Use {{TAG|IBRION}}{{=}}6 in preference to {{TAG|IBRION}}{{=}}5 for high-symmetry structures: symmetry reduction significantly decreases the number of displacements and the computational cost.
+* For the phonon run, {{TAG|EDIFF}}{{=}}1E-8 and {{TAG|PREC}}{{=}}Accurate are the recommended minimum. A looser {{TAG|EDIFF}} introduces noise into the force constants that can manifest as spurious low-frequency modes.
+* If multiple imaginary modes appear at different '''q'''-points, start with the mode that has the largest imaginary frequency (the softest mode). It represents the dominant instability and the lowest-energy path away from the saddle point.
+* After a successful IRC or relaxation run, always re-check the phonons on the new structure (Step 8). Symmetry lowering can stabilise the original instability but activate new ones.
+
+== Related tags and articles ==
+
+Tags: {{TAG|IBRION}}, {{TAG|NFREE}}, {{TAG|POTIM}}, {{TAG|ISIF}}, {{TAG|EDIFFG}}, {{TAG|NSW}}, {{TAG|IRC_DIRECTION}}, {{TAG|IRC_STOP}}, {{TAG|IRC_VNORM0}}, {{TAG|IRC_DELTA0}}, {{TAG|LPHON_DISPERSION}}, {{TAG|LPHON_READ_FORCE_CONSTANTS}}, {{TAG|LEPSILON}}
+
+Files: {{FILE|OUTCAR}}, {{FILE|POSCAR}}, {{FILE|CONTCAR}}, {{FILE|QPOINTS}}
+
+[[Phonons from finite differences]], [[Computing the phonon dispersion and DOS]], [[Intrinsic-reaction-coordinate calculations]], [[Structure optimization]]
+
+== References ==
+<references/>
+
+[[Category:Howto]]
+[[Category:Phonons]]
+[[Category:Ionic minimization]]

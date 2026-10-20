@@ -1,0 +1,70 @@
+{{Sur_sci - Tutorial}}
+
+== Task ==
+
+Generation of an STM image of a graphite surface.
+
+== Input ==
+
+=== {{TAG|POSCAR}} ===
+ C: Graphite Lattice
+ 1.0
+  +2.4410462393  +0.0000000000  +0.0000000000 
+  -1.2205231197  +2.1140080551  +0.0000000000 
+  +0.0000000000  +0.0000000000 +22.0000000000 
+  10
+ Cartesian
+  +0.0000000000  +0.0000000000  +0.0000000000 
+  +0.0000000000  +1.4093387034  +0.0000000000 
+  +0.0000000000  +1.4093387034  +3.3070243927 
+  +1.2205231197  +0.7046693517  +3.3070243927 
+  +0.0000000000  +0.0000000000  +6.6140487854 
+  +0.0000000000  +1.4093387034  +6.6140487854 
+  +0.0000000000  +1.4093387034  +9.9210731781 
+  +1.2205231197  +0.7046693517  +9.9210731781 
+  +0.0000000000  +0.0000000000 +13.2280975708 
+  +0.0000000000  +1.4093387034 +13.2280975708
+
+=== {{TAG|INCAR}} ===
+ general:
+   {{TAGBL|SYSTEM}} = Graphite surface slap
+   {{TAGBL|ENMAX}}  = 400
+   {{TAGBL|ISMEAR}} =    2  ; SIGMA = 0.2
+   {{TAGBL|ALGO}} = Fast
+
+ partial charge densities:
+   {{TAGBL|LPARD}} = .TRUE.
+   {{TAGBL|LSEPK}} = .FALSE.
+   {{TAGBL|LSEPB}} = .FALSE.
+   {{TAGBL|NBMOD}} = -3
+   {{TAGBL|EINT}} = -0.1 0.1
+  
+ # DOS:
+ #   {{TAGBL|ISTART}} = 0
+ #   {{TAGBL|ICHARG}} = 2
+ #   {{TAGBL|LORBIT}} = 11
+
+=== {{TAG|KPOINTS}} ===
+ K-Points
+ 0
+ Monkhorst-Pack
+ 9 9 1
+ 0 0 0
+
+*Only one k point in z direction since we have a surface.
+
+== Calculation ==
+
+*First copy INCAR.DOS to {{TAG|INCAR}} to get the lm-decomposed DOS.
+
+*Second copy INCAR.par to {{TAG|INCAR}} and run VASP for the preliminary calculation.
+
+*To get an STM image use p4vasp:
+[[File:Fig graphite STM 1.png|800px]]
+
+== Download ==
+[[Media:Graphite_STM.tgz| Graphite_STM.tgz]]
+ 
+{{Sur_sci}}
+
+[[Category:Examples]]

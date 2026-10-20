@@ -1,0 +1,128 @@
+{{Template:Bulk_systems - Tutorial}}
+
+== Task ==
+Volume relaxtion and the calculation of the DOS and bandstructure within cubic diamond (cd) Si.
+
+== Input ==
+
+
+=== {{TAG|POSCAR}} ===
+
+ cubic diamond
+    5.5
+  0.0    0.5     0.5
+  0.5    0.0     0.5
+  0.5    0.5     0.0
+   2
+ Direct
+  -0.125 -0.125 -0.125
+   0.125  0.125  0.125
+
+*Cubic diamond Si starting lattice constant of 5.5 <math>\AA</math>.
+*Fcc cell.
+*2 atoms in cell.
+
+=== {{TAG|INCAR}} ===
+ {{TAGBL|System}} = diamond Si
+ {{TAGBL|ISTART}} = 0 ; {{TAGBL|ICHARG}}=2
+ {{TAGBL|ENCUT}}  =    240
+ {{TAGBL|ISMEAR}} = 0; {{TAGBL|SIGMA}} = 0.1
+
+=== {{TAG|KPOINTS}} ===
+ k-points
+  0
+ Monkhorst Pack
+  11 11 11
+  0  0  0
+
+== Calculation ==
+
+The calculation of the optimized volume. DOS and bandstructure is similar as in the examples {{TAG|fcc_Si}}, {{TAG|fcc_Si_DOS}} and {{TAG|fcc_Si_bandstructure}}, respectively.
+
+=== Volume relaxation ===
+
+*The bash-script <tt>loop.sh</tt> runs Si in the cubic diamond (cd) structure at several different lattice constants (5.1-5.7 Å) and collects free energy versus lattice constant into the file SUMMARY.dia:
+
+<pre>
+#! /bin/bash
+BIN=/path/to/your/vasp/executable
+rm WAVECAR SUMMARY.dia
+for i in  5.1 5.2 5.3 5.4 5.5 5.6 5.7 ; do
+cat >POSCAR <<!
+cubic diamond
+   $i 
+ 0.0    0.5     0.5
+ 0.5    0.0     0.5
+ 0.5    0.5     0.0
+  2
+Direct
+ -0.125 -0.125 -0.125
+  0.125  0.125  0.125
+!
+echo "a= $i" ; mpirun -n 2 $BIN
+E=`awk '/F=/ {print $0}' OSZICAR` ; echo $i $E  >>SUMMARY.dia
+done
+cat SUMMARY.dia
+</pre>
+
+*Example output of SUMMARY.dia:
+ 5.2 1 F= -.10528151E+02 E0= -.10528137E+02 d E =-.274709E-04
+ 5.3 1 F= -.10713281E+02 E0= -.10713280E+02 d E =-.218410E-05
+ 5.4 1 F= -.10806685E+02 E0= -.10806685E+02 d E =-.114401E-06
+ 5.5 1 F= -.10823039E+02 E0= -.10823039E+02 d E =-.429842E-08
+ 5.6 1 F= -.10775102E+02 E0= -.10775102E+02 d E =-.204668E-09
+ 5.7 1 F= -.10673578E+02 E0= -.10673578E+02 d E =-.112715E-10
+ 5.8 1 F= -.10528393E+02 E0= -.10528393E+02 d E =-.552513E-11
+
+*To make a quick plot of SUMMARY.dia try:
+
+ gnuplot
+ gnuplot> plot "SUMMARY.dia" using ($1):($4) w lp
+
+*Extracted lattice parameter should be at 5.465 <math>\AA</math>.
+
+=== DOS ===
+
+*Enter (approximate) volume of 5.5 <math> \AA </math> into the {{TAG|POSCAR}} file.
+
+*Change the {{TAG|INCAR}} according to DOS calculation (or use INCAR.dos):
+ System = diamond Si
+ ISTART = 0 ; ICHARG=2
+ ENCUT  =    240
+ ISMEAR = -5
+ LORBIT = 11
+
+*Use p4vasp or run the script ''dos.sh'' to calculate the DOS.
+
+*The example DOS should look like this:
+[[File:Fig cdSi 1.png|300px]]
+
+=== Bandstructure ===
+
+*Enter (approximate) volume of 5.5 <math> \AA </math> into the {{TAG|POSCAR}} file.
+
+*Change the {{TAG|INCAR}} according to bandstructure calculation (or use INCAR.band):
+ System = diamond Si
+ ISTART = 0 ; ICHARG=11
+ ENCUT  =    240
+ ISMEAR = 0; SIGMA = 0.1;
+ LORBIT = 11
+
+*Use p4vasp or run the script ''band.sh'' to calculate the bandstructure.
+
+*The example bandstructure should look like this:
+[[File:Fig cdSi 2.png|300px]]
+
+*For "fat" bands (or orbital character of bands) use p4vasp:
+[[File:Fig cdSi3.png|800px]]
+
+'''Mind''': You will have to set the correct path to your VASP executable (i.e., <tt>BIN</tt>), and invoke VASP with the correct command (e.g., in the above: <tt>mpirun -np 2</tt>).
+
+== Download ==
+[[Media:DiamondSi.tgz| diamondSi.tgz]]
+ 
+{{Template:Bulk_systems}}
+
+Back to the [[The_VASP_Manual|main page]].
+
+[[Category:Examples]]

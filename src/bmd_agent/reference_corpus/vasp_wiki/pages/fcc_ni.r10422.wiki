@@ -1,0 +1,56 @@
+{{Template:Bulk_systems - Tutorial}}
+
+== Task ==
+
+Lattice parameter optimization, calculation of the DOS and bandstructure in (spin-polarized) fcc Ni.
+
+== Input ==
+
+=== {{TAG|POSCAR}} ===
+ fcc:
+  3.53 
+  0.5 0.5 0.0
+  0.0 0.5 0.5
+  0.5 0.0 0.5
+    1
+ cartesian
+ 0 0 0
+
+=== {{TAG|INCAR}} ===
+   {{TAGBL|SYSTEM}} = fcc Ni
+   {{TAGBL|ISTART}} = 0 ; {{TAGBL|ICHARG}}=2
+   {{TAGBL|ENCUT}}  =    270
+   {{TAGBL|ISMEAR}} =    1  ; {{TAGBL|SIGMA}} = 0.2
+   {{TAGBL|LORBIT}} = 11
+   {{TAGBL|ISPIN}} = 2
+   {{TAGBL|MAGMOM}} = 1
+
+*Initial charge-density from overlapping atoms in starting job.
+*Default energy cutoff of 270 eV used ({{TAG|ENCUT}}=270).
+*MP smearing used since we have a metal.
+*Spin-polarized calculation {{TAG|ISPIN}}=2, initial moments of 1 ({{TAG|MAGMOM}}=1).
+*Static calculation.
+
+=== {{TAG|KPOINTS}} ===
+ k-points
+  0
+ Monkhorst Pack
+  11 11 11
+  0  0  0
+
+*Equally spaced k mesh with 56 points in the IBZ.
+*Odd, <math>\Gamma</math>-centered mesh.
+
+== Calculation ==
+
+*The calculations are carried out in analogy to {{TAG|cd Si}}. Please follow the instructions in that example.
+
+*Here is a sample output of the results:
+[[File:Fig Ni 1.png|800px]]
+
+== Download ==
+[[Media:FccNi.tgz| fccNi.tgz]]
+ 
+{{Template:Bulk_systems}}
+
+[[Category:Examples]]

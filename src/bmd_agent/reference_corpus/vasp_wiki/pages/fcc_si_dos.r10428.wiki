@@ -1,0 +1,78 @@
+{{Template:Bulk_systems - Tutorial}}
+
+== Task ==
+
+Calculation of the DOS in fcc Si.
+
+== Input ==
+
+=== {{FILE|POSCAR}} ===
+ fcc Si:
+  3.9
+  0.5 0.5 0.0
+  0.0 0.5 0.5
+  0.5 0.0 0.5
+    1
+ cartesian
+ 0 0 0
+
+=== {{FILE|INCAR}} ===
+ {{TAGBL|System}} = fcc Si 
+ # {{TAGBL|ICHARG}} = 11 #charge read file
+ {{TAGBL|ENCUT}}  =    240
+ {{TAGBL|ISMEAR}} = -5 #tetrahedron
+ {{TAGBL|LORBIT}} = 11
+
+=== {{FILE|KPOINTS}} ===
+ k-points
+  0
+ Monkhorst Pack
+  21 21 21
+  0  0  0
+
+== Calculation ==
+
+*Perform a static ({{TAG|NSW}}=0, {{TAG|IBRION}}=-1) self consistent calculation for the DOS (the DOS is found in the {{TAG|DOSCAR}} file.
+
+*For large systems: 
+**Converge with a small number of k points.
+**Increase the number of k points for the DOS and set {{TAG|ICHARG}}=11 (charge density from the last self-consistent run). {{TAG|ICHARG}}=11 treats each k point independently and keeps the charge density and the potential fixed.
+
+*Read {{TAG|CHGCAR}} from previous run. To copy the self-consistent charge density of example {{TAG|fcc_Si}} to your current working
+directory (assumed to be fccSidos), type: $ cp ../fccSi/CHGCAR . You must do this otherwise VASP can not read the {{TAG|CHGCAR}} and will terminate.
+
+*The smearing of the k points is set to the tetrahedron method with Blöchl corrections ({{TAG|ISMEAR}}=-5 to fi the problem
+[[File:Fig Si 2.png|300px]]
+
+*To plot the DOS use p4vasp:
+[[File:Fig Si 3.png|600px]]
+
+
+*Alternatively the bash-script <tt>plotdos.sh</tt> invokes ''awk'' and ''gnuplot'' to get the DOS from the {{FILE|vasprun.xml}} file and plot it.
+<pre>
+awk 'BEGIN{i=1} /dos>/,\
+                /\/dos>/ \
+                 {a[i]=$2 ; b[i]=$3 ; i=i+1} \
+     END{for (j=12;j<i-5;j++) print a[j],b[j]}' vasprun.xml > dos.dat
+
+ef=`awk '/efermi/ {print $3}' vasprun.xml`
+
+cat >plotfile<<!
+# set term postscript enhanced eps colour lw 2 "Helvetica" 20
+# set output "optics.eps"
+plot "dos.dat" using (\$1-$ef):(\$2) w lp
+! 
+
+gnuplot -persist plotfile
+
+rm dos.dat plotfile
+</pre>
+
+[[File:Fig Si 4.png|600px]]
+
+== Download ==
+[[Media:FccSidos.tgz| fccSidos.tgz]]
+ 
+{{Template:Bulk_systems}}
+
+[[Category:Examples]]

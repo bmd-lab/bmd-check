@@ -1,0 +1,12 @@
+== Task ==
+
+In this example you will investigate the adsorption of H<sub>2</sub>O on a TiO<sub>2</sub> surface by means of standard geometry optimisation ("relaxation") and by means of constrained molecular dynamics.
+
+== Download ==
+[[Media:Tutorial_h2o_on_tio2.pdf| Adsorption of H<sub>2</sub> on TiO<sub>2</sub>]]: A  guide to this example.
+
+[[Media:H2o_on_tio2.tgz| h2o_on_tio2.tgz]]
+
+Back to the [[The_VASP_Manual|main page]].
+
+[[Category:Examples]]

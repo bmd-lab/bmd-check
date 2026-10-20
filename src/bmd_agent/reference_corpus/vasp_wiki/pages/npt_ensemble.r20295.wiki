@@ -1,0 +1,48 @@
+The [[NpT ensemble]] (isothermal-isobaric ensemble) is a [[:Category:Ensembles|statistical ensemble]] that is used to study material properties under the conditions of a constant particle number N, a pressure p fluctuating around an equilibrium value <math>\langle  p \rangle </math> and a temperature T fluctuating around an equilibrium value <math>\langle  T \rangle </math>. This page describes how to sample the NpT ensemble from a [[Molecular dynamics calculations|molecular-dynamics]] run.
+ 
+''' Instructions for setting up an NpT ensemble '''
+
+The Parinello-Rahman algorithm{{cite|parrinello:prl:1980}}{{cite|parrinello:jap:1981}} is the method of choice when setting up an NpT [[Molecular dynamics calculations|molecular-dynamics]] run. To use the Parinello-Rahman algorithm the [[Langevin thermostat]] has
+to be adjusted for an NpT simulation by setting the {{TAG|ISIF}}=3 in the {{FILE|INCAR}} file. Otherwise, the lattice is not allowed to change during the simulation, preventing VASP from keeping the pressure constant.
+Additionally the user can set {{TAG|LANGEVIN_GAMMA}} as when simulating a [[NVT ensemble]],
+the tag {{TAG|LANGEVIN_GAMMA_L}} which is a friction coefficient for
+the lattice degrees of freedom and the {{TAG|PMASS}} tag to assign a fictitious mass to the lattice
+degrees of freedom.
+
+{|class="wikitable" style="margin:aut 
+! NpT ensemble !! Langevin 
+|- 
+|style="text-align:center;"| {{TAG|MDALGO}}           ||   style="text-align:center;"|   3        
+|- 
+|style="text-align:center;"| {{TAG|ISIF}}             ||   style="text-align:center;"|   3
+|- 
+| additional tags  to set || style="text-align:center;"| {{TAG|LANGEVIN_GAMMA}}, {{TAG|LANGEVIN_GAMMA_L}}
+|- 
+| optional tags  to set || style="text-align:center;"| {{TAG|PMASS}}
+|}
+
+The additional tags in the column for the thermostat have to be set because the default
+values are zero resulting in a different ensemble. To use the NpT ensemble VASP has to be compiled with the precompiler flag [[Precompiler_flags|-Dtbdyn]]. A general guide for molecular-dynamics simulations can be found on the [[Molecular dynamics calculations|molecular-dynamics]] page.
+
+''An example {{FILE|INCAR}} file for the NpT ensemble'' 
+
+  #INCAR molecular-dynamics tags NpT ensemble 
+  {{TAGBL|IBRION}} = 0                      # choose molecular-dynamics 
+  {{TAGBL|MDALGO}} = 3                      # using Langevin thermostat
+  {{TAGBL|ISIF}} = 3                        # compute stress tensor and change box volume/shape 
+  {{TAGBL|TEBEG}} = 300                     # set temperature 
+  {{TAGBL|NSW}} = 10000                     # number of time steps 
+  {{TAGBL|POTIM}} = 1.0                     # time step in femto seconds 
+  {{TAGBL|LANGEVIN_GAMMA}} = 10.0 10.0 10.0 # Langevin friction coefficient for three atomic species
+  {{TAGBL|LANGEVIN_GAMMA_L}} = 10.0         # Langevin friction coefficient for lattice degrees of freedom
+  {{TAGBL|PMASS}} = 1000                    # the fictitious mass of the lattice degrees of freedom
+{{NB|mind| This {{FILE|INCAR}} file only contains the parameters for the molecular-dynamics part. The [[Electronic minimization|electronic minimization]] or the [[Machine-learned force fields|machine learning]] tags have to be added.}}
+{{NB|warning| Calculations of systems with limited long-range order (e.g. liquids) may lead to irreversible deformations of the cell within this ensemble. For those systems one must use an {{FILE|ICONST}} file containing constraints for the Bravais lattice.}} 
+
+==Related tags and articles==
+[[Molecular dynamics calculations|Molecular-dynamics calculations]], {{TAG|ISIF}}, {{TAG|MDALGO}}, {{TAG|LANGEVIN_GAMMA}}, {{TAG|LANGEVIN_GAMMA_L}}, {{TAG|PMASS}}, [[:Category:Ensembles|Ensembles]], {{FILE|ICONST}}
+
+== References ==
+<references/>
+
+[[Category:Molecular dynamics]][[Category:Ensembles]][[Category:Thermostats]]

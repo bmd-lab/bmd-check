@@ -1,0 +1,117 @@
+The phonon calculations using a [[Phonons:_Theory#Finite_differences|finite differences approach]] are carried out by setting [[IBRION#ibrion56|'''IBRION'''=5 or 6]] in the {{TAG|INCAR}} file.
+When these tags are set, the second-order force constants are computed using finite differences. The [[Phonons:_Theory#DynamicalMatrix|dynamical matrix]] is constructed, diagonalized and the phonon modes and frequencies of the system are reported in the {{FILE|OUTCAR}} file.
+If {{TAG|ISIF}}>=3, the internal strain tensors are computed as well.
+{{NB|mind|Only zone-center (&Gamma;-point) frequencies are calculated.}}
+It is possible to [[Computing_the_phonon_dispersion_and_DOS |obtain the phonon dispersion at different '''q''' points]] by computing the second-order force constants on a sufficiently large supercell and Fourier interpolating the dynamical matrices in the unit cell.
+
+== Input ==
+
+There are two options to compute the second-order force constants using finite differences:
+* {{TAG|IBRION}}=5, all atoms are displaced in all three Cartesian directions, resulting in a significant computational effort even for moderately sized high-symmetry systems.
+* {{TAG|IBRION}}=6, only symmetry inequivalent displacements are considered, and the remainder of the force-constants matrix is filled using symmetry operations. 
+
+{{TAG|POTIM}} determines the step size.  If too large values are supplied in the input file, the step size defaults to 0.015 &Aring; (starting from VASP.5.1). Expertise shows that this is a very reasonable compromise.
+
+The {{TAG|NFREE}} tag determines how many displacements are used for each direction and ion:
+*{{TAG|NFREE}}=2 uses central differences, ''i.e.'', each ion is displaced by a small positive and negative displacement, &plusmn;{{TAG|POTIM}}, along each of the Cartesian directions.
+*{{TAG|NFREE}}=4 uses four displacements along each of the Cartesian directions &plusmn;{{TAG|POTIM}} and &plusmn;2&times;{{TAG|POTIM}}.
+*{{TAG|NFREE}}=1 uses a single displacement (this is strongly discouraged).
+
+If {{TAG|ISIF}}>=3, the elastic and internal strain tensors are computed.
+
+The selective dynamics mode of the {{FILE|POSCAR}} file is presently only supported for {{TAG|IBRION}}=5; in this case, only those components of the Hessian matrix are calculated for which the selective dynamics tags are set to .TRUE. in the {{FILE|POSCAR}} file.
+{{NB|important|The selective dynamics always refer to the Cartesian components of the Hessian matrix, contrary to the behavior during ionic relaxation.}} For the following {{FILE|POSCAR}} file, for instance,
+
+ Cubic BN
+    3.57
+  0.0 0.5 0.5
+  0.5 0.0 0.5
+  0.5 0.5 0.0
+    1 1
+ selective
+ Direct
+  0.00 0.00 0.00  F F F
+  0.25 0.25 0.25  T F F
+
+atom 2 is displaced in the ''x''-direction only, and only the ''x''-component of the second atom of the Hessian matrix is calculated.
+
+If {{TAG|LEPSILON}}=.TRUE. or {{TAG|LCALCEPS}}=.TRUE., additional dielectric properties are computed.
+
+== Output ==
+
+The phonon modes and frequencies are written to the {{TAG|OUTCAR}} file after the following lines:
+  Eigenvectors and eigenvalues of the dynamical matrix
+  ----------------------------------------------------
+
+The following lines are repeated for each normal mode and should look like the following example output:
+    1 f  =   14.329944 THz    90.037693 2PiTHz  477.995462 cm-1    59.263905 meV
+              X         Y         Z           dx          dy          dz
+       0.000000  0.000000  0.000000     0.009046   -0.082007   -0.006117
+       0.000000  2.731250  2.731250     0.009046    0.106244    0.006563
+       0.000000  5.462500  5.462500     0.009046    0.082007    0.006117
+       0.000000  8.193750  8.193750     0.009046   -0.106244   -0.006563
+       ...
+    2 f  =   14.329944 THz    90.037693 2PiTHz  477.995462 cm-1    59.263905 meV
+              X         Y         Z           dx          dy          dz
+       0.000000  0.000000  0.000000     0.003458    0.021825   -0.093181
+       0.000000  2.731250  2.731250     0.003458    0.005416    0.094689
+       0.000000  5.462500  5.462500     0.003458   -0.021825    0.093181
+       0.000000  8.193750  8.193750     0.003458   -0.005416   -0.094689
+       ...
+    ...
+The first number is the label of the normal mode. If this number is followed by ''f'' it is a purely real mode, stating the mode is vibrationally stable. Otherwise, if it is followed by ''f/i'', the mode is an imaginary mode ("soft mode"). These labels are followed by the eigenfrequency of the mode in different units.
+
+The following table labeled by (''x,y,z,dx,dy,dz'') contains the Cartesian positions of the atoms and the normalized eigenvectors of the eigenmodes in Cartesian coordinates. 
+
+There should be 3<math>N</math> normal modes, where <math>N</math> is the number of atoms in the supercell ({{TAG|POSCAR}}). The modes are ordered in descending order with respect to the eigenfrequency. The last three modes are the translational modes (they are usually disregarded).
+
+Finally, {{TAG|IBRION}}=6 and {{TAG|ISIF}}&ge;3 allows to calculate the elastic constants. The elastic tensor is determined by performing six finite distortions of the lattice and deriving the elastic constants from the strain-stress relationship.{{cite|lepage:prb:2002}} The elastic tensor is calculated both, for 'clamped' ions, as well, as allowing for relaxation of the ions. The elastic moduli for rigid ions are written after the line
+
+ SYMMETRIZED ELASTIC MODULI (kBar)
+
+The ionic contributions are determined by inverting the ionic Hessian matrix and multiplying with the internal strain tensor,{{cite|wu:prb:2005}} and the corresponding contributions are written after the lines:
+
+ ELASTIC MODULI CONTR FROM IONIC RELAXATION (kBar)
+
+The final elastic moduli, including both, the contributions for distortions with rigid ions and the contributions from the ionic relaxations, are summarized at the very end:
+
+ TOTAL ELASTIC MODULI (kBar)
+
+There are a few caveats to this approach: most notably, the plane-wave cutoff ({{TAG|ENCUT}}) needs to be sufficiently large to converge the stress tensor. This is usually only achieved if the default cutoff is increased by roughly 30%, but it is strongly recommended to increase the cutoff systematically, (e.g., in steps of 15%), until full convergence is achieved.
+
+== Practical hints ==
+
+The computation of the second-order force constants requires accurate [[:Category:Forces|forces]].
+Therefore, the tag {{TAG|PREC}}=Accurate is recommended in the {{FILE|INCAR}}.
+The {{TAG|ADDGRID}}=TRUE should '''not''' be set without careful testing.
+
+A practical way to check for convergence is to monitor the Γ point ('''q'''=0) optical mode frequencies while varying the {{TAG|ENCUT}}, {{TAG|PREC}}, and '''k''' point density ({{FILE|KPOINTS}}). Additionally, compare the result to [[Phonons from density-functional-perturbation theory|phonons from density-functional-perturbation theory (DFPT)]].
+
+To get the phonon frequencies quickly on the command line, simply type the following:
+ grep THz OUTCAR
+
+To get an accurate phonon dispersion, perform the force-constants calculation in a large enough supercell.
+When increasing the size of the supercell, we recommend decreasing the '''k'''-point density in the {{FILE|KPOINTS}} file to yield the same resolution.
+For example, for the primitive cell of silicon, a 12x12x12 Gamma-centered '''k'''-point mesh is needed to obtain accurate phonon frequencies at the Gamma point. When replicating the unit cell to a 2x2x2 supercell, a 6x6x6 '''k''' point mesh will produce an equivalent sampling. For a 4x4x4 supercell, a 3x3x3 '''k''' point mesh will suffice.
+
+It is possible to use phonopy{{cite|phonopy}} to post-process the results of a finite differences calculation done with VASP.{{cite|phonopy_dfpt}}
+{{NB|tip|In contrast to [[Phonons from density-functional-perturbation theory|computing phonons within DFPT]], the finite difference approach can be used in combination with any [[Exchange-correlation functional]].}}
+{{TAG|IBRION}}{{=}}5, is available as of VASP.4.5, {{TAG|IBRION}}{{=}}6 starting from VASP.5.1.
+In some older versions (pre VASP.5.1), {{TAG|NSW}} (number of ionic steps) must be set to 1 in the {{FILE|INCAR}} file, since {{TAG|NSW}}{{=}}0 sets the {{TAG|IBRION}}{{=}}&minus;1 regardless of the value supplied in the {{FILE|INCAR}} file.
+Although VASP.4.6 supports {{TAG|IBRION}}{{=}}5-6, VASP.4.6 does not change the set of '''k''' points automatically (often the displaced configurations require a different '''k'''-point grid). Hence, the finite difference routine might yield incorrect results in VASP.4.6.
+
+If you obtain imaginary frequencies when you are not expecting them (i.e., at a [[:Category:Transition states | transition state]]), then this is likely an issue with convergence. You should try increasing the cell size or [[KPOINTS | k-points mesh]]. If this does not work, consider the [[ISMEAR | smearing parameter]], increasing the precision with the {TAG|PREC}} tag, or the {{TAG|ENCUT}}. See [[How to handle imaginary phonon modes]] for a step-by-step guide to identifying and resolving soft modes.
+
+== Related tags and sections ==
+{{TAG|IBRION}},
+{{TAG|ISIF}},
+{{TAG|POTIM}},
+
+[[Phonons: Theory]]
+
+[[Phonons from density-functional-perturbation theory]], [[Computing the phonon dispersion and DOS]], [[How to handle imaginary phonon modes]]
+
+== References==
+<references/>
+
+[[Category:Phonons]][[Category:Howto]]

@@ -1,0 +1,59 @@
+In the DFT-D2 method of Grimme{{cite|grimme:jcc:06}} the correction term takes the form:
+
+:<math>E_{\mathrm{disp}} = -\frac{1}{2}  \sum_{i=1}^{N_{at}} \sum_{j=1}^{N_{at}}  \sum_{\mathbf{L}} {}^{\prime}  \frac{C_{6ij}}{r_{ij,L}^{6}}  f_{d,6}({r}_{ij,\mathbf{L}}) </math>
+
+where the first two summations are over all <math>N_{at}</math> atoms in the unit cell and the third summation is over all translations of the unit cell <math>{\mathbf{L}}=(l_1,l_2,l_3)</math> where the prime indicates that <math>i\not=j</math> for <math>{\mathbf{L}}=0</math>. <math>C_{6ij}</math> denotes the dispersion coefficient for the atom pair <math>ij</math>, <math>{r}_{ij,\mathbf{L}}</math> is the distance between atom <math>i</math> located in the reference cell <math>\mathbf{L}=0</math> and atom <math>j</math> in the cell <math>L</math> and the term <math>f(r_{ij})</math> is a damping function whose role is to scale the force field such as to minimize the contributions from interactions within typical bonding distances. In practice, the terms in the equation for <math>E_{\mathrm{disp}}</math> corresponding to interactions over distances longer than a certain suitably chosen cutoff radius ({{TAG|VDW_RADIUS}}, see below) contribute only negligibly to  <math>E_{\mathrm{disp}}</math> and can be ignored. Parameters <math>C_{6ij}</math> and <math>R_{0ij}</math> are computed using the following combination rules:
+
+:<math>C_{6ij} = \sqrt{C_{6ii} C_{6jj}}</math>
+
+and
+
+:<math>R_{0ij} = R_{0i}+ R_{0j}. </math>
+
+The values for <math>C_{6ii}</math> and <math>R_{0i}</math> are tabulated for each element and are insensitive to the particular chemical situation (for instance, <math>C_6</math> for carbon in methane takes exactly the same value as that for C in benzene within this approximation). In the DFT-D2 method, a Fermi-type damping function is used:
+
+:<math>f_{d,6}(r_{ij}) = \frac{s_6}{1+e^{-d(r_{ij}/(s_R\,R_{0ij})-1)}}</math>
+
+whereby the global scaling parameter <math>s_6</math> has been optimized for several different DFT functionals such as PBE (<math>s_6=0.75</math>), BLYP (<math>s_6=1.2</math>) or B3LYP (<math>s_6=1.05</math>). The parameter <math>s_R</math> is usually fixed at 1.00.
+
+The performance of PBE-D2 method in optimization of various crystalline systems has been tested systematically in reference {{cite|bucko:jpca:10}}.
+{{NB|important|It is recommended to use the more advanced and more accurate method {{TAG|DFT-D3}}.{{cite|grimme:jcp:10}}}}
+
+== Usage ==
+
+The DFT-D2 method is activated by setting {{TAG|IVDW}}=1 or 10 (or the obsolete {{TAG|LVDW}}=''.TRUE.''). Optionally, the damping function and the vdW parameters can be controlled using the following flags (the given values are the default ones):
+
+*{{TAG|VDW_RADIUS}}=50.0 : cutoff radius (in Å) for pair interactions
+*{{TAG|VDW_S6}}=0.75 : global scaling factor <math>s_6</math> (available in VASP.5.3.4 and later)
+*{{TAG|VDW_SR}}=1.00 : scaling factor <math>s_R</math> (available in VASP.5.3.4 and later)
+*{{TAG|VDW_SCALING}}=0.75 : the same as {{TAG|VDW_S6}} (obsolete as of VASP.5.3.4)
+*{{TAG|VDW_D}}=20.0 : damping parameter <math>d</math>
+*{{TAG|VDW_C6}}=[real array] : <math>C_6</math> parameters (<math>\mathrm{Jnm}^{6}\mathrm{mol}^{-1}</math>) for each species defined in the {{TAG|POSCAR}} file
+*{{TAG|VDW_R0}}=[real array] : <math>R_0</math> parameters (Å) for each species defined in the {{TAG|POSCAR}} file
+*{{TAG|LVDW_EWALD}}=''.FALSE.'' : the lattice summation in <math>E_{\mathrm{disp}}</math> expression is computed by means of Ewald's summation (''.TRUE.'' ) or via a real space summation over all atomic pairs within cutoff radius {{TAG|VDW_RADIUS}} (''.FALSE.'').  (available in VASP.5.3.4 and later)
+
+{{NB|mind|
+*The defaults for {{TAG|VDW_C6}} and {{TAG|VDW_R0}} are defined only for elements in the first five rows of the periodic table (i.e. H-Xe). If the system contains other elements the user has to define these parameters in {{TAG|INCAR}}.
+*The defaults for parameters controlling the damping function ({{TAG|VDW_S6}}, {{TAG|VDW_SR}}, {{TAG|VDW_D}}) are available for the PBE  ({{TAG|GGA}}{{=}}PE), BP, revPBE, PBE0, TPSS, and B3LYP functionals. If any other functional is used in a DFT-D2 calculation, the value of {{TAG|VDW_S6}}  (or {{TAG|VDW_SCALING}} in versions before VASP.5.3.4) has to be defined in {{TAG|INCAR}}.
+*As of VASP.5.3.4, the default value for {{TAG|VDW_RADIUS}} has been increased from 30 to 50 Å.
+*Ewald's summation in the calculation of <math>E_{\mathrm{disp}}</math> calculation (controlled via {{TAG|LVDW_EWALD}}) is implemented according to reference {{cite|kerber:jcc:08}} and is available as of VASP.5.3.4.}}
+
+== Related tags and articles ==
+{{TAG|VDW_RADIUS}},
+{{TAG|VDW_S6}},
+{{TAG|VDW_SR}},
+{{TAG|VDW_SCALING}},
+{{TAG|VDW_D}},
+{{TAG|VDW_C6}},
+{{TAG|VDW_R0}},
+{{TAG|LVDW_EWALD}},
+{{TAG|IVDW}},
+{{TAG|DFT-ulg}},
+{{TAG|DFT-D3}},
+[[DFT-D4]]
+
+== References ==
+<references/>
+
+----
+[[Category:Exchange-correlation functionals]][[Category:van der Waals functionals]][[Category:Theory]][[Category:Howto]]

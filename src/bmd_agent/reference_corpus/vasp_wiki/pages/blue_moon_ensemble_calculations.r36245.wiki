@@ -1,0 +1,28 @@
+The information needed to determine the blue moon ensemble averages within a [[:Category:Constrained molecular dynamics|Constrained molecular dynamics]] can be obtained by setting {{TAG|LBLUEOUT}}=.TRUE., cf. [[Blue_moon_ensemble|blue moon ensemble]] for details of the theory. The following output is written for each MD step in the file {{FILE|REPORT}}:
+ 
+ >Blue_moon
+        lambda        |z|^(-1/2)    GkT           |z|^(-1/2)*(lambda+GkT)
+   b_m>  0.585916E+01  0.215200E+02 -0.117679E+00  0.123556E+03
+
+
+with the four numerical terms indicating <math>\lambda_{\xi_k}</math>, <math>|Z|^{-1/2}</math>, <math>\left ( \frac{k_B T}{2 |Z|} \sum_{j=1}^{r}(Z^{-1})_{kj} \sum_{i=1}^{3N} m_i^{-1}\nabla_i \xi_j \cdot \nabla_i |Z| \right ) </math>, and <math>\left ( |Z|^{-1/2} [\lambda_k +\frac{k_B T}{2 |Z|} \sum_{j=1}^{r}(Z^{-1})_{kj} \sum_{i=1}^{3N} m_i^{-1}\nabla_i \xi_j \cdot \nabla_i |Z|] \right ) </math>, respectively. 
+
+{{NB|mind| <math> \left ( \frac{1}{2 |Z|} \sum_{j=1}^{r}(Z^{-1})_{kj} \sum_{i=1}^{3N} m_i^{-1}\nabla_i \xi_j \cdot \nabla_i |Z| \right ) </math> is defined as <math> G </math> in the {{FILE|REPORT}} file. This is an arbitrary character and has no relation to Green's functions, reciprocal lattice vectors, etc.}}
+
+Note that one line introduced by the string 'b_m>' is written for each constrained coordinate. With this output, the free energy gradient with respect to the fixed coordinate <math>{\xi_k}</math> can conveniently be determined (by the equation given above) as a ratio between averages of the last and the second numerical terms. In the simplest case when only one constraint is used, the free energy gradient can be obtained as follows:
+
+ grep b_m REPORT |awk 'BEGIN {a=0.;b=0.} {a+=$5;b+=$3} END {print a/b}'
+
+As an example of a blue moon ensemble average, let us consider the calculation of an unbiased potential energy average from constrained MD. For simplicity, only a single constraint is assumed. Here we extract <math>|Z|^{-1/2}</math> for each step and store the data in an auxiliary file zet.dat:
+ grep b_m REPORT |awk '{print $3}' > zet.dat
+Here we extract potential energy for each step and store the data in an auxiliary file energy.dat:
+ grep e_b REPORT |awk '{print $3}' > energy.dat
+Finally, the weighted average is determined according to the first formula shown above:    
+ paste energy.dat zet.dat |awk 'BEGIN {a=0.;b=0.} {a+=$1*$2;b+=$2} END {print a/b}'
+
+== Related tags and articles ==
+{{FILE|ICONST}}, {{TAG|SHAKEMAXITER}}, {{TAG|SHAKETOL}}, {{TAG|SHAKETOLSOFT}}, {{TAG|LBLUEOUT}}, {{FILE|REPORT}}
+
+[[Blue moon ensemble]]
+
+[[Category:Advanced molecular-dynamics sampling]][[Category:Howto]]

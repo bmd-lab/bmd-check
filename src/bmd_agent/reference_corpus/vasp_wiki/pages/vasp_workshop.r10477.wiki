@@ -1,0 +1,26 @@
+The lectures and tutorials listed below constitute a typical 2-3 day VASP workshop,
+as we have held many over the years.
+
+== Lectures ==
+
+*[[Media:VASP_lecture_Basics.pdf| DFT, PW, and PAW]]: "VASP: The basics. DFT, plane waves, PAW, ...". Video: [http://www.youtube.com/watch?v=vJkNv095Aj8&t=3s Part1] and [http://www.youtube.com/watch?v=dVguc4W1hrQ&t=180s Part2]
+
+*[[Media:VASP_lecture_Hybrids.pdf| Hybrid functionals]]: "VASP: Hybrid functionals". [http://www.youtube.com/watch?v=OQhRYzWAGfk&t=20s Video] 
+
+*[[Media:VASP_lecture_Dielectric.pdf| Dielectric properties]]: "VASP: Dielectric response. Perturbation theory, linear response, and finite electric fields". [http://www.youtube.com/watch?v=rnXnqDvaSNo&t=18s Video]
+
+*[[Media:VASP_lecture_RPA.pdf| Beyond DFT: RPA]]: "VASP: beyond DFT. The Random-Phase-Approximation". [http://www.youtube.com/watch?v=7Vt3s8WWGCU&t=5s Video]
+
+== Tutorials ==
+
+*[[Atoms and Molecules - Tutorial|Atoms and Molecules - Tutorial]]
+*[[Bulk_Systems|Simple Bulk Systems]]
+*[[Surface_Science|A bit of Surface Science]]
+*[[Magnetism|Magnetism]]
+*[[Hybrid_functionals|Hybrid Functionals]]
+*[[Optical_properties_and_dielectric_response|Optical Properties and Dielectric Response]]
+*[[GW_and_ACFDT|The Random-Phase-Approximation: GW and ACDFT]]
+
+----
+
+[[Category:VASP]][[Category:Workshops]]

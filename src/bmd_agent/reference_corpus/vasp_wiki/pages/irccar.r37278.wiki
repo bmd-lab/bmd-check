@@ -1,0 +1,19 @@
+The {{FILE|IRCCAR}} file defines a discretized transformation path. Usually this is taken from an [[Intrinsic-reaction-coordinate calculations|intrinsic reaction coordinate]] (IRC) - using {{TAG|IBRION}}=40, projected onto a small set of internal coordinates. It is required to define the path-based coordinates <code>IS</code> and <code>IZ</code> in [[ICONST#In_case_of_complex_coordinates|ICONST]] {{Cite|branduari:parrinello:2007}}. 
+
+However, this path is followed during a biased molecular dynamics (MD) simulation, similar to the [[Blue moon ensemble]] method, [[Metadynamics|metadynamics]], and other [[:Category:Advanced molecular-dynamics sampling| advanced MD aproaches]] {{Cite|bucko:book:2025}}. The structure of the file is:
+ 
+ M
+ chi_1(1) chi_2(1) ... chi(r)(1)
+ chi_1(2) chi_2(2) ... chi(r)(2)
+ ...
+ chi_1(M) chi_2(M) ... chi(r)(M)
+
+where <code>M</code> is the number of points in the file and <code>chi_j(i)</code> is <math>\tilde{\chi}_k(i)</math>, the discretized transformation path in terms of internal coordinates, taking values between 0 and 1. 
+{{NB|mind|Contact [https://fns.uniba.sk/en/tomas-bucko/ Tomáš Bučko] for necessary Python scripts to prepare this file.}}
+
+==Related tags and articles==
+{{FILE|ICONST}}
+
+==References==
+
+[[Category:Files]][[Category:Input files]][[Category:Advanced molecular-dynamics sampling]][[Category:Biased molecular dynamics]][[Category:Transition states]]

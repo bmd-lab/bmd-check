@@ -1,0 +1,107 @@
+== Lectures ==
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_Basics1.pdf DFT, PW, and PAW]: "VASP: The basics. DFT, plane waves, PAW, ...".
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_Hybrids.pdf Hybrid functionals]: "VASP: Hybrid functionals".
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_RPA.pdf Beyond DFT: RPA]: "VASP: beyond DFT. The Random-Phase-Approximation".
+
+*[https://github.com/skelton-group/VASP-Workshop-Chester-2019 Geometry optimization]: Tutorial on geometry optimisation by Dr. Jonathan Skelton.
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_Surfaces_Roldan.pdf Surfaces and interfaces] by Dr. Alberto Roldan.
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_Surfaces_Interfaces_Papadopoulos.pdf Electronic structure of materials surfaces and interfaces] by Dr. Theodoros Papadopoulos.
+
+*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_HPC.pdf Performance]: "VASP: running on HPC resources".
+
+== Allocating Computing Nodes and Environment Setup ==
+An interactive shell should be allocated after login. 
+The following command allocates an interactive node with 8 CPUs for 90 minutes
+ qsub -A y15 -q <queue> -IVl select=1:ncpus=8,walltime=01:30:00,place=scatter:excl
+Here <code><queue></code> is <code>R1179799</code> for the 14:00-15:30 and <code>R1171601</code> for the 16:00-17:30 session, respectively.
+After successful allocation, one has to setup the environment as follows. 
+
+To have access to the vasp binaries, the corresponding module has to be loaded into the environment. 
+Furthermore, the job scripts found in the tutorial tar files (job.sh, doall.sh, etc) work only if the environment variables "vasp_std, vasp_gam, vasp_ncl" are defined.
+Enter following commands in the terminal window after login, to setup up the environment.
+ module load vasp/5.4.4-intel18-impi18-wannier90_1.2
+ export vasp_ncl="mpirun -ppn 8 -np 8 /lustre/home/y07/vasp5/5.4.4-intel18-impi18/bin/vasp_ncl"
+ export vasp_gam="mpirun -ppn 8 -np 8 /lustre/home/y07/vasp5/5.4.4-intel18-impi18/bin/vasp_gam"
+ export vasp_std="mpirun -ppn 8 -np 8 /lustre/home/y07/vasp5/5.4.4-intel18-impi18/bin/vasp_std"
+
+== Submitting jobs ==
+Alternative to an interactive shell, one may submit jobs to the cluster as follows
+ qsub vasp.job
+where the jobfile "vasp.job" reads
+ #!/bin/bash --login
+ 
+ #PBS -N VASP-Test
+ #PBS -l select=1:ncpus=36
+ #PBS -l place=scatter:excl
+ #PBS -l walltime=00:30:00
+ #PBS -A y15 
+ 
+ cd $PBS_O_WORKDIR 
+ module load vasp
+ mpiexec_mpt -ppn 36 -n 36 vasp_std | tee vasp.out
+
+== Install sumo for post processing ==
+Sumo[https://sumo.readthedocs.io] can be used to plot band structures and density of states. 
+A local installation is possible with following commands 
+ module load anaconda/python3
+ pip install --user --upgrade pip
+ pip3 install --user --upgrade scipy
+ pip3 install --user --upgrade numpy
+ pip3 install --user sumo
+
+== Tutorials ==
+All tutorial files can be extracted to your home folder as follows 
+ cd ~ ; mkdir examples 
+ cd ~/examples
+ cp /lustre/home/shared/VASP_Workshop_Chester/examples.tgz .
+ tar -xvf examples.tgz
+
+Electronic structure examples are located on the following folder on cirrus:
+ /lustre/home/shared/VASP_Workshop_Chester/COonNi111.zip
+
+For the beginners: [[Input_and_Output_-_a_short_Intro| A short introduction to the common Input and Output files.]]
+
+*[[Atoms_and_Molecules_-_Tutorial|Atoms and Molecules]]
+*[[Bulk_Systems_-_Tutorial|Simple Bulk Systems]]
+*[[Surface_Science_-_Tutorial|A bit of Surface Science]]
+*[[Hybrid_functionals_-_Tutorial|Hybrid Functionals]]
+*[[Optical_properties_and_dielectric_response_-_Tutorial|Optical Properties and Dielectric Response]]
+*[[GW_and_ACFDT_-_Tutorial|The Random-Phase-Approximation: GW and ACFDT]]
+*[[BSE_-_Tutorial|The Bethe-Salpeter equation]]
+*[[Magnetism_-_Tutorial|Magnetism]]
+
+== Further Examples ==
+==== Optimisation in the bulk ====
+* [https://github.com/skelton-group/VASP-Workshop-Chester-2019 Exercises by Jonathan Skelton]
+
+==== Nudge Elastic Band Method and (constrained) Molecular Dynamics ====
+
+*[[Liquid Si - Standard MD]]
+
+*[[Transition State Search of Ammonia]]
+
+*[[Adsorption of H2O on TiO2]]
+
+==== Magnetism in NiO ====
+
+*[[NiO GGA]]
+
+*[[NiO GGA+U]]
+
+*[[NiO HSE06]]
+
+*[[Estimation of J magnetic coupling]]
+
+*[[Including the Spin-Orbit Coupling]]
+
+*[[Determining the Magnetic Anisotropy]]
+
+*[[Constraining the local magnetic moments]]
+
+=== Surfaces and Interfaces ===
+* [https://cf-my.sharepoint.com/:f:/g/personal/roldanmartineza_cardiff_ac_uk/EnHWVLFYBlBJnz4Wi6zsr6EB9TqWFsMyknAghU5iTYR8Ng?e=WDqUTz Exercises by Alberto Roldan Martinez]

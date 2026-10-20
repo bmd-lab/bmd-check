@@ -1,0 +1,7 @@
+This file contains the eigenvalues, eigenvectors from the diagonalization of the dynamic matrix. Initial positions and atomic information of the system are also stored in this file. 
+
+This file is only set if {{TAG|PHON_NSTRUCT}}<0 is set. 
+
+----
+
+[[Category:Files]][[Category:Input files]][[Category:Output files]]

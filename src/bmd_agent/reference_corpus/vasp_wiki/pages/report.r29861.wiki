@@ -1,0 +1,8 @@
+The output file {{TAG|REPORT}} contains information about the MD run such as list of parameters used in the simulation, the values of controlled geometric parameters, number of collision with the heat-bath (Andersen thermostat), quantities needed to compute the free-energy gradient, etc.
+
+== Related Tags and Sections ==
+{{TAG|IBRION}}, {{TAG|MDALGO}}, {{TAG|ISIF}}
+
+----
+
+[[Category:Files]] [[Category:Output files]] [[Category:Ensemble properties]] [[Category:Advanced molecular-dynamics sampling]]

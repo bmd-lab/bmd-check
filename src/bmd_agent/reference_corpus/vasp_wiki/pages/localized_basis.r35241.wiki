@@ -1,0 +1,31 @@
+{{DISPLAYTITLE:LOCALIZED_BASIS}}
+{{TAGDEF|LOCALIZED_BASIS|MLWF {{!}} BLOCH {{!}} LOCPROJ}}
+
+Description: Specifies which basis is used for Coulomb matrix elements in constrained random-phase approximation (cRPA) calculations.
+
+----
+This tag is effective for {{TAG|ALGO|CRPA}}[R] and {{TAG|ALGO|2E4W}} and is ignored otherwise.
+The tag affects how {{TAG|NTARGET_STATES}} is interpreted.  
+For instance 
+ LOCALIZED_BASIS = BLOCH
+ NTARGET_STATES = 1 4 5 8 
+evaluates the Coulomb matrix elements in the Bloch basis for band 1, 4, 5 and 8.
+
+In contrast,  
+ LOCALIZED_BASIS = MLWF
+ NTARGET_STATES = 1 4 5 8 
+evaluates the Coulomb matrix elements in the [[LWANNIER90|Wannier basis]] for the states 1, 4, 5 and 8 defined in the {{FILE|INCAR}} file or read from the {{FILE|WANPROJ}} file. 
+
+== Related tags and articles ==
+{{TAG|ALGO}},
+{{TAG|NCRPA_BANDS}},
+{{TAG|NTARGET_STATES}},
+{{TAG|LOCPROJ}},
+{{FILE|VIJKL}},
+{{FILE|UIJKL}},
+{{FILE|VRijkl}},
+{{FILE|URijkl}}
+
+{{sc|LOCALIZED_BASIS|Howto|Workflows that use this tag}}
+
+[[Category:Wannier functions]][[Category:Many-body perturbation theory]][[Category:Constrained-random-phase approximation]]

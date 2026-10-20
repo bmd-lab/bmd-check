@@ -1,0 +1,1009 @@
+Several [[Available pseudopotentials#Different variants specified by the suffix|pseudopotential variants labeled by suffixes]] exist for many elements. When making a choice, it is necessary to balance computational cost, accuracy, and transferability. 
+
+* To set up a minimal working example of your calculation, follow [[prepare a POTCAR]].
+* Try to create a smaller test calculation and perform your own tests to confirm if the quantity of interest is sensitive to the choice of the pseudopotential. It might be possible to opt for a computationally cheaper {{FILE|POTCAR}} and gain performance. On the other hand, it could be necessary to opt for a computationally demanding setup to obtain correct results.
+* With the [[#Aspects to refine the choice of pseudopotentials|aspects described in the next section]] in mind, carefully look over the [[#Recommendations and advice|recommendations for each group in the periodic table]].
+
+==Aspects to refine the choice of pseudopotentials==
+
+'''Aspect 1:''' The bond lengths and the valency of the ions.
+
+:Short bonds will require harder potentials, and semicore states might have to be treated as valence for certain chemical bonding. For some elements, variants for specific valency exist; for example, the suffix [[Available_pseudopotentials#Different_variants_specified_by_the_suffix|_2 or _3]] can be used to describe [[#Lanthanides with fixed valence| fixed divalent or trivalent Lanthanides]].
+
+'''Aspect 2:''' The physical or chemical property of interest.
+
+:If you are only interested in a rough [[Ionic minimization|structure optimization]], soft potentials ([[Available_pseudopotentials#Different_variants_specified_by_the_suffix|_s]]) with minimal valency may suffice. This approach might also work for [[Phonons|phonon calculations]] that rely on large supercells. 
+:On the other hand, when optimizing a magnetic structure, it may be necessary to include semicore states in the valence ([[Available_pseudopotentials#Different_variants_specified_by_the_suffix|_pv and _sv]]). 
+:For the computation of [[optical properties]], it is crucial to use [[Available pseudopotentials#GW potentials|GW potentials]].
+
+'''Aspect 3:''' The method or algorithm used in your calculation.
+
+:For any calculation involving unoccupied states significantly above the Fermi energy, the [[Available_pseudopotentials#Different_variants_specified_by_the_suffix|_GW variants]] of potentials are superior and should be used. Particularly, all kinds of [[Many-body perturbation theory|calculations within many-body perturbation theory]] need a high number of [[NBANDS#Many-body_perturbation_theory_calculations|empty bands]]. Therefore, when GW, BSE, etc. is performed, the [[Available pseudopotentials#GW potentials|GW potentials]] should be used throughout the workflow.
+
+:[[Hybrid_functionals|Hartree-Fock and hybrid caluclations]] should ''not'' be performed with soft potentials ([[Available_pseudopotentials#Different_variants_specified_by_the_suffix|_s]]). Moreover, any calculations where you switch the [[exchange-correlation functional]] should ''not'' be performed with soft potentials ([[Available_pseudopotentials#Different_variants_specified_by_the_suffix|_s]]). 
+
+:For standard DFT-ground-state calculations, using [[Available_pseudopotentials#Different_variants_specified_by_the_suffix|_GW or _h]] potentials is usually unnecessary unless, e.g., the property of interest or geometry of the structure demands it.
+
+==Recommendations and advice==
+
+===Recommended PAW potentials===
+
+====Standard DFT without the need for many unoccupied states====
+:The table directly below highlights recommended PAW potentials in '''bold'''.
+:These potentials are ''not ideal'' for calculations involving a large number of excited states as needed, e.g., for [[optical properties]] or [[many-body perturbation theory]].
+
+:{| class="wikitable sortable mw-collapsible mw-collapsed"
+| colspan="4" style="text-align:center"|  Standard PBE potentials (potpaw.64)
+|-
+! Potential name !! Number of valence electrons !! Valence electron configuration !! ENMAX [eV]
+|-
+|''' H '''||''' 1 '''||''' 1<i>s</i><sup>1</sup> '''||''' 250.0'''
+|-
+| H.25 || 0.25 || 1<i>s</i><sup>0.25</sup> || 250.0
+|-
+| H.33 || 0.33 || 1<i>s</i><sup>0.33</sup> || 250.0
+|-
+| H.42 || 0.42 || 1<i>s</i><sup>0.42</sup> || 250.0
+|-
+| H.5 || 0.5 || 1<i>s</i><sup>0.5</sup> || 250.0
+|-
+| H.58 || 0.58 || 1<i>s</i><sup>0.58</sup> || 250.0
+|-
+| H.66 || 0.66 || 1<i>s</i><sup>0.66</sup> || 250.0
+|-
+| H.75 || 0.75 || 1<i>s</i><sup>0.75</sup> || 250.0
+|-
+| H1.25 || 1.25 || 1<i>s</i><sup>1.25</sup> || 250.0
+|-
+| H1.33 || 1.33 || 1<i>s</i><sup>1.33</sup> || 250.0
+|-
+| H1.5 || 1.5 || 1<i>s</i><sup>1.5</sup> || 250.0
+|-
+| H1.66 || 1.66 || 1<i>s</i><sup>1.66</sup> || 250.0
+|-
+| H1.75 || 1.75 || 1<i>s</i><sup>1.75</sup> || 250.0
+|-
+| H_AE || 1 || 1<i>s</i><sup>1</sup> || 1000.0
+|-
+| H_h || 1 || 1<i>s</i><sup>1</sup> || 700.0
+|-
+| H_s || 1 || 1<i>s</i><sup>1</sup> || 200.0
+|-
+|''' He '''||''' 2 '''||''' 1<i>s</i><sup>2</sup> '''||''' 478.896'''
+|-
+| He_AE || 2 || 1<i>s</i><sup>2</sup> || 2135.871
+|-
+| Li || 1 || 2<i>s</i><sup>1</sup> || 140.0
+|-
+|''' Li_sv '''||''' 3 '''||''' 1<i>s</i><sup>2</sup> 2<i>s</i><sup>1</sup> '''||''' 499.034'''
+|-
+|''' Be '''||''' 2 '''||''' 2<i>s</i><sup>1.99</sup> 2<i>p</i><sup>0.01</sup> '''||''' 247.543'''
+|-
+| Be_sv || 4 || 1<i>s</i><sup>2</sup> 2<i>s</i><sup>1.99</sup> 2<i>p</i><sup>0.01</sup> || 308.768
+|-
+|''' B '''||''' 3 '''||''' 2<i>s</i><sup>2</sup> 2<i>p</i><sup>1</sup> '''||''' 318.614'''
+|-
+| B_h || 3 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>1</sup> || 700.0
+|-
+| B_s || 3 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>1</sup> || 269.245
+|-
+|''' C '''||''' 4 '''||''' 2<i>s</i><sup>2</sup> 2<i>p</i><sup>2</sup> '''||''' 400.0'''
+|-
+| C_h || 4 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>2</sup> || 741.689
+|-
+| C_s || 4 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>2</sup> || 273.911
+|-
+|''' N '''||''' 5 '''||''' 2<i>s</i><sup>2</sup> 2<i>p</i><sup>3</sup> '''||''' 400.0'''
+|-
+| N_h || 5 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>3</sup> || 755.582
+|-
+| N_s || 5 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>3</sup> || 279.692
+|-
+|''' O '''||''' 6 '''||''' 2<i>s</i><sup>2</sup> 2<i>p</i><sup>4</sup> '''||''' 400.0'''
+|-
+| O_h || 6 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>4</sup> || 765.519
+|-
+| O_s || 6 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>4</sup> || 282.853
+|-
+|''' F '''||''' 7 '''||''' 2<i>s</i><sup>2</sup> 2<i>p</i><sup>5</sup> '''||''' 400.0'''
+|-
+| F_h || 7 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>5</sup> || 772.626
+|-
+| F_s || 7 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>5</sup> || 289.837
+|-
+|''' Ne '''||''' 8 '''||''' 2<i>s</i><sup>2</sup> 2<i>p</i><sup>6</sup> '''||''' 343.606'''
+|-
+| Na || 1 || 3<i>s</i><sup>1</sup> || 101.968
+|-
+|''' Na_pv '''||''' 7 '''||''' 2<i>p</i><sup>6</sup> 3<i>s</i><sup>1</sup> '''||''' 259.561'''
+|-
+| Na_sv || 9 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>6</sup> 3<i>s</i><sup>1</sup> || 645.64
+|-
+|''' Mg '''||''' 2 '''||''' 3<i>s</i><sup>2</sup> '''||''' 200.0'''
+|-
+| Mg_pv || 8 || 2<i>p</i><sup>6</sup> 3<i>s</i><sup>2</sup> || 403.929
+|-
+| Mg_sv || 10 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>6</sup> 3<i>s</i><sup>2</sup> || 495.223
+|-
+|''' Al '''||''' 3 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>1</sup> '''||''' 240.3'''
+|-
+|''' Si '''||''' 4 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>2</sup> '''||''' 245.345'''
+|-
+|''' P '''||''' 5 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>3</sup> '''||''' 255.04'''
+|-
+| P_h || 5 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>3</sup> || 390.202
+|-
+|''' S '''||''' 6 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>4</sup> '''||''' 258.689'''
+|-
+| S_h || 6 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>4</sup> || 402.436
+|-
+|''' Cl '''||''' 7 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>5</sup> '''||''' 262.472'''
+|-
+| Cl_h || 7 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>5</sup> || 409.136
+|-
+|''' Ar '''||''' 8 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> '''||''' 266.408'''
+|-
+| K_pv || 7 || 3<i>p</i><sup>6</sup> 4<i>s</i><sup>1</sup> || 116.731
+|-
+|''' K_sv '''||''' 9 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 4<i>s</i><sup>1</sup> '''||''' 259.264'''
+|-
+| Ca_pv || 8 || 3<i>p</i><sup>6</sup> 4<i>s</i><sup>2</sup> || 119.559
+|-
+|''' Ca_sv '''||''' 10 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 4<i>s</i><sup>2</sup> '''||''' 266.622'''
+|-
+| Sc || 3 || 3<i>d</i><sup>2</sup> 4<i>s</i><sup>1</sup> || 154.763
+|-
+|''' Sc_sv '''||''' 11 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>2</sup> 4<i>s</i><sup>1</sup> '''||''' 222.66'''
+|-
+| Ti || 4 || 3<i>d</i><sup>3</sup> 4<i>s</i><sup>1</sup> || 178.33
+|-
+| Ti_pv || 10 || 3<i>p</i><sup>6</sup> 3<i>d</i><sup>3</sup> 4<i>s</i><sup>1</sup> || 222.335
+|-
+|''' Ti_sv '''||''' 12 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>3</sup> 4<i>s</i><sup>1</sup> '''||''' 274.61'''
+|-
+| V || 5 || 3<i>d</i><sup>4</sup> 4<i>s</i><sup>1</sup> || 192.543
+|-
+| V_pv || 11 || 3<i>p</i><sup>6</sup> 3<i>d</i><sup>4</sup> 4<i>s</i><sup>1</sup> || 263.673
+|-
+|''' V_sv '''||''' 13 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>4</sup> 4<i>s</i><sup>1</sup> '''||''' 263.673'''
+|-
+| Cr || 6 || 3<i>d</i><sup>5</sup> 4<i>s</i><sup>1</sup> || 227.08
+|-
+|''' Cr_pv '''||''' 12 '''||''' 3<i>p</i><sup>6</sup> 3<i>d</i><sup>5</sup> 4<i>s</i><sup>1</sup> '''||''' 265.681'''
+|-
+| Cr_sv || 14 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>5</sup> 4<i>s</i><sup>1</sup> || 395.471
+|-
+| Mn || 7 || 3<i>d</i><sup>6</sup> 4<i>s</i><sup>1</sup> || 269.864
+|-
+|''' Mn_pv '''||''' 13 '''||''' 3<i>p</i><sup>6</sup> 3<i>d</i><sup>6</sup> 4<i>s</i><sup>1</sup> '''||''' 269.864'''
+|-
+| Mn_sv || 15 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>6</sup> 4<i>s</i><sup>1</sup> || 387.187
+|-
+|''' Fe '''||''' 8 '''||''' 3<i>d</i><sup>7</sup> 4<i>s</i><sup>1</sup> '''||''' 267.882'''
+|-
+| Fe_pv || 14 || 3<i>p</i><sup>6</sup> 3<i>d</i><sup>7</sup> 4<i>s</i><sup>1</sup> || 293.238
+|-
+| Fe_sv || 16 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>7</sup> 4<i>s</i><sup>1</sup> || 390.558
+|-
+|''' Co '''||''' 9 '''||''' 3<i>d</i><sup>8</sup> 4<i>s</i><sup>1</sup> '''||''' 267.968'''
+|-
+| Co_pv || 15 || 3<i>p</i><sup>6</sup> 3<i>d</i><sup>8</sup> 4<i>s</i><sup>1</sup> || 271.042
+|-
+| Co_sv || 17 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>8</sup> 4<i>s</i><sup>1</sup> || 390.362
+|-
+|''' Ni '''||''' 10 '''||''' 3<i>d</i><sup>9</sup> 4<i>s</i><sup>1</sup> '''||''' 269.532'''
+|-
+| Ni_pv || 16 || 3<i>p</i><sup>6</sup> 3<i>d</i><sup>9</sup> 4<i>s</i><sup>1</sup> || 367.986
+|-
+|''' Cu '''||''' 11 '''||''' 3<i>d</i><sup>10</sup> 4<i>s</i><sup>1</sup> '''||''' 295.446'''
+|-
+| Cu_pv || 17 || 3<i>p</i><sup>6</sup> 3<i>d</i><sup>10</sup> 4<i>s</i><sup>1</sup> || 368.648
+|-
+|''' Zn '''||''' 12 '''||''' 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> '''||''' 276.723'''
+|-
+| Ga || 3 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>1</sup> || 134.678
+|-
+|''' Ga_d '''||''' 13 '''||''' 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> 4<i>p</i><sup>1</sup> '''||''' 282.691'''
+|-
+| Ga_h || 13 || 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> 4<i>p</i><sup>1</sup> || 404.601
+|-
+| Ge || 4 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>2</sup> || 173.807
+|-
+|''' Ge_d '''||''' 14 '''||''' 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> 4<i>p</i><sup>2</sup> '''||''' 310.294'''
+|-
+| Ge_h || 14 || 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> 4<i>p</i><sup>2</sup> || 410.425
+|-
+|''' As '''||''' 5 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>3</sup> '''||''' 208.702'''
+|-
+| As_d || 15 || 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> 4<i>p</i><sup>3</sup> || 288.651
+|-
+|''' Se '''||''' 6 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>4</sup> '''||''' 211.555'''
+|-
+|''' Br '''||''' 7 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>5</sup> '''||''' 216.285'''
+|-
+|''' Kr '''||''' 8 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> '''||''' 185.331'''
+|-
+| Rb_pv || 7 || 4<i>p</i><sup>6</sup> 4<i>d</i><sup>0.001</sup> 5<i>s</i><sup>0.999</sup> || 121.882
+|-
+|''' Rb_sv '''||''' 9 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>0.001</sup> 5<i>s</i><sup>0.999</sup> '''||''' 220.112'''
+|-
+|''' Sr_sv '''||''' 10 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>0.001</sup> 5<i>s</i><sup>1.999</sup> '''||''' 229.353'''
+|-
+|''' Y_sv '''||''' 11 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>2</sup> 5<i>s</i><sup>1</sup> '''||''' 202.626'''
+|-
+|''' Zr_sv '''||''' 12 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>3</sup> 5<i>s</i><sup>1</sup> '''||''' 229.898'''
+|-
+| Nb_pv || 11 || 4<i>p</i><sup>6</sup> 4<i>d</i><sup>4</sup> 5<i>s</i><sup>1</sup> || 208.608
+|-
+|''' Nb_sv '''||''' 13 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>4</sup> 5<i>s</i><sup>1</sup> '''||''' 293.235'''
+|-
+| Mo || 6 || 4<i>d</i><sup>5</sup> 5<i>s</i><sup>1</sup> || 224.584
+|-
+| Mo_pv || 12 || 4<i>p</i><sup>6</sup> 4<i>d</i><sup>5</sup> 5<i>s</i><sup>1</sup> || 224.584
+|-
+|''' Mo_sv '''||''' 14 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>5</sup> 5<i>s</i><sup>1</sup> '''||''' 242.676'''
+|-
+| Tc || 7 || 4<i>d</i><sup>6</sup> 5<i>s</i><sup>1</sup> || 228.694
+|-
+|''' Tc_pv '''||''' 13 '''||''' 4<i>p</i><sup>6</sup> 4<i>d</i><sup>6</sup> 5<i>s</i><sup>1</sup> '''||''' 263.523'''
+|-
+| Tc_sv || 15 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>6</sup> 5<i>s</i><sup>1</sup> || 318.703
+|-
+| Ru || 8 || 4<i>d</i><sup>7</sup> 5<i>s</i><sup>1</sup> || 213.271
+|-
+|''' Ru_pv '''||''' 14 '''||''' 4<i>p</i><sup>6</sup> 4<i>d</i><sup>7</sup> 5<i>s</i><sup>1</sup> '''||''' 240.049'''
+|-
+| Ru_sv || 16 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>7</sup> 5<i>s</i><sup>1</sup> || 318.855
+|-
+| Rh || 9 || 4<i>d</i><sup>8</sup> 5<i>s</i><sup>1</sup> || 228.996
+|-
+|''' Rh_pv '''||''' 15 '''||''' 4<i>p</i><sup>6</sup> 4<i>d</i><sup>8</sup> 5<i>s</i><sup>1</sup> '''||''' 247.408'''
+|-
+|''' Pd '''||''' 10 '''||''' 4<i>d</i><sup>9</sup> 5<i>s</i><sup>1</sup> '''||''' 250.925'''
+|-
+| Pd_pv || 16 || 4<i>p</i><sup>6</sup> 4<i>d</i><sup>9</sup> 5<i>s</i><sup>1</sup> || 250.925
+|-
+|''' Ag '''||''' 11 '''||''' 4<i>d</i><sup>10</sup> 5<i>s</i><sup>1</sup> '''||''' 249.844'''
+|-
+| Ag_pv || 17 || 4<i>p</i><sup>6</sup> 4<i>d</i><sup>10</sup> 5<i>s</i><sup>1</sup> || 297.865
+|-
+|''' Cd '''||''' 12 '''||''' 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> '''||''' 274.336'''
+|-
+| In || 3 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>1</sup> || 95.934
+|-
+|''' In_d '''||''' 13 '''||''' 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>1</sup> '''||''' 239.211'''
+|-
+| Sn || 4 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>2</sup> || 103.236
+|-
+|''' Sn_d '''||''' 14 '''||''' 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>2</sup> '''||''' 241.083'''
+|-
+|''' Sb '''||''' 5 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>3</sup> '''||''' 172.069'''
+|-
+|''' Te '''||''' 6 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>4</sup> '''||''' 174.982'''
+|-
+|''' I '''||''' 7 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>5</sup> '''||''' 175.647'''
+|-
+|''' Xe '''||''' 8 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> '''||''' 153.118'''
+|-
+|''' Cs_sv '''||''' 9 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 6<i>s</i><sup>1</sup> '''||''' 220.318'''
+|-
+|''' Ba_sv '''||''' 10 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.01</sup> 6<i>s</i><sup>1.99</sup> '''||''' 187.181'''
+|-
+|''' La '''||''' 11 '''||''' 4<i>f</i><sup>0.0001</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.9999</sup> 6<i>s</i><sup>2</sup> '''||''' 219.292'''
+|-
+| La_s || 9 || 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> || 136.53
+|-
+|''' Ce '''||''' 12 '''||''' 4<i>f</i><sup>1</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> '''||''' 273.042'''
+|-
+| Ce_3 || 11 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> || 176.506
+|-
+| Ce_h || 12 || 4<i>f</i><sup>1</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> || 299.9
+|-
+| Pr || 13 || 4<i>f</i><sup>2.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 337.25
+|-
+|''' Pr_3 '''||''' 11 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> '''||''' 181.719'''
+|-
+| Pr_h || 13 || 4<i>f</i><sup>2.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 400.742
+|-
+| Nd || 14 || 4<i>f</i><sup>3.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 338.34
+|-
+|''' Nd_3 '''||''' 11 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> '''||''' 182.619'''
+|-
+| Nd_h || 14 || 4<i>f</i><sup>3.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 402.016
+|-
+| Pm || 15 || 4<i>f</i><sup>4.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 340.358
+|-
+|''' Pm_3 '''||''' 11 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> '''||''' 176.959'''
+|-
+| Pm_h || 15 || 4<i>f</i><sup>4.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 404.406
+|-
+| Sm || 16 || 4<i>f</i><sup>5.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 341.177
+|-
+|''' Sm_3 '''||''' 11 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> '''||''' 177.087'''
+|-
+| Sm_h || 16 || 4<i>f</i><sup>5.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 405.382
+|-
+| Eu || 17 || 4<i>f</i><sup>6.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 344.705
+|-
+|''' Eu_2 '''||''' 8 '''||''' 5<i>p</i><sup>6</sup> 6<i>s</i><sup>2</sup> '''||''' 99.328'''
+|-
+| Eu_3 || 9 || 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> || 129.057
+|-
+| Eu_h || 17 || 4<i>f</i><sup>6.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 403.212
+|-
+| Gd || 18 || 4<i>f</i><sup>7.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 342.859
+|-
+|''' Gd_3 '''||''' 9 '''||''' 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> '''||''' 154.332'''
+|-
+| Gd_h || 18 || 4<i>f</i><sup>7.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 407.403
+|-
+| Tb || 19 || 4<i>f</i><sup>8.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 340.855
+|-
+|''' Tb_3 '''||''' 9 '''||''' 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> '''||''' 155.613'''
+|-
+| Tb_h || 19 || 4<i>f</i><sup>8.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 405.043
+|-
+| Dy || 20 || 4<i>f</i><sup>9.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 341.547
+|-
+|''' Dy_3 '''||''' 9 '''||''' 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> '''||''' 155.713'''
+|-
+| Dy_h || 20 || 4<i>f</i><sup>9.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 405.886
+|-
+| Ho || 21 || 4<i>f</i><sup>10.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 343.845
+|-
+|''' Ho_3 '''||''' 9 '''||''' 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> '''||''' 154.137'''
+|-
+| Ho_h || 21 || 4<i>f</i><sup>10.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 415.91
+|-
+| Er || 22 || 4<i>f</i><sup>11.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 346.295
+|-
+| Er_2 || 8 || 5<i>p</i><sup>6</sup> 6<i>s</i><sup>2</sup> || 119.75
+|-
+|''' Er_3 '''||''' 9 '''||''' 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> '''||''' 155.037'''
+|-
+| Er_h || 22 || 4<i>f</i><sup>11.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 429.583
+|-
+| Tm || 23 || 4<i>f</i><sup>12.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 344.206
+|-
+|''' Tm_3 '''||''' 9 '''||''' 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> '''||''' 149.221'''
+|-
+| Tm_h || 23 || 4<i>f</i><sup>12.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 419.812
+|-
+| Yb || 24 || 4<i>f</i><sup>13.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 344.312
+|-
+|''' Yb_2 '''||''' 8 '''||''' 5<i>p</i><sup>6</sup> 6<i>s</i><sup>2</sup> '''||''' 112.578'''
+|-
+| Yb_3 || 9 || 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> || 188.359
+|-
+| Yb_h || 24 || 4<i>f</i><sup>13.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 409.285
+|-
+| Lu || 25 || 4<i>f</i><sup>14</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> || 255.695
+|-
+|''' Lu_3 '''||''' 9 '''||''' 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> '''||''' 154.992'''
+|-
+| Hf || 4 || 5<i>d</i><sup>3</sup> 6<i>s</i><sup>1</sup> || 220.334
+|-
+|''' Hf_pv '''||''' 10 '''||''' 5<i>p</i><sup>6</sup> 5<i>d</i><sup>3</sup> 6<i>s</i><sup>1</sup> '''||''' 220.334'''
+|-
+| Hf_sv || 12 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>4</sup> || 237.444
+|-
+| Ta || 5 || 5<i>d</i><sup>4</sup> 6<i>s</i><sup>1</sup> || 223.667
+|-
+|''' Ta_pv '''||''' 11 '''||''' 5<i>p</i><sup>6</sup> 5<i>d</i><sup>4</sup> 6<i>s</i><sup>1</sup> '''||''' 223.667'''
+|-
+| W || 6 || 5<i>d</i><sup>5</sup> 6<i>s</i><sup>1</sup> || 223.057
+|-
+|''' W_sv '''||''' 14 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>5</sup> 6<i>s</i><sup>1</sup> '''||''' 223.057'''
+|-
+|''' Re '''||''' 7 '''||''' 5<i>d</i><sup>6</sup> 6<i>s</i><sup>1</sup> '''||''' 226.216'''
+|-
+| Re_pv || 13 || 5<i>p</i><sup>6</sup> 5<i>d</i><sup>6</sup> 6<i>s</i><sup>1</sup> || 226.216
+|-
+|''' Os '''||''' 8 '''||''' 5<i>d</i><sup>7</sup> 6<i>s</i><sup>1</sup> '''||''' 228.022'''
+|-
+| Os_pv || 14 || 5<i>p</i><sup>6</sup> 5<i>d</i><sup>7</sup> 6<i>s</i><sup>1</sup> || 228.022
+|-
+|''' Ir '''||''' 9 '''||''' 5<i>d</i><sup>8</sup> 6<i>s</i><sup>1</sup> '''||''' 210.864'''
+|-
+|''' Pt '''||''' 10 '''||''' 5<i>d</i><sup>9</sup> 6<i>s</i><sup>1</sup> '''||''' 230.283'''
+|-
+| Pt_pv || 16 || 5<i>p</i><sup>6</sup> 5<i>d</i><sup>9</sup> 6<i>s</i><sup>1</sup> || 294.607
+|-
+|''' Au '''||''' 11 '''||''' 5<i>d</i><sup>10</sup> 6<i>s</i><sup>1</sup> '''||''' 229.943'''
+|-
+|''' Hg '''||''' 12 '''||''' 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> '''||''' 233.204'''
+|-
+| Tl || 3 || 6<i>s</i><sup>2</sup> 6<i>p</i><sup>1</sup> || 90.14
+|-
+|''' Tl_d '''||''' 13 '''||''' 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>1</sup> '''||''' 237.053'''
+|-
+| Pb || 4 || 6<i>s</i><sup>2</sup> 6<i>p</i><sup>2</sup> || 97.973
+|-
+|''' Pb_d '''||''' 14 '''||''' 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>2</sup> '''||''' 237.835'''
+|-
+| Bi || 5 || 6<i>s</i><sup>2</sup> 6<i>p</i><sup>3</sup> || 105.037
+|-
+|''' Bi_d '''||''' 15 '''||''' 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>3</sup> '''||''' 242.839'''
+|-
+| Po || 6 || 6<i>s</i><sup>2</sup> 6<i>p</i><sup>4</sup> || 159.707
+|-
+|''' Po_d '''||''' 16 '''||''' 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>4</sup> '''||''' 264.565'''
+|-
+|''' At '''||''' 7 '''||''' 6<i>s</i><sup>2</sup> 6<i>p</i><sup>5</sup> '''||''' 161.43'''
+|-
+|''' Rn '''||''' 8 '''||''' 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> '''||''' 151.497'''
+|-
+|''' Fr_sv '''||''' 9 '''||''' 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 7<i>s</i><sup>1</sup> '''||''' 214.54'''
+|-
+|''' Ra_sv '''||''' 10 '''||''' 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 7<i>s</i><sup>2</sup> '''||''' 237.367'''
+|-
+|''' Ac '''||''' 11 '''||''' 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>1</sup> 7<i>s</i><sup>2</sup> '''||''' 172.351'''
+|-
+|''' Th '''||''' 12 '''||''' 5<i>f</i><sup>1</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>1</sup> 7<i>s</i><sup>2</sup> '''||''' 247.306'''
+|-
+| Th_s || 10 || 5<i>f</i><sup>1</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>1</sup> 7<i>s</i><sup>2</sup> || 169.363
+|-
+|''' Pa '''||''' 13 '''||''' 5<i>f</i><sup>1</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>2</sup> 7<i>s</i><sup>2</sup> '''||''' 252.193'''
+|-
+| Pa_s || 11 || 5<i>f</i><sup>1</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>2</sup> 7<i>s</i><sup>2</sup> || 193.466
+|-
+|''' U '''||''' 14 '''||''' 5<i>f</i><sup>2</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>2</sup> 7<i>s</i><sup>2</sup> '''||''' 252.502'''
+|-
+| U_s || 14 || 5<i>f</i><sup>2</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>2</sup> 7<i>s</i><sup>2</sup> || 209.23
+|-
+|''' Np '''||''' 15 '''||''' 5<i>f</i><sup>3</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>2</sup> 7<i>s</i><sup>2</sup> '''||''' 254.26'''
+|-
+| Np_s || 15 || 5<i>f</i><sup>3</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>2</sup> 7<i>s</i><sup>2</sup> || 207.713
+|-
+|''' Pu '''||''' 16 '''||''' 5<i>f</i><sup>4</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>2</sup> 7<i>s</i><sup>2</sup> '''||''' 254.353'''
+|-
+| Pu_s || 16 || 5<i>f</i><sup>4</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>2</sup> 7<i>s</i><sup>2</sup> || 207.83
+|-
+|''' Am '''||''' 17 '''||''' 5<i>f</i><sup>5</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>2</sup> 7<i>s</i><sup>2</sup> '''||''' 255.875'''
+|-
+|''' Cm '''||''' 18 '''||''' 5<i>f</i><sup>6</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>2</sup> 7<i>s</i><sup>2</sup> '''||''' 257.953'''
+|-
+| Cf || 20 || 5<i>f</i><sup>8</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>2</sup> 7<i>s</i><sup>2</sup> || 414.614
+|}
+
+====Calculation requiring a large number of unoccupied states====
+:The following table highlights recommended PAW potentials for calculations involving many states above the Fermi energy in '''bold'''.
+:They are optimized for scattering properties high above the Fermi level and thus have advantages if many unoccupied states are involved, as for [[optical properties]] or [[many-body perturbation theory]].
+
+:{| class="wikitable sortable mw-collapsible mw-collapsed"
+| colspan="4" style="text-align:center"|  GW potentials (potpaw.64)
+|-
+! Potential name !! Number of valence electrons !! Valence electron configuration !! ENMAX [eV]
+|-
+|''' H_GW '''||''' 1 '''||''' 1<i>s</i><sup>1</sup> '''||''' 300.0'''
+|-
+| H_GW_new || 1 || 1<i>s</i><sup>1</sup> || 536.615
+|-
+| H_h_GW || 1 || 1<i>s</i><sup>1</sup> || 700.0
+|-
+|''' He_GW '''||''' 2 '''||''' 1<i>s</i><sup>2</sup> '''||''' 405.78'''
+|-
+| Li_AE_GW || 3 || 1<i>s</i><sup>2</sup> 2<i>p</i><sup>1</sup> || 433.699
+|-
+| Li_GW || 1 || 2<i>s</i><sup>1</sup> || 112.104
+|-
+|''' Li_sv_GW '''||''' 3 '''||''' 1<i>s</i><sup>2</sup> 2<i>p</i><sup>1</sup> '''||''' 433.699'''
+|-
+| Be_GW || 2 || 2<i>s</i><sup>1.9999</sup> 2<i>p</i><sup>0.001</sup> || 247.543
+|-
+|''' Be_sv_GW '''||''' 4 '''||''' 1<i>s</i><sup>2</sup> 2<i>p</i><sup>2</sup> '''||''' 537.454'''
+|-
+|''' B_GW '''||''' 3 '''||''' 2<i>s</i><sup>2</sup> 2<i>p</i><sup>1</sup> '''||''' 318.614'''
+|-
+| B_GW_new || 3 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>1</sup> || 318.614
+|-
+| B_h_GW || 3 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>1</sup> || 731.373
+|-
+|''' C_GW '''||''' 4 '''||''' 2<i>s</i><sup>2</sup> 2<i>p</i><sup>2</sup> '''||''' 413.992'''
+|-
+| C_GW_new || 4 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>2</sup> || 433.983
+|-
+| C_h_GW || 4 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>2</sup> || 741.689
+|-
+| C_s_GW || 4 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>2</sup> || 304.843
+|-
+|''' N_GW '''||''' 5 '''||''' 2<i>s</i><sup>2</sup> 2<i>p</i><sup>3</sup> '''||''' 420.902'''
+|-
+| N_GW_new || 5 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>3</sup> || 452.633
+|-
+| N_h_GW || 5 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>3</sup> || 755.582
+|-
+| N_s_GW || 5 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>3</sup> || 312.986
+|-
+|''' O_GW '''||''' 6 '''||''' 2<i>s</i><sup>2</sup> 2<i>p</i><sup>4</sup> '''||''' 414.635'''
+|-
+| O_GW_new || 6 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>4</sup> || 466.797
+|-
+| O_h_GW || 6 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>4</sup> || 765.519
+|-
+| O_s_GW || 6 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>4</sup> || 334.664
+|-
+|''' F_GW '''||''' 7 '''||''' 2<i>s</i><sup>2</sup> 2<i>p</i><sup>5</sup> '''||''' 487.698'''
+|-
+| F_GW_new || 7 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>5</sup> || 480.281
+|-
+| F_h_GW || 7 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>5</sup> || 848.626
+|-
+|''' Ne_GW '''||''' 8 '''||''' 2<i>s</i><sup>2</sup> 2<i>p</i><sup>6</sup> '''||''' 432.275'''
+|-
+| Ne_s_GW || 8 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>6</sup> || 318.26
+|-
+|''' Na_sv_GW '''||''' 9 '''||''' 2<i>s</i><sup>2</sup> 2<i>p</i><sup>6</sup> 3<i>p</i><sup>1</sup> '''||''' 372.853'''
+|-
+| Mg_GW || 2 || 3<i>s</i><sup>2</sup> || 126.143
+|-
+| Mg_pv_GW || 8 || 2<i>p</i><sup>6</sup> 3<i>s</i><sup>2</sup> || 403.929
+|-
+|''' Mg_sv_GW '''||''' 10 '''||''' 2<i>s</i><sup>2</sup> 2<i>p</i><sup>6</sup> 3<i>d</i><sup>2</sup> '''||''' 429.893'''
+|-
+|''' Al_GW '''||''' 3 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>1</sup> '''||''' 240.3'''
+|-
+| Al_sv_GW || 11 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>6</sup> 3<i>s</i><sup>2</sup> 3<i>p</i><sup>1</sup> || 411.109
+|-
+|''' Si_GW '''||''' 4 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>2</sup> '''||''' 245.345'''
+|-
+| Si_sv_GW || 12 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>6</sup> 3<i>s</i><sup>2</sup> 3<i>p</i><sup>2</sup> || 547.578
+|-
+|''' P_GW '''||''' 5 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>3</sup> '''||''' 255.04'''
+|-
+|''' S_GW '''||''' 6 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>4</sup> '''||''' 258.689'''
+|-
+|''' Cl_GW '''||''' 7 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>5</sup> '''||''' 262.472'''
+|-
+|''' Ar_GW '''||''' 8 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> '''||''' 290.599'''
+|-
+|''' K_sv_GW '''||''' 9 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>1</sup> '''||''' 248.998'''
+|-
+|''' Ca_sv_GW '''||''' 10 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>2</sup> '''||''' 281.43'''
+|-
+|''' Sc_sv_GW '''||''' 11 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>3</sup> '''||''' 378.961'''
+|-
+|''' Ti_sv_GW '''||''' 12 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>4</sup> '''||''' 383.774'''
+|-
+|''' V_sv_GW '''||''' 13 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>5</sup> '''||''' 382.321'''
+|-
+|''' Cr_sv_GW '''||''' 14 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>6</sup> '''||''' 384.932'''
+|-
+| Mn_GW || 7 || 3<i>d</i><sup>6</sup> 4<i>s</i><sup>1</sup> || 278.466
+|-
+|''' Mn_sv_GW '''||''' 15 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>7</sup> '''||''' 384.627'''
+|-
+| Fe_GW || 8 || 3<i>d</i><sup>7</sup> 4<i>s</i><sup>1</sup> || 321.007
+|-
+|''' Fe_sv_GW '''||''' 16 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>8</sup> '''||''' 387.837'''
+|-
+| Co_GW || 9 || 3<i>d</i><sup>8</sup> 4<i>s</i><sup>1</sup> || 323.4
+|-
+|''' Co_sv_GW '''||''' 17 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>9</sup> '''||''' 387.491'''
+|-
+| Ni_GW || 10 || 3<i>d</i><sup>9</sup> 4<i>s</i><sup>1</sup> || 357.323
+|-
+|''' Ni_sv_GW '''||''' 18 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>10</sup> '''||''' 389.645'''
+|-
+| Cu_GW || 11 || 3<i>d</i><sup>10</sup> 4<i>s</i><sup>1</sup> || 417.039
+|-
+|''' Cu_sv_GW '''||''' 19 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>10</sup> 4<i>s</i><sup>1</sup> '''||''' 467.331'''
+|-
+| Zn_GW || 12 || 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> || 328.191
+|-
+|''' Zn_sv_GW '''||''' 20 '''||''' 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> '''||''' 401.665'''
+|-
+| Ga_GW || 3 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>1</sup> || 134.678
+|-
+|''' Ga_d_GW '''||''' 13 '''||''' 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> 4<i>p</i><sup>1</sup> '''||''' 404.602'''
+|-
+| Ga_sv_GW || 21 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> 4<i>p</i><sup>1</sup> || 404.602
+|-
+| Ge_GW || 4 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>2</sup> || 173.807
+|-
+|''' Ge_d_GW '''||''' 14 '''||''' 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> 4<i>p</i><sup>2</sup> '''||''' 375.434'''
+|-
+| Ge_sv_GW || 22 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> 4<i>p</i><sup>2</sup> || 410.425
+|-
+|''' As_GW '''||''' 5 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>3</sup> '''||''' 208.702'''
+|-
+| As_sv_GW || 23 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> 4<i>p</i><sup>3</sup> || 415.313
+|-
+|''' Se_GW '''||''' 6 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>4</sup> '''||''' 211.555'''
+|-
+| Se_sv_GW || 24 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> 4<i>p</i><sup>4</sup> || 469.344
+|-
+|''' Br_GW '''||''' 7 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>5</sup> '''||''' 216.285'''
+|-
+| Br_sv_GW || 25 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> 4<i>p</i><sup>5</sup> || 475.692
+|-
+|''' Kr_GW '''||''' 8 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> '''||''' 252.232'''
+|-
+|''' Rb_sv_GW '''||''' 9 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>1</sup> '''||''' 221.197'''
+|-
+|''' Sr_sv_GW '''||''' 10 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>2</sup> '''||''' 224.817'''
+|-
+|''' Y_sv_GW '''||''' 11 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>3</sup> '''||''' 339.758'''
+|-
+|''' Zr_sv_GW '''||''' 12 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>4</sup> '''||''' 346.364'''
+|-
+|''' Nb_sv_GW '''||''' 13 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>5</sup> '''||''' 353.872'''
+|-
+|''' Mo_sv_GW '''||''' 14 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>6</sup> '''||''' 344.914'''
+|-
+|''' Tc_sv_GW '''||''' 15 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>7</sup> '''||''' 351.044'''
+|-
+|''' Ru_sv_GW '''||''' 16 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>8</sup> '''||''' 348.106'''
+|-
+| Rh_GW || 9 || 4<i>d</i><sup>8</sup> 5<i>s</i><sup>1</sup> || 247.408
+|-
+|''' Rh_sv_GW '''||''' 17 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>9</sup> '''||''' 351.206'''
+|-
+| Pd_GW || 10 || 4<i>d</i><sup>9</sup> 5<i>s</i><sup>1</sup> || 250.925
+|-
+|''' Pd_sv_GW '''||''' 18 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>10</sup> '''||''' 356.093'''
+|-
+| Ag_GW || 11 || 4<i>d</i><sup>10</sup> 5<i>s</i><sup>1</sup> || 249.844
+|-
+|''' Ag_sv_GW '''||''' 19 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>11</sup> '''||''' 354.43'''
+|-
+| Cd_GW || 12 || 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> || 254.045
+|-
+|''' Cd_sv_GW '''||''' 20 '''||''' 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> '''||''' 361.806'''
+|-
+|''' In_d_GW '''||''' 13 '''||''' 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>1</sup> '''||''' 278.624'''
+|-
+| In_sv_GW || 21 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>1</sup> || 366.771
+|-
+|''' Sn_d_GW '''||''' 14 '''||''' 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>2</sup> '''||''' 260.066'''
+|-
+| Sn_sv_GW || 22 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>2</sup> || 368.778
+|-
+| Sb_GW || 5 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>3</sup> || 172.069
+|-
+|''' Sb_d_GW '''||''' 15 '''||''' 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>3</sup> '''||''' 263.1'''
+|-
+| Sb_sv_GW || 23 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>3</sup> || 372.491
+|-
+|''' Te_GW '''||''' 6 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>4</sup> '''||''' 174.982'''
+|-
+| Te_sv_GW || 24 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>4</sup> || 376.618
+|-
+|''' I_GW '''||''' 7 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>5</sup> '''||''' 175.647'''
+|-
+| I_sv_GW || 25 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>5</sup> || 381.674
+|-
+|''' Xe_GW '''||''' 8 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> '''||''' 179.547'''
+|-
+| Xe_sv_GW || 26 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> || 400.476
+|-
+|''' Cs_sv_GW '''||''' 9 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> '''||''' 198.101'''
+|-
+|''' Ba_sv_GW '''||''' 10 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>1</sup> '''||''' 267.02'''
+|-
+|''' La_GW '''||''' 11 '''||''' 4<i>f</i><sup>0.2</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.8</sup> 6<i>s</i><sup>2</sup> '''||''' 313.688'''
+|-
+|''' Ce_GW '''||''' 12 '''||''' 4<i>f</i><sup>1</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> '''||''' 304.625'''
+|-
+|''' Hf_sv_GW '''||''' 12 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>4</sup> '''||''' 309.037'''
+|-
+|''' Ta_sv_GW '''||''' 13 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>5</sup> '''||''' 286.008'''
+|-
+|''' W_sv_GW '''||''' 14 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>6</sup> '''||''' 317.132'''
+|-
+|''' Re_sv_GW '''||''' 15 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>7</sup> '''||''' 317.012'''
+|-
+|''' Os_sv_GW '''||''' 16 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>8</sup> '''||''' 319.773'''
+|-
+|''' Ir_sv_GW '''||''' 17 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>9</sup> '''||''' 319.843'''
+|-
+| Pt_GW || 10 || 5<i>d</i><sup>9</sup> 6<i>s</i><sup>1</sup> || 248.716
+|-
+|''' Pt_sv_GW '''||''' 18 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>10</sup> '''||''' 323.669'''
+|-
+| Au_GW || 11 || 5<i>d</i><sup>10</sup> 6<i>s</i><sup>1</sup> || 248.344
+|-
+|''' Au_sv_GW '''||''' 19 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>11</sup> '''||''' 306.658'''
+|-
+|''' Hg_sv_GW '''||''' 20 '''||''' 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> '''||''' 312.028'''
+|-
+|''' Tl_d_GW '''||''' 15 '''||''' 5<i>s</i><sup>2</sup> 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>1</sup> '''||''' 237.053'''
+|-
+| Tl_sv_GW || 21 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>1</sup> || 316.583
+|-
+|''' Pb_d_GW '''||''' 16 '''||''' 5<i>s</i><sup>2</sup> 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>2</sup> '''||''' 237.809'''
+|-
+| Pb_sv_GW || 22 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>2</sup> || 317.193
+|-
+| Bi_GW || 5 || 6<i>s</i><sup>2</sup> 6<i>p</i><sup>3</sup> || 146.53
+|-
+|''' Bi_d_GW '''||''' 17 '''||''' 5<i>s</i><sup>2</sup> 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>3</sup> '''||''' 261.876'''
+|-
+| Bi_sv_GW || 23 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>3</sup> || 323.513
+|-
+|''' Po_d_GW '''||''' 18 '''||''' 5<i>s</i><sup>2</sup> 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>4</sup> '''||''' 267.847'''
+|-
+| Po_sv_GW || 24 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>4</sup> || 326.618
+|-
+|''' At_d_GW '''||''' 17 '''||''' 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>5</sup> '''||''' 266.251'''
+|-
+| At_sv_GW || 25 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>5</sup> || 328.529
+|-
+|''' Rn_d_GW '''||''' 18 '''||''' 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> '''||''' 267.347'''
+|-
+| Rn_sv_GW || 26 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> || 329.758
+|}
+
+====Reference calculation; extremely high accuracy====
+:For reference calculations, i.e., calculations where the utmost accuracy is needed, and computational effort is of no concern, we recommend the following set of potentials. These are mostly [[Available_pseudopotentials#Different_variants_specified_by_the_suffix|hard pseudopotentials (_h)]] of the GW variant, which were used with a 1000 eV plane-wave cutoff in a recent comparison study of DFT codes to reproduce all-electron results as accurately as possible{{cite|bosoni:natphysrev:2023}}. However, in most cases, the results should be comparable with the standard potentials, while the computational effort will increase significantly<ref>For the potpaw_PBE.64 potential set, {{TAG|ENMAX}} is on average ~26 eV (~11%) and {{TAG|EAUG}} ~210 eV (~42%) larger for the GW potentials compared to their standard counterparts with the same valency.</ref>.
+{{NB|mind|Unless the utmost accuracy is required, it is usually not worth paying the extra computational cost required for the hard GW potentials recommended in the following list, compared to their standard counterparts at the beginning of this section for DFT calculations.|:}}
+
+:{| class="wikitable sortable mw-collapsible mw-collapsed"
+| colspan="5" style="text-align:center"|  Reference potentials (potpaw.64)
+|-
+! Element !! Potential name !! Number of valence electrons !! Valence electron configuration !! ENMAX [eV]
+|-
+            | H || H_GW || 1 || 1<i>s</i><sup>1</sup> || 300.0
+            |-
+            | He || He_GW || 2 || 1<i>s</i><sup>2</sup> || 405.78
+            |-
+            | Li || Li_sv_GW || 3 || 1<i>s</i><sup>2</sup> 2<i>p</i><sup>1</sup> || 433.699
+            |-
+            | Be || Be_sv_GW || 4 || 1<i>s</i><sup>2</sup> 2<i>p</i><sup>2</sup> || 537.454
+            |-
+            | B || B_GW || 3 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>1</sup> || 318.614
+            |-
+            | C || C_GW || 4 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>2</sup> || 413.992
+            |-
+            | N || N_GW || 5 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>3</sup> || 420.902
+            |-
+            | O || O_h_GW || 6 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>4</sup> || 765.519
+            |-
+            | F || F_GW || 7 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>5</sup> || 487.698
+            |-
+            | Ne || Ne_GW || 8 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>6</sup> || 432.275
+            |-
+            | Na || Na_sv_GW || 9 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>6</sup> 3<i>p</i><sup>1</sup> || 372.853
+            |-
+            | Mg || Mg_sv_GW || 10 || 2<i>s</i><sup>2</sup> 2<i>p</i><sup>6</sup> 3<i>d</i><sup>2</sup> || 429.893
+            |-
+            | Al || Al_GW || 3 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>1</sup> || 240.3
+            |-
+            | Si || Si_GW || 4 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>2</sup> || 245.345
+            |-
+            | P || P_GW || 5 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>3</sup> || 255.04
+            |-
+            | S || S_GW || 6 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>4</sup> || 258.689
+            |-
+            | Cl || Cl_GW || 7 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>5</sup> || 262.472
+            |-
+            | Ar || Ar_GW || 8 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> || 290.599
+            |-
+            | K || K_sv_GW || 9 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>1</sup> || 248.998
+            |-
+            | Ca || Ca_sv_GW || 10 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>2</sup> || 281.43
+            |-
+            | Sc || Sc_sv_GW || 11 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>3</sup> || 378.961
+            |-
+            | Ti || Ti_sv_GW || 12 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>4</sup> || 383.774
+            |-
+            | V || V_sv_GW || 13 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>5</sup> || 382.321
+            |-
+            | Cr || Cr_sv_GW || 14 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>6</sup> || 384.932
+            |-
+            | Mn || Mn_sv_GW || 15 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>7</sup> || 384.627
+            |-
+            | Fe || Fe_sv_GW || 16 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>8</sup> || 387.837
+            |-
+            | Co || Co_sv_GW || 17 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>9</sup> || 387.491
+            |-
+            | Ni || Ni_sv_GW || 18 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>10</sup> || 389.645
+            |-
+            | Cu || Cu_sv_GW || 19 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>10</sup> 4<i>s</i><sup>1</sup> || 467.331
+            |-
+            | Zn || Zn_sv_GW || 20 || 3<i>s</i><sup>2</sup> 3<i>p</i><sup>6</sup> 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> || 401.665
+            |-
+            | Ga || Ga_d_GW || 13 || 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> 4<i>p</i><sup>1</sup> || 404.602
+            |-
+            | Ge || Ge_d_GW || 14 || 3<i>d</i><sup>10</sup> 4<i>s</i><sup>2</sup> 4<i>p</i><sup>2</sup> || 375.434
+            |-
+            | As || As_GW || 5 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>3</sup> || 208.702
+            |-
+            | Se || Se_GW || 6 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>4</sup> || 211.555
+            |-
+            | Br || Br_GW || 7 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>5</sup> || 216.285
+            |-
+            | Kr || Kr_GW || 8 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> || 252.232
+            |-
+            | Rb || Rb_sv_GW || 9 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>1</sup> || 221.197
+            |-
+            | Sr || Sr_sv_GW || 10 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>2</sup> || 224.817
+            |-
+            | Y || Y_sv_GW || 11 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>3</sup> || 339.758
+            |-
+            | Zr || Zr_sv_GW || 12 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>4</sup> || 346.364
+            |-
+            | Nb || Nb_sv_GW || 13 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>5</sup> || 353.872
+            |-
+            | Mo || Mo_sv_GW || 14 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>6</sup> || 344.914
+            |-
+            | Tc || Tc_sv_GW || 15 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>7</sup> || 351.044
+            |-
+            | Ru || Ru_sv_GW || 16 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>8</sup> || 348.106
+            |-
+            | Rh || Rh_sv_GW || 17 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>9</sup> || 351.206
+            |-
+            | Pd || Pd_sv_GW || 18 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>10</sup> || 356.093
+            |-
+            | Ag || Ag_sv_GW || 19 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>11</sup> || 354.43
+            |-
+            | Cd || Cd_sv_GW || 20 || 4<i>s</i><sup>2</sup> 4<i>p</i><sup>6</sup> 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> || 361.806
+            |-
+            | In || In_d_GW || 13 || 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>1</sup> || 278.624
+            |-
+            | Sn || Sn_d_GW || 14 || 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>2</sup> || 260.066
+            |-
+            | Sb || Sb_d_GW || 15 || 4<i>d</i><sup>10</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>3</sup> || 263.1
+            |-
+            | Te || Te_GW || 6 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>4</sup> || 174.982
+            |-
+            | I || I_GW || 7 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>5</sup> || 175.647
+            |-
+            | Xe || Xe_GW || 8 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> || 179.547
+            |-
+            | Cs || Cs_sv_GW || 9 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> || 198.101
+            |-
+            | Ba || Ba_sv_GW || 10 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>1</sup> || 267.02
+            |-
+            | La || La_GW || 11 || 4<i>f</i><sup>0.2</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.8</sup> 6<i>s</i><sup>2</sup> || 313.688
+            |-
+            | Ce || Ce_GW || 12 || 4<i>f</i><sup>1</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> || 304.625
+            |-
+            | Pr || Pr_h || 13 || 4<i>f</i><sup>2.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 400.742
+            |-
+            | Nd || Nd_h || 14 || 4<i>f</i><sup>3.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 402.016
+            |-
+            | Pm || Pm_h || 15 || 4<i>f</i><sup>4.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 404.406
+            |-
+            | Sm || Sm_h || 16 || 4<i>f</i><sup>5.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 405.382
+            |-
+            | Eu || Eu_h || 17 || 4<i>f</i><sup>6.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 403.212
+            |-
+            | Gd || Gd_h || 18 || 4<i>f</i><sup>7.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 407.403
+            |-
+            | Tb || Tb_h || 19 || 4<i>f</i><sup>8.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 405.043
+            |-
+            | Dy || Dy_h || 20 || 4<i>f</i><sup>9.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 405.886
+            |-
+            | Ho || Ho_h || 21 || 4<i>f</i><sup>10.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 415.91
+            |-
+            | Er || Er_h || 22 || 4<i>f</i><sup>11.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 429.583
+            |-
+            | Tm || Tm_h || 23 || 4<i>f</i><sup>12.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 419.812
+            |-
+            | Yb || Yb_h || 24 || 4<i>f</i><sup>13.5</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>0.5</sup> 6<i>s</i><sup>2</sup> || 409.285
+            |-
+            | Lu || Lu || 25 || 4<i>f</i><sup>14</sup> 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>1</sup> 6<i>s</i><sup>2</sup> || 255.695
+            |-
+            | Hf || Hf_sv_GW || 12 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>4</sup> || 309.037
+            |-
+            | Ta || Ta_sv_GW || 13 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>5</sup> || 286.008
+            |-
+            | W || W_sv_GW || 14 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>6</sup> || 317.132
+            |-
+            | Re || Re_sv_GW || 15 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>7</sup> || 317.012
+            |-
+            | Os || Os_sv_GW || 16 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>8</sup> || 319.773
+            |-
+            | Ir || Ir_sv_GW || 17 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>9</sup> || 319.843
+            |-
+            | Pt || Pt_sv_GW || 18 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>10</sup> || 323.669
+            |-
+            | Au || Au_sv_GW || 19 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>11</sup> || 306.658
+            |-
+            | Hg || Hg_sv_GW || 20 || 5<i>s</i><sup>2</sup> 5<i>p</i><sup>6</sup> 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> || 312.028
+            |-
+            | Tl || Tl_d_GW || 15 || 5<i>s</i><sup>2</sup> 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>1</sup> || 237.053
+            |-
+            | Pb || Pb_d_GW || 16 || 5<i>s</i><sup>2</sup> 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>2</sup> || 237.809
+            |-
+            | Bi || Bi_d_GW || 17 || 5<i>s</i><sup>2</sup> 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>3</sup> || 261.876
+            |-
+            | Po || Po_d_GW || 18 || 5<i>s</i><sup>2</sup> 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>4</sup> || 267.847
+            |-
+            | At || At_d_GW || 17 || 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>5</sup> || 266.251
+            |-
+            | Rn || Rn_d_GW || 18 || 5<i>d</i><sup>10</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> || 267.347
+            |-
+            | Fr || Fr_sv || 9 || 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 7<i>s</i><sup>1</sup> || 214.54
+            |-
+            | Ra || Ra_sv || 10 || 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 7<i>s</i><sup>2</sup> || 237.367
+            |-
+            | Ac || Ac || 11 || 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>1</sup> 7<i>s</i><sup>2</sup> || 172.351
+            |-
+            | Th || Th || 12 || 5<i>f</i><sup>1</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>1</sup> 7<i>s</i><sup>2</sup> || 247.306
+            |-
+            | Pa || Pa || 13 || 5<i>f</i><sup>1</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>2</sup> 7<i>s</i><sup>2</sup> || 252.193
+            |-
+            | U || U || 14 || 5<i>f</i><sup>2</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>2</sup> 7<i>s</i><sup>2</sup> || 252.502
+            |-
+            | Np || Np || 15 || 5<i>f</i><sup>3</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>2</sup> 7<i>s</i><sup>2</sup> || 254.26
+            |-
+            | Pu || Pu || 16 || 5<i>f</i><sup>4</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>2</sup> 7<i>s</i><sup>2</sup> || 254.353
+            |-
+            | Am || Am || 17 || 5<i>f</i><sup>5</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>2</sup> 7<i>s</i><sup>2</sup> || 255.875
+            |-
+            | Cm || Cm || 18 || 5<i>f</i><sup>6</sup> 6<i>s</i><sup>2</sup> 6<i>p</i><sup>6</sup> 6<i>d</i><sup>2</sup> 7<i>s</i><sup>2</sup> || 257.953
+            |}
+
+===Selecting the release version===
+:Generally, we recommend using the latest release of pseudopotentials.
+{{NB|tip|For compatibility reasons or to accurately reproduce another calculation, you might need to use another (older) pseudopotential release. Consult the list of [[available pseudopotentials]].|:}}
+
+===Element-specific recommendation===
+
+====Hydrogen-like atoms with fractional valence====
+:Twelve hydrogen-like potentials are supplied for a valency between 0.25 and 1.75. Further potentials might become available, c.f. [[available pseudopotentials]]. These are useful, e.g., to passivate dangling surface bonds.
+{{NB|mind|The {{FILE|POTCAR}} files restrict the number of digits for the valency (typically 2, at most 3 digits). Therefor, using three H.33 potentials does yield 0.99 electrons and not 1.00 electron. This can cause undesirable hole- or electron-like states. Set the {{TAG|NELECT}} tag in the {{FILE|INCAR}} file to correct the total number of electrons.|:}}
+
+====First-row elements====
+
+:For the 1st row elements B, C, N, O, and F, three potential versions exist, the plain one, a hard version, and a soft version. For most purposes, the standard version of PAW potentials is most appropriate. They yield reliable results for energy cutoffs between 325 and 400 eV, where 370-400 eV are required to predict vibrational properties accurately. Binding geometries and energy differences are already well reproduced at 325 eV. The typical bond-length errors for first row dimers (N<sub>2</sub>, CO, O<sub>2</sub>) are about 1% compared to more accurate DFT calculations. The [[Available_pseudopotentials#Different_variants_specified_by_the_suffix|hard pseudopotentials (_h)]] give results that are essentially identical to the best DFT calculations presently available (FLAPW, or Gaussian with very large basis sets). The [[Available_pseudopotentials#Different_variants_specified_by_the_suffix|soft potentials (_s)]] are optimized to work around 250-280 eV. They yield reliable description for most oxides, such as V<sub>x</sub>O<sub>y</sub>, TiO<sub>2</sub>, CeO<sub>2</sub>, but fail to describe some structural details in zeolites, i.e., cell parameters, and volume.
+
+:For Hartree-Fock (HF) and hybrid-functional calculations, we strictly recommend using the standard, standard GW, or hard potentials. For instance, the O_s potential can cause unacceptably large errors even in transition metal oxides. Generally, the soft potentials are less transferable from one exchange-correlation functional to another and often fail when the exact exchange needs to be calculated.
+{{NB|tip|If dimers with short bonds are present in the system (H<sub>2</sub>O, O<sub>2</sub>, CO, N<sub>2</sub>, F<sub>2</sub>, P<sub>2</sub>, S<sub>2</sub>, Cl<sub>2</sub>), we recommend using the _h potentials. Specifically, C_h, O_h, N_h, F_h, P_h, S_h, Cl_h, or their _GW counterparts. Otherwise, the standard version is often the best choice for first-row elements.|:}}
+
+====Alkali and alkali-earth elements (simple metals)====
+:For Li (and Be), a standard potential and a potential that treats the 1<i>s</i> shell as valence states are available (Li_sv, Be_sv). One should use the _sv potentials for many applications since their transferability is much higher than the standard potentials.
+
+:For the other alkali and alkali-earth elements, the semi-core <i>s</i> and <i>p</i> states should be treated as valence states as well. For lighter elements (Na-Ca), it is usually sufficient to treat the 2<i>p</i> and 3<i>p</i> states as valence states (_pv), respectively. For Rb-Sr, the 4<i>s</i>, 4<i>p</i>, and  5<i>s</i>, 5<i>p</i> states, must be treated as valence states (_sv). 
+{{NB|tip|For alkali and alkali-earth metals, the _sv variants should be chosen, other than for very light elements Na, Mg, K, and Ca, where _pv is usually sufficient.|:}}
+
+====p-elements====
+:For Ga, Ge, In, Sn, Tl-At, the lower-lying <i>d</i> states should be treated as valence states (_d potential). For these elements, alternative potentials that treat the <i>d</i> states as core states are also available but should be used with great care.
+
+====d-elements====
+:For the <i>d</i> elements, applies the same as for the alkali and earth-alkali metals: the semi-core <i>p</i> states and possibly the semi-core <i>s</i> states should be treated as valence states. In most cases, however, reliable results can be obtained even if the semi-core states are kept frozen.
+
+:When to switch from X_pv potentials to the X potentials depends on the required accuracy and the row for the 3<i>d</i> elements, even the Ti, V, and Cr potentials give reasonable results but should be used with uttermost care. 4<i>d</i> elements are the most problematic, and we advise using the X_pv potentials up to Tc_pv. For 5<i>d</i> elements the 5<i>p</i> states are rather strongly localized (below 3 Ry), since the 4<i>f</i> shell becomes filled. One can use the standard potentials starting from Hf, but we recommend performing test calculations. For some elements, X_sv potentials are available (,e.g., Nb_sv, Mo_sv, Hf_sv). These potentials usually have very similar energy cutoffs as the _pv potentials and can also be used. For HF-type and hybrid-functional calculations, we strongly recommend using the [[Available_pseudopotentials#Different_variants_specified_by_the_suffix|_sv and _pv]] potentials whenever possible.
+{{NB|tip|As a rule of thumb the <i>p</i> states should be treated as valence states for d-elements, if their eigenenergy <math>\epsilon</math> lies above 3 Ry.|:}}
+
+====f-elements====
+
+:Due to self-interaction errors, <i>f</i> electrons are not handled well by the presently available density functionals. In particular, partially filled <i>f</i> states are often incorrectly described. For instance, all <i>f</i> states are pinned at the Fermi-level, leading to large overbinding for Pr-Eu and Tb-Yb. The errors are largest at quarter and three-quarter filling, e.g., Gd is handled reasonably well since 7 electrons occupy the majority <i>f</i> shell. These errors are DFT and not VASP related. 
+:Particularly problematic is the description of the transition from an itinerant (band-like) behavior observed at the beginning of each period to localized states towards the end of the period. For the 4<i>f</i> elements, this transition occurs already in La and Ce, whereas the transition sets in for Pu and Am for the 5<i>f</i> elements. A routine way to cope with the inabilities of present DFT functionals to describe the localized 4<i>f</i> electrons is to place the 4<i>f</i> electrons in the core. Such potentials are available and described below; however, they are expected to fail to describe magnetic properties arising <i>f</i> orbitals. Furthermore, PAW potentials in which the <i>f</i> states are treated as valence states are available, but these potentials are expected to fail to describe electronic properties when <i>f</i> electrons are localized. In this case, one might treat electronic correlation effects more carefully, e.g., by employing hybrid functionals or introducing on-site Coulomb interaction.
+
+:For some elements, [[Available_pseudopotentials#Different_variants_specified_by_the_suffix|soft versions (_s)]] are available as well. The semi-core <i>p</i> states are always treated as valence states, whereas the semi-core <i>s</i> states are treated as valence states only in the standard potentials. For most applications (oxides, sulfides), the standard version should be used since the soft versions might result in <i>s</i> ghost-states close to the Fermi-level (,e.g., Ce_s in ceria). The soft versions are, however, expected to be sufficiently accurate for calculations on intermetallic compounds.
+
+=====Lanthanides with fixed valence=====
+
+:In addition, special GGA potentials are supplied for Ce-Lu, in which <i>f</i> electrons are kept frozen in the core, which is an attempt to treat the localized nature of <i>f</i> electrons. The number of f electrons in the core equals the total number of valence electrons minus the formal valency. For instance, according to the periodic table, Sm has a total of 8 valence electrons, i.e., 6 <i>f</i> electrons and 2 <i>s</i> electrons. In most compounds, Sm adopts a valency of 3; hence 5 <i>f</i> electrons are placed in the core when the pseudopotential is generated. The corresponding potential can be found in the directory Sm_3. The formal valency n is indicted by _n, where n is either 3 or 2. Ce_3 is, for instance, a Ce potential for trivalent Ce (for tetravalent Ce, the standard potential should be used).
+{{NB|warning|<i>f</i>-elements are notoriously hard to describe with DFT due to self-interaction errors in the strongly localized orbitals. Placing some, or all, 4<i>f</i> electrons in the core can rectify this issue, but then the description of magnetism will fail and transferability will suffer.|:}}
+{{NB|tip|If you are not interested in 4<i>f</i>-magnetism, and know the valency of your lanthanide, use the _2 or _3 potentials.|:}}
+
+
+{{NB|important|Even if you have taken a lot of care to optimize your pseudopotential choice, it is always good to perform some test calculations with other potentials, if necessary, on a small prototype system. You might realize that you need extra accuracy, or that you are leaving performance on the table by using unnecessarily hard {{FILE|POTCAR}}s for your problem.}}
+
+==Example: NiO equilibrium volume==
+
+Antiferromagnetic NiO in the rocksalt structure is a prototype system for a correlated material. It is a Mott insulator and not well described with standard DFT. To get correct material properties, methods beyond DFT are required. [[DFT+DMFT calculations]] are an option, but the much cheaper [[DFT+U]] approach is often used with satisfactory results.
+[[File:NiO_diff_pots_energy_vs_volume.png|450px|thumb|Fig 1. LSDA+U Energy vs. volume plot for AFM NiO. Different Ni potentials were used to create the data. All other inputs are equivalent. The all-electron (AE) reference was calculated with Wien2K.]]
+The computational setup and how to interpret the results of a DFT+U calculation for NiO are given in the section on [[NiO LSDA+U]]. Here, we will focus on the effect of the choice of the Ni pseudopotential on the equation of state (EOS). We compare the results to reference  Wien2K calculations{{cite|tran:prb:2006}}, which do not use pseudopotentials, as Wien2K is an all-electron (AE) code{{cite|blaha:2020}}.
+
+The Ni, Ni_pv, and Ni_sv_GW pseudopotentials of the [[Available_pseudopotentials#potpaw.64_(latest,_recommended)|potpaw_PBE.64]] set were combined with the O pseudopotential for all calculations. The plane-wave cutoff energy [[ENCUT]] was set to 1000 eV to avoid any influence of basis set convergence.
+
+Fig. 1 shows the data for all three Ni POTCAR options and the AE reference as a black line. The standard Ni potential, which is the one usually recommended for calculations that do not need a high number of unoccupied bands, is underestimating the equilibrium volume by 6%, which translates to a lattice parameter of 4.04 &Aring;. Taking the semi-core 3''p''-states into account with the Ni_pv potential improves the results significantly, with the volume underestimation reduced to 1.7% and increasing the lattice parameter to 4.10 &Aring;. If we want to also take the semicore 3''s''-states into account, we need to choose a [[Available_pseudopotentials#Different_variants_specified_by_the_suffix|_GW]] potential, Ni_sv_GW. The inclusion of the ''s''-states improves the EOS further, with the underestimation of the volume now being only 0.2% and the lattice parameter matching the AE reference to two significant digits at 4.12 &Aring;.
+
+It is worth noting that the semicore 3''p''-, and the 3''s''-states, are only important for the equilibrium volume if the L(S)DA+U method is used. If no Hubbard corrections are used, all three tested Ni pseudopotentials give a lattice parameter of 4.06 &Aring;, which is very close to the 4.07 &Aring; of the AE reference.
+
+However, the large value of U=8 eV applied to the Ni 4''d''-states in our calculations pushes the ''d''-states away from the Fermi level and compresses them. If the ''p'' (or, better, the ''sp'') orbitals are in the valence, they can hybridize with the ''d''-states and expand, increasing the lattice parameter. (This process happens equivalently in a [[DFT+DMFT calculations|DFT+DMFT calculation]] of NiO.) In fact, the expected linear increase of the lattice parameter with increasing U value is only observed correctly if the Ni_sv_GW potential is used. Note that the lattice parameter predicted by the Ni PAW potential for U=8 eV, at 4.04 &Aring;, is actually lower than the 4.06 &Aring; predicted without the U, because the ''d''-states are still compressed, but the frozen ''s''- and ''p''-states cannot expand accordingly.
+
+==Related tags and sections==
+
+{{FILE|POTCAR}}, [[Prepare a POTCAR]], [[Available pseudopotentials]]
+
+Theoretical background: [[Pseudopotentials]], [[Projector-augmented-wave formalism]]
+
+==References==
+
+[[Category:Pseudopotentials]][[Category:Howto]]

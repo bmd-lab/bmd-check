@@ -1,0 +1,31 @@
+The {{FILE|TAUCAR}} file stores kinetic-energy density 
+:<math>\tilde \tau_{\sigma\sigma'} = \frac{\hbar^2}{2m} \sum_{n\mathbf{k}} f_{n\mathbf{k}} \mathbf{\nabla} \tilde \psi_{n\mathbf{k}\sigma} \cdot \nabla \tilde \psi_{n\mathbf{k}\sigma'}</math> 
+in VASP units (eV <math>\AA^{-3}</math>), i.e. the valence contribution of the pseudo expectation value on the plane-wave grid. Here, <math>\mathbf{\nabla} \tilde \psi_{n\mathbf{k}\sigma}</math> is the gradient of the pseudo Kohn-Sham orbitals within the [[PAW method]]. The {{FILE|TAUCAR}} file is written by default for a [[METAGGA|metaGGA]] calculation, but it can also be written for [[XC functionals]] that are independent of <math>\tau</math> by setting {{TAG|LTAU|T}}. The kinetic energy density can also be redirected to {{FILE|vaspwave.h5}} using {{TAG|LH5}}.
+
+To avoid writing <math>\tau</math> for a [[METAGGA|metaGGA]] calculation use {{TAG|LCHARG|F}}. This controls the writing of both the charge density and the kinetic energy density.  
+
+The {{FILE|TAUCAR}} file (together with the {{FILE|CHGCAR}} file) can be read to restart a calculation ({{TAG|ICHARG}}).
+{{NB|tip|We recommend starting from the density files when repeatedly restarting with small changes in the input parameters, e.g., the '''k'''-point mesh ({{FILE|KPOINTS}}).}}
+{{NB|mind|Available as of VASP 6.6.}}
+== Format ==
+The format is the same as the {{FILE|CHGCAR}} file except for the lack of augmentation occupancies. In other words the {{FILE|TAUCAR}} file consists of the following block:
+
+* Structure in {{FILE|POSCAR}} format
+* FFT-grid dimensions {{TAG|NGXF}}, {{TAG|NGYF}}, {{TAG|NGZF}}
+* Kinetic energy density
+
+=== Magnetic calculations ===
+
+For magnetic calculations, the {{FILE|TAUCAR}} file contains additional data blocks for the magnetic part of <math>\tau</math>. For spin-polarized calculations ({{TAG|ISPIN}}=2), the two blocks are the kinetic-energy density of the two spin channels, <math>\tau_\uparrow</math> followed by <math>\tau_\downarrow</math>. For noncollinear calculations ({{TAG|LNONCOLLINEAR}}=T), the first block is the total kinetic-energy density and the remaining three are the magnetic part <math>\mathbf{\tau}_m</math> in the spinor basis set by {{TAG|SAXIS}}.
+
+== Related tags and articles ==
+[[Restart and output files cheat sheet]]
+
+{{FILE|CHGCAR}},
+{{TAG|LTAU}},
+{{TAG|ICHARG}},
+ 
+FFT-grid dimensions: {{TAG|ENCUT}}, {{TAG|NGXF}}, {{TAG|NGYF}}, {{TAG|NGZF}}
+
+
+[[Category:Files]][[Category:Input files]][[Category:Output files]][[Category:Electronic ground-state properties]]

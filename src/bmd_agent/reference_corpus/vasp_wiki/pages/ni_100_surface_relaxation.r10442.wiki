@@ -1,0 +1,132 @@
+{{Sur_sci - Tutorial}}
+
+== Task ==
+
+Relaxation of the first two layers of a Ni (100) surface.
+
+== Input ==
+
+=== {{TAG|POSCAR}} ===
+<pre>
+fcc (100) surface
+ 3.53
+   .50000   .50000   .00000
+  -.50000   .50000   .00000
+   .00000   .00000  5.00000
+  5
+Selective Dynamics
+Kartesisch
+   .00000   .00000   .00000 F F F
+   .00000   .50000   .50000 F F F
+   .00000   .00000  1.00000 F F F
+   .00000   .50000  1.50000 T T T
+   .00000   .00000  2.00000 T T T
+</pre>
+
+*Ni lattice constant of 3.53<math>\AA</math>.
+*1 atom per layer: p(1x1) cell.
+*5 nickel layers.
+*First two layers (of one side) relaxed.
+*<math>3\times3.53 = 10.59 \AA</math> vacuum.
+
+=== {{TAG|INCAR}} ===
+   {{TAGBL|ISTART}} = 0; {{TAGBL|ICHARG}} = 2
+     
+ general:
+   {{TAGBL|SYSTEM}} = clean Ni(100) surface
+   {{TAGBL|ENCUT}} = 270 
+   {{TAGBL|ISMEAR}} = 2 ; {{TAGBL|SIGMA}} = 0.2
+   {{TAGBL|ALGO}} = Fast
+   {{TAGBL|EDIFF}} = 1E-6
+     
+ spin:
+   {{TAGBL|ISPIN}}=2
+   {{TAGBL|MAGMOM}} = 5*1
+     
+ dynamic:
+   {{TAGBL|NSW}} = 100
+   {{TAGBL|POTIM}} = 0.8
+   {{TAGBL|IBRION}} = 1
+
+*Initial charge-density in startjob from overlapping atoms.
+*Default energy cut-off of 270 eV.
+*MP-smearing (metal).
+*Spin-polarized calculation with initial moment of 1.
+*Ionic relaxation used.
+
+=== {{TAG|KPOINTS}} ===
+<pre>
+k-points
+0
+Monkhorst-Pack
+9 9 1
+0 0 0
+</pre>
+
+*Equally spaced mesh.
+*Odd mesh, centered on <math>\Gamma</math>.
+*15 k points in irreducible Brillouin zone (IBZ).
+*Only one k point in z-direction for surface.
+
+== Calculation ==
+
+*The sample output for the forces in the {{TAG|OUTCAR}} file should look like this (first and last step):
+First step:
+ POSITION                                       TOTAL-FORCE  (eV/Angst)
+ -----------------------------------------------------------------------------------
+      0.00000      0.00000      0.00000         0.000000      0.000000      0.391352
+      0.00000      1.76500      1.76500         0.000000      0.000000     -0.397024
+      0.00000      0.00000      3.53000         0.000000      0.000000      0.005117
+      0.00000      1.76500      5.29500         0.000000      0.000000      0.391161
+      0.00000      0.00000      7.06000         0.000000      0.000000     -0.390607
+ -----------------------------------------------------------------------------------
+    total drift:                                0.000000      0.000000      0.016391
+Last step:
+ POSITION                                       TOTAL-FORCE  (eV/Angst)
+ -----------------------------------------------------------------------------------
+      0.00000      0.00000      0.00000         0.000000      0.000000      0.399012
+      0.00000      1.76500      1.76500         0.000000      0.000000     -0.377003
+      0.00000      0.00000      3.53000         0.000000      0.000000      0.105799
+      0.00000      1.76500      5.32685         0.000000      0.000000     -0.062054
+      0.00000      0.00000      7.02377         0.000000      0.000000     -0.065753
+ -----------------------------------------------------------------------------------
+    total drift:                                0.000000      0.000000     -0.042925
+
+*Energy changes during relaxation from -25.556 to -25.571 eV which gives a relaxation energy of <math>E^{\mathrm{rel}} = -15</math> meV. Use p4vasp to check the convergence:
+[[File:Fig Ni 100 surfrel 1.png|600px]]
+
+*The surface energy of 0.86 eV for the unrelaxed surface is calculated in the following:
+<math>\sigma^{\mathrm{unrel}} = \frac{1}{2} (E_{\mathrm{surf}}-N_{\mathrm{atoms}} \cdot E_{\mathrm{bulk}}) = \frac{1}{2} (-25.556-5\cdot(-5.457))= 0.86</math> eV.
+
+*The surface energy of 0.84 eV for the relaxed surface is then calculated as:
+<math> \sigma = \sigma^{\mathrm{unrel}} + E^{\mathrm{rel}} = 0.84</math> eV.
+
+*The final geometry (from the {{TAG|CONTCAR}} or {{TAG|OUTCAR}} file) should look as follows:
+ fcc (100) surface
+    3.53000000000000
+      0.5000000000000000      0.5000000000000000      0.000000000000000
+     -0.5000000000000000      0.5000000000000000      0.000000000000000
+      0.0000000000000000      0.0000000000000000      5.000000000000000
+    Ni
+      5
+ Selective Dynamics
+ Direct
+ 0.0000000000000000   0.0000000000000000   0.0000000000000000 F F F
+ 0.0000000000000000   0.5000000000000000   0.1000000000000014 F F F
+ 0.0000000000000000   0.0000000000000000   0.2000000000000028 F F F
+ 0.5000000000000000   0.5000000000000000   0.3018043743226639 T T T
+ 0.0000000000000000   0.0000000000000000   0.3979474020596729 T T T 
+
+*Inward relaxation of surface layers:
+** <math>\Delta d_{12}</math> = ((0.3979-0.3018)-0.1)/0.1*100=-3.9%.
+** <math>\Delta d_{12}</math> = ((0.3018-0.2000)-0.1)/0.1*100=+1.8%.
+
+*Use p4vasp to visualize the relaxation:
+[[File:Fig Ni 100 surfrel 2.png|800px]]
+
+== Download ==
+[[Media:Ni100clean_rel.tgz| Ni100clean_rel.tgz]]
+ 
+{{Sur_sci}}
+
+[[Category:Examples]]

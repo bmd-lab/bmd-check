@@ -1,0 +1,12 @@
+{{DISPLAYTITLE:CONTCAR_disp-N}}
+The {{FILE|CONTCAR_disp-N}} file is an output file of a [[Restarting_finite_differences_calculations#Splitting_a_finite_difference_calculation|split finite differences calculation]] that contains the structural information of the ''N''th displacement. It has the same format as the {{FILE|CONTCAR}} or {{FILE|POSCAR}} file.
+{{Available|6.6.0}}
+
+== Related tags and articles ==
+{{FILE|CONTCAR}}, {{FILE|POSCAR}}, {{FILE|vaspcheckfd.h5}}, {{TAG|CHECKPOINT_FD}}
+
+[[Restarting finite differences calculations]]
+
+{{sc|CONTCAR_disp-N|HowTo|Workflows that use this file}}
+
+[[Category:Files]][[Category:Output files]]

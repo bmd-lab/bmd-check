@@ -13,9 +13,19 @@ version `0.0.0`) contains none. Pages enter the corpus only by acquisition from
 the official VASP Wiki with the maintainer tool. They are never reconstructed
 from memory or copied from secondary sources.
 
-The intended first populated corpus is these ten VASP Wiki titles:
-`NELM`, `EDIFF`, `ALGO`, `EDIFFG`, `NSW`, `IBRION`, `ISIF`,
-`Not enough memory`, `Difficult_to_converge_systems`, `Memory`.
+The corpus aims to hold the complete public VASP Wiki documentation: every
+non-redirect page of the wiki's main namespace, discovered systematically
+through the MediaWiki API under the inclusion rules
+`vasp-wiki-main-namespace-1` (see `tools/vasp_reference/README.md`). The
+manifest's `acquisition` record states how every discovered title was handled
+(preserved, excluded for a recorded reason, or failed), lists main-namespace
+redirects as aliases, counts the other namespaces, and labels the corpus
+`complete` only when nothing failed.
+
+The original ten-title selection (`NELM`, `EDIFF`, `ALGO`, `EDIFFG`, `NSW`,
+`IBRION`, `ISIF`, `Not enough memory`, `Difficult_to_converge_systems`,
+`Memory`) remains available to the maintainer tool as `--intended` for
+targeted acquisitions; it is a subset of the full corpus.
 
 ## Third-party material
 
@@ -34,7 +44,7 @@ VASP topics never live in this directory.
 
 | File | Role |
 | --- | --- |
-| `manifest.json` | Strict schema-v1 record of the corpus, upstream site, license review and each page's identity. Canonical bytes only (sorted keys, two-space indent, ASCII). |
+| `manifest.json` | Strict record of the corpus, upstream site, license review and each page's identity. Schema v1 for the unpopulated anchor; schema v2 for populated corpora, which adds each page's upstream `categories` and the `acquisition` record. Canonical bytes only (sorted keys, two-space indent, ASCII). |
 | `RELEASES.json` | Append-only ledger binding each corpus version to its identity digest; starts at the unpopulated `0.0.0` anchor and chains each release to the previous digest. |
 | `NOTICE` | Attribution and license notice rendered deterministically from the manifest. |
 | `SHA256SUMS` | SHA-256 of every other file here; the file set must match it exactly. |
@@ -72,13 +82,23 @@ review carrying a caveat is a contradiction and makes the corpus invalid.
 
 `corpus_digest` is a SHA-256 over the content-defining fields of the manifest:
 page and revision identity, content hashes, URLs, captured site rights, the
-reviewed license fields and review outcomes. Provenance that does not change
+reviewed license fields and review outcomes, and (schema v2) page categories
+and the acquisition record except its discovery timestamp. Provenance that does not change
 content (retrieval and assembly times, updater version, reviewer names and
 dates, the MediaWiki generator string) is excluded. `RELEASES.json` binds each
 version to exactly one digest, so changed content needs a new version and a new
 ledger entry. Rewriting an earlier ledger entry shows up in review as a change
 to recorded history, and the test suite compares the ledger against `origin/main`
 when that ref is available.
+
+## Page identifiers
+
+A page's identifier is `vasp.wiki.<slug>`, the slug derived from its title.
+When two preserved titles share a slug (for example titles that differ only in
+case), every page in that group is identified as `<slug>_p<page ID>`; a title
+without ASCII letters or digits is identified as `p<page ID>`. The loader
+recomputes this rule over the whole page set, so identifiers never depend on
+acquisition order.
 
 ## Loading
 

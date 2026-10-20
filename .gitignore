@@ -69,3 +69,13 @@ workspaces/
 *~
 *.swp
 *.swo
+
+# Maintainer staging directories for corpus acquisitions are never
+# committed; only a reviewed release under src/ is.
+corpus-staging/
+
+# The VASP Wiki corpus pages are verbatim wikitext, never potential data. On
+# case-insensitive checkouts (core.ignorecase=true, the Windows default) the
+# POTCAR rules above would otherwise silently drop pages/potcar.r*.wiki from a
+# commit. Keep this rule last so that no earlier pattern can hide a page.
+!src/bmd_agent/reference_corpus/vasp_wiki/pages/*.wiki

@@ -1,0 +1,21 @@
+During the metadynamics simulation, the  time-dependent bias potential (see {{TAG|MDALGO}}) is written in file {{TAG|HILLSPOT}} using the same format as for the {{TAG|PENALTYPOT}} file. If the metadynamics is performed as a sequence of shorter runs (which is recommended), the {{TAG|HILLSPOT}} file should be copied into {{TAG|PENALTYPOT}} at the end of each run. The following is an example of script running the sequence of 100 simulations:
+ #!/bin/bash
+ i=1
+ while [ $i -le 100 ]
+ do
+   cp POSCAR POSCAR.$i
+   ./vasp
+   cp CONTCAR POSCAR
+   cp REPORT REPORT.$i
+   cp HILLSPOT PENALTYPOT
+   let i=i+1
+ done
+
+== Related Tags and Sections ==
+{{TAG|HILLS_BIN}},
+{{TAG|HILLS_H}},
+{{TAG|HILLS_W}},
+{{TAG|MDALGO}}
+
+----
+[[Category:Advanced molecular-dynamics sampling]][[Category:Files]]

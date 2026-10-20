@@ -1,0 +1,81 @@
+There are three implementations of thermodynamic integration (TI). The settings for these calculations are described in [[thermodynamic integration calculations]]. A detailed description of thermodynamic integration is given in reference {{cite|dorner:PRL:2018}}. An important historic paper is Kirkwood 1935 {{Cite|kirkwood:jcp:1935}}.
+
+== Basic theory ==
+The free energy of a fully interacting system can be written as the sum of the free energy a non-interacting reference system and the difference in the free energy of the fully interacting system and the non-interacting system {{Cite|dorner:PRL:2018}} 
+
+::<math> A_{1} = A_{0} + \Delta A_{0\rightarrow 1} </math>.
+
+Using thermodynamic integration the free energy difference between the two systems is written as
+
+<math> \Delta A_{0\rightarrow 1} = \int\limits_{0}^{1} d\lambda \langle U_{1}(\lambda) - U_{0}(\lambda) \rangle_{\lambda} </math>.
+
+Here <math>U_{1}(\lambda)</math> and <math>U_{0}(\lambda)</math> describe the potential energies of a fully-interacting and a non-interacting reference system, respectively. The coupling strength of the systems is controlled via the coupling parameter <math>\lambda</math>. It is necessary that the connection of the two systems via the coupling constant is reversible. The notation <math>\langle \ldots \rangle_{\lambda}</math> denotes an ensemble average of a system driven by the following classical Hamiltonian
+
+::<math> H_{\lambda}= \lambda H_{1} + (1-\lambda) H_{0} </math>.
+
+There are many options that can be taken for the non-interacting and interacting systems. In Dorner et al., TI was first performed from a harmonic system (the ideal gas) to the full ''ab initio'' Hamiltonian (e.g., PBE) to include the anharmonic contributions {{Cite|dorner:PRL:2018}}; a second TI was then performed to increase the ''k''-mesh density and change the density functional (e.g., SCAN, HSE06). We will now describe the theory when going from a harmonic to anharmonic system, as this requires some special details.
+
+== Thermodynamic integration with harmonic reference ==
+The Helmholtz free energy (<math>A</math>) of a fully interacting system (1) can be expressed in terms of that of system harmonic in Cartesian coordinates (0,<math>\mathbf{x}</math>) as follows
+:<math>
+A_{1} = A_{0,\mathbf{x}} + \Delta A_{0,\mathbf{x}\rightarrow 1}
+</math> 
+where <math>\Delta A_{0,\mathbf{x}\rightarrow 1}</math> is anharmonic free energy. The latter term can be determined by means of thermodynamic integration (TI) {{Cite|kirkwood:jcp:1935}}
+:<math>
+\Delta A_{0,\mathbf{x}\rightarrow 1} = \int_0^1 d\lambda \langle V_1 -V_{0,\mathbf{x}}  \rangle_\lambda
+</math>
+with <math>V_i</math> being the potential energy of system <math>i</math>, <math>\lambda</math> is a coupling constant and <math>\langle\cdots\rangle_\lambda</math> is the NVT ensemble average of the system driven by the Hamiltonian
+:<math>
+\mathcal{H}_\lambda = \lambda \mathcal{H}_1 + (1-\lambda)\mathcal{H}_{0,\mathbf{x}}
+</math>
+
+Free energy of harmonic reference system within the quasi-classical theory writes
+:<math>
+    A_{0,\mathbf{x}} = A_\mathrm{el}(\mathbf{x}_0) - k_\mathrm{B} T \sum_{i = 1}^{N_\mathrm{vib}} \ln \frac{k_\mathrm{B} T}{\hbar \omega_i}
+</math>
+with the electronic free energy <math>A_\mathrm{el}(\mathbf{x}_0)</math> for the 
+configuration corresponding to the potential energy minimum with the 
+atomic position vector <math>\mathbf{x}_0</math>,
+the number of vibrational degrees of freedom <math>N_\mathrm{vib}</math>, and the angular frequency <math>\omega_i</math> of vibrational mode <math>i</math> obtained using the Hesse matrix <math>\underline{\mathbf{H}}^\mathbf{x}</math>.
+Finally, the harmonic potential energy is expressed as 
+:<math>
+V_{0,\mathbf{x}}(\mathbf{x}) = V_{0,\mathbf{x}}(\mathbf{x}_0) + \frac{1}{2} (\mathbf{x} - \mathbf{x}_0)^T \underline{\mathbf{H}}^\mathbf{x} (\mathbf{x} - \mathbf{x}_0)
+</math>
+
+Thus, a conventional TI calculation consists of the following steps:
+# determine <math>\mathbf{x}_0</math> and <math>V_{0,\mathbf{x}}(\mathbf{x}_0)</math> in structural relaxation
+# compute <math>\omega_i</math> in vibrational analysis
+# use the data obtained in the point 2 to determine <math>\underline{\mathbf{H}}^\mathbf{x}</math> that defines the harmonic forcefield
+# perform NVT MD simulations for several values of  <math>\lambda \in \langle0,1\rangle</math> and determine <math>\langle V_1 -V_{0,\mathbf{x}}  \rangle</math>
+# integrate <math>\langle V_1 -V_{0,\mathbf{x}}  \rangle</math> over the <math>\lambda </math> grid and compute <math>\Delta A_{0,\mathbf{x}\rightarrow 1}</math>
+
+Unfortunately, there are several problems linked with such a straightforward approach. First, the systems with rotational and/or translational degrees of freedom cannot be treated in a straightforward manner because <math>V_{0,\mathbf{x}}(\mathbf{x})</math> is not invariant under rotations and translations. Conventional TI is thus unsuitable for simulations of gas-phase molecules or adsorbate-substrate systems. and this problem also imposes restrictions on the choice of thermostat used in NVT simulation (Langevin thermostat, for instance, does not conserve the position of the center of mass and is therefore unsuitable for use in conventional TI). Furthermore, if the Hesse matrix of the harmonic system has one or more eigenvalues that nearly vanish, the simulations with <math>\lambda \rightarrow </math> 0 are likely to generate unphysical configurations, causing serious convergence issues.
+
+== Thermodynamic integration using internal coordinates ==
+The problems of TI using a harmonic reference have been addressed in a series of works by Amsler et al {{Cite|bucko:studt:jctc:2021}}{{Cite|bucko:studt:jctc:2023}}. First, the method was formulated in terms of rotationally and translationally invariant internal coordinates <math>\mathbf{q}=\mathbf{q}(\mathbf{x})</math>, whereby the free energy of the interacting system is repartitioned as follows:
+:<math>
+A_1 = A_{0,\mathbf{x}} + \Delta A_{0,\mathbf{x} \rightarrow 0,\mathbf{q}} + \Delta A_{0,\mathbf{q} \rightarrow 1} 
+</math>
+where <math>\Delta A_{0,\mathbf{x} \rightarrow 0,\mathbf{q}}</math> is the free energy change due to transformation from the system harmonic in <math>\mathbf{x}</math> into the system harmonic in <math>\mathbf{q}</math> and <math>\Delta A_{0,\mathbf{q} \rightarrow 1} </math> is that for the transformation of the latter into a fully interacting system. The force field for the system harmonic in <math>\mathbf{q}</math> is defined as: 
+:<math>
+ V_{0,\mathbf{q}}(\mathbf{q}) = V_{0,\mathbf{q}}(\mathbf{q}_0) + \frac{1}{2} (\mathbf{q} - \mathbf{q}_0)^T \mathbf{\underline{H}^q} (\mathbf{q} - \mathbf{q}_0)
+</math>
+where <math>\mathbf{q}_0=\mathbf{q}(\mathbf{x}_0)</math> and the Hesse matrix <math>\mathbf{\underline{H}}^\mathbf{q}</math> defined for a potential energy minimum is related to <math>\mathbf{\underline{H}}^\mathbf{x}</math> via
+<math>
+\mathbf{\underline{H}}^\mathbf{x} = \mathbf{\underline{B}}^T \mathbf{\underline{H}}^\mathbf{q} \mathbf{\underline{B}}
+</math>
+with 
+<math>
+\mathbf{\underline{B}}_{i,j} = \frac{\partial q_i}{\partial x_j}
+</math>
+being the Wilson matrix. Note that the calculation of the term <math>\Delta A_{0,\mathbf{x} \rightarrow 0,\mathbf{q}}</math> is inexpensive as it corresponds to a force field to force field transformation. Furthermore, this term vanishes in the case of phase volume conserving coordinates, such as interatomic distances.
+
+== Related tags and articles ==
+{{TAG|VCAIMAGES}}, {{TAG|NCORE_IN_IMAGE1}}, {{TAG|IMAGE_1}}, {{TAG|SCALEE}}, {{FILE|DYNMATFULL}}, {{TAG|PHON_NSTRUCT}}, {{TAG|TILAMBDA}}, {{FILE|HESSEMAT}}, {{FILE|ICONST}}, {{FILE|REPORT}}
+
+[[Thermodynamic integration calculations]]
+
+== References ==
+
+
+[[Category:Advanced molecular-dynamics sampling]][[Category:Theory]]

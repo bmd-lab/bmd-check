@@ -1,0 +1,356 @@
+It can be tricky to model transition states using [[:Category:Transition_states#Static_methods | static methods]] methods. Sometimes, it is insufficient and more time-consuming [[:Category:Transition_states#Dynamic_methods | dynamic methods]] must be used. By using [[:Category:Advanced molecular-dynamics sampling | advanced MD methods]] in combination with [[:Category:Machine-learned_force_fields | machine-learned force fields]] (MLFF), the cost can be significantly reduced. [[Metadynamics]] is one such method, applying a biased potential on selected geometric parameters, to describe rare events such as transition states. This tutorial is based on [[Nuclephile Substitution CH3Cl - mMD3 | an older metadynamics how-to]]. The input files may be downloaded in a zip file at the end of this tutorial. 
+
+== Input ==
+=== {{FILE|POSCAR}} ===
+    1.00000000000000
+      9.0000000000000000    0.0000000000000000    0.0000000000000000
+      0.0000000000000000    9.0000000000000000    0.0000000000000000
+      0.0000000000000000    0.0000000000000000    9.0000000000000000
+    C    H    Cl
+    1   3   2
+ Direct
+   0.1570348572197245  0.2904054711139102  0.1422643997559632
+   0.1466469234176954  0.4066467848992589  0.1077433527138946
+   0.0469134772399311  0.2399491465236156  0.1544210764126938
+   0.2197893311177821  0.2820094213788985  0.2462070949679763
+   0.9809163623144840  0.4723904404063168  0.3674924467383788
+   0.2601754409903839  0.1874592103557934  0.9964911656110944
+
+=== {{FILE|KPOINTS}} ===
+ Automatic
+  0
+ Gamma
+  1  1  1
+  0. 0. 0.
+*For isolated atoms and molecules, interactions between periodic images are negligible (in sufficiently large cells), hence no Brillouin zone sampling is necessary.
+
+=== {{FILE|ICONST}} ===
+ R 1 5 5
+ R 1 6 5
+*Two collective variables are used simultaneously to track the C-Cl distances.
+
+=== {{FILE|PENALTYPOT}} ===
+    5.00000   1.00000   9.00000   0.50000
+    5.00000   2.00000   9.00000   0.50000
+    5.00000   3.00000   9.00000   0.50000
+    5.00000   4.00000   9.00000   0.50000
+    5.00000   5.00000   9.00000   0.50000
+    1.00000   5.00000   9.00000   0.50000
+    2.00000   5.00000   9.00000   0.50000
+    3.00000   5.00000   9.00000   0.50000
+    4.00000   5.00000   9.00000   0.50000
+* To avoid the chlorine atom crossing between cells, a restrictive potential is used to hold it close to the molecule.
+
+=== {{FILE|INCAR}}.mlff ===
+ {{TAGBL|PREC}}=Normal
+ {{TAGBL|EDIFF}}=1e-6
+ {{TAGBL|LWAVE}}=.FALSE.
+ {{TAGBL|LCHARG}}=.FALSE.
+ {{TAGBL|NELECT}}=22
+ {{TAGBL|NELMIN}}=4
+ {{TAGBL|LREAL}}=.FALSE.
+ {{TAGBL|ALGO}}=VeryFast
+ {{TAGBL|ISMEAR}}=0
+ {{TAGBL|SIGMA}}=0.05
+ 
+ {{TAGBL|POMASS}} = 12.011 4.0 35.453 
+ 
+ ############################# MD setting #####################################
+ {{TAGBL|IBRION}}=0                                           # MD simulation
+ {{TAGBL|NSW}}=100000                                         # number of steps
+                                                       # reduce to NSW = 50000 or lower, if the MLFF is 
+                                                       # too stable for subsequent steps
+ {{TAGBL|POTIM}}=1                                            # integration step
+ {{TAGBL|TEBEG}}=600                                          # simulation temperature
+ {{TAGBL|MDALGO}}=1                                           # metaDynamics with Andersen thermostat
+ {{TAGBL|ANDERSEN_PROB}}=0.05                                 # collision probability
+ {{TAGBL|HILLS_BIN}}=50                                       # update the time-dependent bias
+                                                              # potential every 50 steps
+ {{TAGBL|HILLS_H}}=0.0005                                     # height of the Gaussian
+ {{TAGBL|HILLS_W}}=0.05                                       # width of the Gaussian
+ ##############################################################################
+ {{TAGBL|RANDOM_SEED}} = 311137787 0 0 
+ 
+ # MLFF tags
+ {{TAGBL|ML_LMLFF}}         = .TRUE.
+ {{TAGBL|ML_MODE}}          =  TRAIN
+ {{TAGBL|ISIF}}=2
+
+=== {{FILE|INCAR}}.refit ===
+ # MLFF tags
+ {{TAGBL|ML_LMLFF}}         = .TRUE.
+ {{TAGBL|ML_MODE}}          =  REFIT
+ {{TAGBL|ISIF}}=2
+
+=== {{FILE|INCAR}}.md ===
+ {{TAGBL|POMASS}} = 12.011 4.0 35.453 
+ 
+ ############################# MD setting #####################################
+ {{TAGBL|IBRION}}=0                                           # MD simulation
+ {{TAGBL|NSW}}=100000                                         # number of steps
+ {{TAGBL|POTIM}}=1                                            # integration step
+ {{TAGBL|TEBEG}}=600                                          # simulation temperature
+ {{TAGBL|MDALGO}}=1                                           # metaDynamics with Andersen thermostat
+ {{TAGBL|ANDERSEN_PROB}}=0.05                                 # collision probability
+ {{TAGBL|HILLS_BIN}}=50                                       # update the time-dependent bias
+                                                              # potential every 50 steps
+ {{TAGBL|HILLS_H}}=0.005                                      # height of the Gaussian
+ {{TAGBL|HILLS_W}}=0.05                                       # width of the Gaussian
+ ##############################################################################
+ {{TAGBL|RANDOM_SEED}} = 311137787 0 0 
+ 
+ # MLFF tags
+ {{TAGBL|ML_LMLFF}}         = .TRUE.
+ {{TAGBL|ML_MODE}}          =  RUN
+ {{TAGBL|ISIF}}=2
+ 
+ {{TAGBL|ML_ESTBLOCK}} = 20
+ {{TAGBL|ML_OUTBLOCK}} = 20
+
+=== {{FILE|INCAR}}.interactive ===
+ {{TAGBL|PREC}}=Normal
+ {{TAGBL|EDIFF}}=1e-6
+ {{TAGBL|LWAVE}}=.FALSE.
+ {{TAGBL|LCHARG}}=.FALSE.
+ {{TAGBL|NELECT}}=22
+ {{TAGBL|NELMIN}}=4
+ {{TAGBL|LREAL}}=.FALSE.
+ {{TAGBL|ALGO}}=VeryFast
+ {{TAGBL|ISMEAR}}=0
+ {{TAGBL|SIGMA}}=0.05
+ 
+ {{TAGBL|POMASS}} = 12.011 4.0 35.453 
+ 
+ ############################# MD setting #####################################
+ {{TAGBL|IBRION}}=0                                           # MD simulation
+ {{TAGBL|NSW}}=137                                            # number of steps
+ {{TAGBL|POTIM}}=1                                            # integration step
+ {{TAGBL|TEBEG}}=600                                          # simulation temperature
+ {{TAGBL|MDALGO}}=1                                           # metaDynamics with Andersen thermostat
+ {{TAGBL|ANDERSEN_PROB}}=0.05                                 # collision probability
+ {{TAGBL|HILLS_BIN}}=50                                       # update the time-dependent bias
+                                                              # potential every 50 steps
+ {{TAGBL|HILLS_H}}=0.0005                                     # height of the Gaussian
+ {{TAGBL|HILLS_W}}=0.05                                       # width of the Gaussian
+ ##############################################################################
+ {{TAGBL|RANDOM_SEED}} = 311137787 0 0 
+ 
+ # MLFF tags
+ {{TAGBL|ML_LMLFF}}         = .TRUE.
+ {{TAGBL|ML_MODE}}          = TRAIN
+ {{TAGBL|ML_ICRITERIA}}     = 0
+ {{TAGBL|ML_NMDINT}}        = 1
+ {{TAGBL|ML_MCONF}}         = 2000
+ 
+ {{TAGBL|ISIF}}             = 2
+ {{TAGBL|INTERACTIVE}}      = .TRUE.
+
+== Step-by-step instructions ==
+===Step 0: Training the MLFF (optional)===
+'''Required files:''' {{FILE|POSCAR}}, {{FILE|POTCAR}}, {{FILE|INCAR}}.mlff, {{FILE|KPOINTS}}, {{FILE|ICONST}}, {{FILE|PENALTYPOT}}, {{FILE|ML_AB}}
+
+The first step is to generate the [[:Category:Machine-learned force fields | machine-learned force fields]] (MLFFs). Run enough steps to have explored a large portion of the configuration space of the reaction. This step will not sample many points around the transition state, which you can account for later. Use the <code>INCAR.mlff</code> file for this step. We have included an {{FILE|ML_AB}} file in the zip file below, so you can skip this step.
+{{NB|important|Make sure that there is the {{FILE|ICONST}} and {{FILE|PENALTYPOT}} files or the MD run will not be metadynamics.}}
+
+ cd e00_training
+ cp INCAR.mlff INCAR
+ vasp_std
+
+===Step 1: Refitting the MLFF===
+'''Required files:''' {{FILE|POSCAR}}, {{FILE|POTCAR}}, {{FILE|INCAR}}.refit, {{FILE|KPOINTS}}
+
+Copy the {{FILE|ML_ABN}} from step 0 to {{FILE|ML_AB}} (or from the zip file) and refit. Use the <code>INCAR.refit</code> file for this.
+
+ cd e01_refit
+ cp INCAR.refit INCAR
+ cp ../e00_training/ML_ABN ML_AB
+ vasp_std
+
+===Step 2: Running the MD simulation===
+'''Required files:''' {{FILE|POSCAR}}, {{FILE|POTCAR}}, {{FILE|INCAR}}.md, {{FILE|KPOINTS}}, {{FILE|ICONST}}, {{FILE|PENALTYPOT}}
+
+First, link to the MLFF that you have just generated: <code>ln -s ../e01_refit/ML_FFN  ML_FF</code>. Then, run the molecular dynamics (MD) simulation using <code>INCAR.md</code>. Make sure that the {{FILE|PENALTYPOT}} file is present, as this is vital for containing the molecule and modeling the reaction using metadynamics. You will track the two C-Cl distances as collective variables using the {{FILE|ICONST}} file.
+
+ cd e02_MD
+ cp INCAR.md INCAR
+ ln -s ../e01_refit/ML_FFN ML_FF
+ vasp_std
+
+====MD analysis====
+Once the metadynamics MD simulation is completed, plot the time evolution of the collective variables (cf. {{FILE|ICONST}}) using the <code>timeEv.sh</code> script and <code>gnuplot</code>:
+
+ bash ./timeEv.sh
+ gnuplot -e "set terminal jpeg; set xlabel 'timestep'; set ylabel 'Collective variable (Ang)'; set style data lines; plot 'timeEvol1.dat', 'timeEvol2.dat'" > timeEvol.jpg
+
+The obtained time evolution of the collective variables looks like the following:
+[[File:ClCh3Cl_inversion_MLFF_MD.jpeg|600px|thumb|left|Two collective variables are monitored, the two C-Cl distances (purple and green lines). After a few thousand steps (NB that we have used {{TAG|ML_OUTBLOCK|20}} so there are 20 structures between each point), the two collective variables switch as the transition state is crossed and the system inverts.]]
+<div style="clear:both;"></div>
+
+The Cl<sup>-</sup> ion is initially far from the C atom. After a few thousand steps, the chloromethane molecule inverts as the chloride attacks and the opposing chlorine atom is expelled as a chloride. After a thousand more steps, the MLFF breaks down, and a non-physical structure is formed at which the MD simulation gets stuck.
+{{NB|important|If the simulation does not fail, repeat the calculation, try increasing the number of ionic steps ({{TAG|NSW}}), until you run a simulation where the MLFF breaks down. Alternatively, decrease the number of {{TAG|NSW}} used for training the MLFF in the first place. This will train an MLFF with fewer structures, i.e., a worse force field that will break down sooner. We only recommend this in this exercise so that you can learn how to fix an MLFF.}}
+
+====Spilling factor====
+This is when the simulation leaves the configuration space of the MLFF training set. You can see this by checking the [[ML_ESTBLOCK | spilling factor]] in the {{FILE|ML_LOGFILE}}:
+
+ grep SFF ML_LOGFILE
+
+ # SFF ########################################################################################################
+ # SFF This line shows the spilling factor,
+ # SFF
+ # SFF nstep ............ MD time step or input structure counter
+ # SFF sfmax ............ Maximal spilling factor among atoms
+ # SFF sfmin ............ Minimal spilling factor among atoms
+ # SFF sfmean ........... Mean value of spilling factor
+ # SFF sfvar ............ Variance of spilling factor
+ # SFF threshold ........ Value of threshold criterion for learning
+ # SFF ########################################################################################################
+ # SFF               nstep            sfmax            sfmin           sfmean            sfvar        threshold
+ # SFF                   2                3                4
+ # SFF ########################################################################################################
+ SFF                   100   9.29675803E-06   2.13512863E-07   2.26596576E-06   1.01225022E-11   2.00000000E-03
+ SFF                   200   1.11874507E-06   4.26678995E-07   7.93844208E-07   5.02375989E-14   2.00000000E-03
+ SFF                   300   1.69448509E-06   2.46957156E-07   9.74621854E-07   2.15210308E-13   2.00000000E-03
+ ...
+ SFF                 99960   9.99309893E-01   3.36556878E-03   3.40857829E-01   2.16239137E-01   2.00000000E-03
+ SFF                 99980   9.99464421E-01   5.99966976E-03   3.44462977E-01   2.14118191E-01   2.00000000E-03
+ SFF                100000   9.99581963E-01   5.29236322E-03   3.41837281E-01   2.15977938E-01   2.00000000E-03
+
+We have set {{TAG|ML_OUTBLOCK|20}} so that only every 20th structure is included. Notice how <code>sfmax</code> goes to 1. This indicates that it is completely outside of the training set. You can plot this to visualize what happens and compare to the plot above. First, grep for the spilling factor <code>SFF</code> in the {{FILE|ML_LOGFILE}}:
+
+<syntaxhighlight lang="bash" line>
+grep '^SFF[[:space:]]*[0-9]' ML_LOGFILE | awk '{print $2 " " $3}' > sff.dat
+</syntaxhighlight>
+
+Then plot <code>sff.dat</code> using Python:
+<syntaxhighlight lang="python" line>
+import py4vasp
+import numpy as np
+
+step, spilling_factor = np.loadtxt("./e02_MD/sff.dat", unpack=True)
+
+py4vasp.plot(step, spilling_factor, xlabel="MD step", ylabel="Spilling factor", label="Spilling factor") 
+</syntaxhighlight>
+
+[[File:Spilling_factor_plot.png|600px|thumb|left|The spilling factor plotted against the MD step. As it deviates from 0, the structures are increasingly outside of the MLFF training set. The MLFF then rapidly breaks down and the spilling factor increases to, then remains at, 1.]]
+<div style="clear:both;"></div>
+
+====Extracting new training structures====
+The structures after the spilling factor reaches 1 are not meaningful. However, those shortly before are very useful. These are where the MLFF begins to break down. You can extract these structures using the <code>sff_grep.py</code> script:
+ 
+ ./sff_grep.py ML_LOGFILE XDATCAR 5E-4 0.2
+
+This will extract from {{FILE|XDATCAR}} all of the structures in the configurations {{FILE|ML_LOGFILE}} that have a spilling factor between <code>5E-4</code> and 0.2 and output them to a <code>POSCAR.interactive</code> file. <code>POSCAR.interactive</code> can then be used in the next step to continue training the MLFF.
+{{NB|important|<code>POSCAR.interactive</code> contains the position of the ions for each configuration in direct coordinates, which is used for interactive mode with {{TAG|INTERACTIVE}}. The {{FILE|POSCAR}} must still be included.}}
+
+===Step 3: Retrain the MLFF===
+'''Required files:''' {{FILE|POSCAR}}, {{FILE|POTCAR}}, {{FILE|INCAR}}.interactive, {{FILE|KPOINTS}}, {{FILE|ML_AB}}
+
+Take the <code>POSCAR.interactive</code> that you have generated in the preceding step, take the {{FILE|ML_AB}} file that you have already trained in step 0 (or refitted in step 1), along with the {{FILE|PENALTYPOT}} from step 2, and the <code>INCAR.interactive</code> file - making sure to update the {{TAG|NSW}} to the number of structures in <code>POSCAR.interactive</code>. Then run a calculation with the same {{FILE|POSCAR}}, {{FILE|POTCAR}}, and {{FILE|KPOINTS}} files from step 1, ensuring to input the <code>POSCAR.interactive</code> file into the VASP executable, enabled by setting {{TAG|INTERACTIVE|.TRUE.}}, e.g.:
+
+ cd e03_interactive
+ cp INCAR.interactive INCAR
+ cp ../e00_training/ML_ABN ML_AB
+ cp ../e00_training/HILLSPOT PENALTYPOT
+ vasp_std < POSCAR.interactive
+{{NB|important|Ensure that you update {{TAG|NSW}} in the {{FILE|INCAR}} to be equal to the number of configurations in your <code>POSCAR.interactive</code> file.}}
+
+===Step 4: Refit the MLFF===
+'''Required files:''' {{FILE|POSCAR}}, {{FILE|POTCAR}}, {{FILE|INCAR}}.refit, {{FILE|KPOINTS}}
+
+Refit the MLFF as before, copying the {{FILE|ML_ABN}} to {{FILE|ML_AB}} and refitting with <code>INCAR.refit</code>.
+
+ cd e04_new_refit
+ cp ../e03_interactive/ML_ABN ML_AB
+ vasp_std
+
+===Step 5: Repeat the MD simulation===
+'''Required files:''' {{FILE|POSCAR}}, {{FILE|POTCAR}}, {{FILE|INCAR}}.md, {{FILE|KPOINTS}}, {{FILE|ICONST}}, {{FILE|PENALTYPOT}} from old {{FILE|HILLSPOT}}
+
+Copy your old biased potential ({{FILE|HILLSPOT}} file) from the initial MLFF training to the {{FILE|PENALTYPOT}} in your new directory. This saves you a lot of time by enabling you to begin from where the system had already trained (alternatively, you can try using the potential from the first MD run, being careful to remove the potentials added once the spilling factor has reached 1, as these are non-physical). Then, run the calculation as normal, increasing the number of ionic steps to 300000:
+
+ cd e05_new_MD
+ cp INCAR.md INCAR
+ sed -i 's/NSW=100000/NSW=300000/g' INCAR
+ cp ../e00_training/HILLSPOT PENALTYPOT
+ ln -s ../e04_new_refit/ML_FFN ML_FF
+ vasp_std
+
+====MD analysis====
+Once the calculation is finished, take a look at the time evolution of the collective variables using <code>timeEv.sh</code> script and <code>gnuplot</code>:
+
+ bash ./timeEv.sh
+ gnuplot -e "set terminal jpeg; set xlabel 'timestep'; set ylabel 'Collective variable (Ang)'; set style data lines; plot 'timeEvol1.dat', 'timeEvol2.dat'" > timeEvol.jpg
+
+The obtained time evolution of the collective variables looks like the following:
+
+[[File:Updated_inversions.jpeg|600px|thumb|left|Rather than getting stuck after a few thousand steps, this new MLFF is much more stable and can keep on inverting back and forth over several thousand steps.]]
+<div style="clear:both;"></div>
+
+Each time the green and purple lines switch, an inversion reaction has occurred, and the transition state has been crossed. This is significantly more stable than the previous iteration and indicates that we are now more accurately modeling the transition state.
+
+====Spilling factor====
+You can confirm the stability of your MLFF by taking a look at the spilling factor:
+
+<syntaxhighlight lang="bash" line>
+grep '^SFF[[:space:]]*[0-9]' ML_LOGFILE | awk '{print $2 " " $3}' > sff.dat
+</syntaxhighlight>
+
+Then plot <code>sff.dat</code> using Python:
+<syntaxhighlight lang="python" line>
+import py4vasp
+import numpy as np
+
+step, spilling_factor = np.loadtxt("./e05_new_MD/sff.dat", unpack=True)
+
+py4vasp.plot(step, spilling_factor, xlabel="MD step", ylabel="Spilling factor", label="Spilling factor") 
+</syntaxhighlight>
+
+[[File:Spilling_factor_plot_improved.png|600px|thumb|left|The spilling factor plotted against the MD step. The spilling factor never deviates far from 0, indicating that the MD simulation is well within the MLFF training set.]]
+<div style="clear:both;"></div>
+
+====Plotting the biased potential====
+As a final step, you can visualize the biased potential that you have generated. First, take the {{FILE|HILLSPOT}} file and, using the <code>gaussians.py</code> script, generate a file containing the sum of the gaussians used for the biased potential <code>gaussian_sum_output.txt</code>, removing the first 9 lines that contain the initial biased potential:
+
+ ./gaussians.py HILLSPOT 9
+
+Then, plot the biased potential with the <code>contourplot.py</code> script:
+
+ ./contourplot.py
+
+This will generate the following interactive 3D plot (a 2D plot is also created: <code>gaussian_sum_contour.png</code>):
+
+[[File:Gaussian_sum.png|600px|thumb|left]]
+<div style="clear:both;"></div>
+
+You can set a cutoff for the z-axis, e.g., 0.05, to get a better look at the transition state region:
+
+ ./contourplot.py 0.05
+
+Taking a look at the biased potential from the initial MLFF training (step 0), the first MD (step 2), and the final MD (step 5), you can see how the configuration space has been explored:
+
+[[File:Gaussian_sum_TS_compare.png|1000px|thumb|left|In the initial MLFF training, only the initial potential well is well-explored, that on the lower right. This means that the other, second, well (</span><span style="color:#FFFF00; background-color:#808080; padding:4px;"><u>yellow ellipse</u></span>) is not well-described by the MLFF. Additionally, the transition state (<span style="color:#00B050"><u>green circle</u></span>) is barely visited. As a result, the MLFF breaks down fairly quickly, failing to describe the transition state during one transition and getting stuck in a new region outside of the trained space (cf. the spilling factor). The MLFF finds that a non-physical structure (<span style="color:#FFFFFF; background-color:#808080; padding:4px;"><u>white circle</u></span>) is the most stable. Once we take the structures that have higher spilling factors (likely those in the second potential and the transition state), the entire simulation becomes much more stable and the transition state is better described. Both wells become filled during the metadynamics run by the biased potential.]]
+<div style="clear:both;"></div>
+
+As a final exercise, you could try repeating steps 3-5, taking the structure from the second MD that have larger spilling factors, writing them to <code>POSCAR.interactive</code>, and retraining the MLFF with these a second time. Repeat this as many times as you would like to create an ever more stable MLFF describing the transition state. After a certain point, the wells will both be filled and the metadynamics run will be completed; after this, the MLFF will become more unstable again.
+
+== Practical hints ==
+* Make sure to set the mass of hydrogen to above 1, e.g., {{TAG|POMASS|12.011 4.0 35.453}}, rather than {{TAG|POMASS|12.011 1.0 35.453}}. This enables larger time steps for the MD simulation. 
+* We found that reducing the {{TAG|ANDERSEN_PROB}} to 0.05 from 0.1 improved stability (see [[Nuclephile Substitution CH3Cl - mMD3 | previous exercise]]).
+* It is crucial to reduce the hill height ({{TAG|HILLS_H}}) by an order of magnitude or more (e.g., 0.0005 instead of 0.005). This avoids being driven out of the reliably fitted energy surface. In a production run, it keeps the MLFF in the trained region for longer, stabilising the spilling factor. 
+* For long MLFF runs, it may be worth increasing {{TAG|HILLS_BIN}} to 100 to stay within the trained region for longer. This is only important for longer metadynamics simulations. You should also increase {{TAG|ML_ESTBLOCK|100}} and {{TAG|ML_OUTBLOCK|100}} in this case, so that the {{FILE|OUTCAR}} file does not become too big. 
+* Once you have a stable {{FILE|ML_FF}}, to improve the stability for longer MLFF runs, you should collect the positions for structures that are outside of the reliably fitted energy surface. These are those that have larger spilling factors. While continuing training (see [[#Step_4:_Refit_the_MLFF | step 4]] above), {{TAG|ML_NMDINT|1}} should be used and the Bayesian threshold set to the final value from the previous training runs {{TAG|ML_ICRITERIA|0}}.
+* If you find that your molecule is rotating too much or moving between cells, make sure that you have the {{FILE|PENALTYPOT}} file present. This is to restrain the molecule in place, precisely to stop this movement.
+
+== Download ==
+[[Media:Metadynamics_with_mlff.zip| Metadynamics_with_mlff.zip]]
+
+== Related tags and articles ==
+{{TAG|INTERACTIVE}}
+
+[[Metadynamics]],
+[[Metadynamics calculations]]
+
+
+-----
+
+[[Category:Howto]] [[Category:Machine-learned_force_fields]] [[Category:Molecular_dynamics]] [[Category:Advanced molecular-dynamics sampling]][[Category:Transition_states]]

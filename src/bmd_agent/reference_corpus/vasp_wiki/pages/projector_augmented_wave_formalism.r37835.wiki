@@ -1,0 +1,291 @@
+Close to a nucleus the valence orbitals oscillate rapidly, and representing those oscillations directly in plane waves would need an impractically large basis set. The projector-augmented-wave (PAW) method<ref name="bloechl:94"/> avoids that cost without giving up the all-electron description. The variational quantities are smooth ''pseudo-orbitals'' that a moderate plane-wave basis can represent; the exact orbitals are recovered from them by a linear transformation whose corrections are confined to spheres centered on the atoms. Inside those spheres, quantities are evaluated on radial grids, where rapid oscillation costs nothing.
+
+This page introduces the transformation and the partial waves it is built from (§ Basics of the PAW formalism), the three-term decomposition of the charge density that follows from it (§ Charge and overlap densities), the compensation charge that makes the long-range electrostatics correct on the plane-wave grid (§ The compensation or augmentation density), and the shape restoration that the Fock exchange and the many-body methods require on top of it (§ Shape restoration).
+
+== Basics of the PAW formalism  ==
+
+The PAW formalism is a generalization of ideas of both Vanderbilt-type<ref name="vander:90"/>
+ultrasoft-pseudopotentials<ref name="kresshaf:94"/> (USPP) and the
+linearized augmented-plane-wave<ref name="andersen:75"/> (LAPW) method. The method was first
+proposed and implemented by Blöchl<ref name="bloechl:94"/>. The formal relationship between Vanderbilt-type
+ultrasoft pseudopotentials and the PAW method has been derived by Kresse and
+Joubert<ref name="kressjoub:99"/>, and the generalization of the PAW method to noncollinear
+magnetism has been
+discussed by Hobbs, Kresse and Hafner<ref name="hobbs:00"/>.
+We summarize the basics of the PAW method below, following Refs. <ref name="bloechl:94"/>
+and <ref name="kressjoub:99"/>.
+
+Three sets of functions are needed, all of them belonging to one atom and one angular momentum channel. The composite index <math>\alpha</math> collects what identifies such a channel: the atomic site <math>\mathbf{R}_\alpha</math>, the angular momentum quantum numbers <math>l_\alpha</math> and <math>m_\alpha</math>, and a reference energy <math>\varepsilon_\alpha</math>. The three sets are the ''all-electron partial waves'' <math>\phi_\alpha</math>, the ''pseudo partial waves'' <math>\tilde\phi_\alpha</math>, and the ''projector functions'' <math>\tilde p_\alpha</math>. Each is defined below.
+
+In the PAW method the one-electron wavefunctions <math>\psi_{n\mathbf{k}}</math>, in the following called orbitals, are
+derived from the pseudo-orbitals <math>\widetilde{\psi}_{n\mathbf{k}}</math> by means of a
+linear transformation:
+
+::<math>
+|\psi_{n\mathbf{k}} \rangle = |\widetilde{\psi}_{n\mathbf{k}} \rangle +
+      \sum_{\alpha}(|\phi_{\alpha} \rangle - |\widetilde{\phi}_{\alpha} \rangle)
+                  \langle \widetilde{p}_{\alpha} |\widetilde{\psi}_{n\mathbf{k}} \rangle.
+</math>
+
+Read from right to left, the sum inspects the pseudo-orbital channel by channel with the projectors, and for each channel swaps the smooth partial wave for the correct all-electron one. Since <math>\phi_\alpha</math> and <math>\tilde\phi_\alpha</math> are equal outside the core radius, every term vanishes there and the transformation changes nothing in the interstitial region: it is exactly the map needed to turn the auxiliary quantities <math>\widetilde{\psi}_{n\mathbf{k}}</math> into the corresponding exact orbitals.
+
+The pseudo-orbitals
+<math>\widetilde{\psi}_{n\mathbf{k}}</math>, where <math>n</math> is the band index and <math>\mathbf{k}</math> the '''k'''-point index, are the variational quantities
+and are expanded in plane waves:
+
+::<math>
+\langle \mathbf{r} | \widetilde{\psi}_{n\mathbf{k}} \rangle =
+     \frac{1}{\Omega^{1/2}} \sum_{\mathbf{G}} C_{n\mathbf{kG}}
+                                                  e^{i(\mathbf{G}+\mathbf{k})\cdot \mathbf{r}} = e^{i\mathbf{k}\cdot \mathbf{r}}\tilde u_{n\mathbf k}(\mathbf r),
+</math>
+
+where <math>\Omega</math> is the volume of the Wigner-Seitz cell and <math>\tilde u_{n\mathbf k}(\mathbf r)</math> is the cell periodic part of the pseudo-orbital. In the interstitial region between the PAW spheres, the pseudo-orbitals are identical to the exact orbitals. Inside the spheres they are only a computational tool and an inaccurate approximation to the true orbitals, since not even the norm of the all-electron wavefunction is reproduced there — which is why the one-center terms discussed below cannot be dropped.
+
+The PAW method implemented in VASP exploits the [[Pseudopotentials|frozen-core approximation]],
+which is not an inherent characteristic of the PAW method, but has been made in all
+implementations so far.
+In the present case, the core electrons are also kept frozen in the configuration for
+which the PAW dataset was generated.
+
+The all-electron (AE) partial waves
+<math>\phi_{\alpha}</math> are solutions of the radial Schrödinger equation for a
+non-spinpolarized reference atom
+at a specific energy  <math>\varepsilon_\alpha</math> and for a specific angular momentum <math>l_\alpha</math>:
+
+::<math>
+ \langle \mathbf{r}|\phi_{\alpha}\rangle   = \frac{1}{|\mathbf{r}-\mathbf{R}_\alpha|}
+                   u_{\alpha}(|\mathbf{r}-\mathbf{R}_\alpha|)Y_{\alpha}(\widehat{\mathbf{r}-\mathbf{R}_\alpha})
+          = \frac{1}{|\mathbf{r}-\mathbf{R}_\alpha|} u_{l_\alpha\varepsilon_\alpha}(|\mathbf{r}-\mathbf{R}_\alpha|)\,
+                Y_{l_\alpha m_\alpha}(\widehat{\mathbf{r}-\mathbf{R}_\alpha}).
+</math>
+
+Here, the notation <math>\widehat{\mathbf{r}-\mathbf{R}_\alpha}</math> clarifies that
+the spherical harmonics <math>Y</math> depend on the orientation but not on
+the length of the vector <math>\mathbf{r}-\mathbf{R}_\alpha</math>, and they depend on the angular quantum numbers only, not on the reference energy.
+The radial component <math>u_{\alpha}</math> is independent of
+<math>m_\alpha</math>, since the partial waves are calculated for a spherical atom. Do not confuse the radial functions <math>u_{\alpha}(|\mathbf r|)</math> with the cell-periodic functions <math>\tilde u_{n\mathbf k}(\mathbf r)</math> of the previous equation; the two are unrelated.
+
+The pseudo partial
+waves <math>\widetilde{\phi}_{\alpha}</math> are equal to the AE partial waves outside a core
+radius <math>r_{c}</math> and match continuously onto <math>\phi_{\alpha}</math> inside the core radius:
+
+::<math>
+ \langle \mathbf{r}|\widetilde{\phi}_{\alpha}\rangle   = \frac{1}{|\mathbf{r}-\mathbf{R}_\alpha|}
+                   \widetilde{u}_{\alpha}(|\mathbf{r}-\mathbf{R}_\alpha|)
+                  Y_{\alpha}(\widehat{\mathbf{r}-\mathbf{R}_\alpha})
+          = \frac{1}{|\mathbf{r}-\mathbf{R}_\alpha|}
+            \widetilde{u}_{l_\alpha\varepsilon_\alpha}(|\mathbf{r}-\mathbf{R}_\alpha|)\,
+                Y_{l_\alpha m_\alpha}(\widehat{\mathbf{r}-\mathbf{R}_\alpha}).
+</math>
+
+The core radius <math>r_{c}</math> is usually chosen approximately around half the nearest
+neighbor distance.
+
+Finally, the projector functions <math>\widetilde{p}_{\alpha}</math> are dual to the pseudo partial
+waves,
+
+::<math>
+\langle \widetilde{p}_{\alpha} | \widetilde{\phi}_{\beta} \rangle = \delta_{\alpha\beta},
+</math>
+
+which is the property that makes the coefficients in the transformation above pick out one channel each.
+
+== Charge and overlap densities  ==
+
+Starting from the completeness relations it is possible to show that, in the PAW
+method, the total charge density (or more precisely the overlap density) related to two orbitals <math>\psi_{n\mathbf{k}}</math> and <math>\psi_{m\mathbf{k}}</math>
+
+::<math>
+n(\mathbf{r}) = \psi^{\ast}_{n\mathbf{k}}(\mathbf{r})\,\psi_{m\mathbf{k}}(\mathbf{r})
+</math>
+
+can be rewritten as  (for details we refer to Ref. <ref name="bloechl:94"/>):
+
+::<math>
+n(\mathbf{r}) =  \widetilde{n}  (\mathbf{r}) -
+ \widetilde{n}^{1}(\mathbf{r})+
+n^{1}(\mathbf{r}).
+</math>
+
+The three terms are what makes the method practical: <math>\widetilde{n}</math> is smooth and is evaluated on the plane-wave grid, while the two one-center terms are evaluated on radial grids inside the augmentation spheres and vanish outside them.
+
+Here, the constituent charge densities are defined as:
+
+::<math>
+\widetilde{n}(\mathbf{r}) =   \langle \widetilde{\psi}_{n\mathbf{k}}| \mathbf{r}\rangle\langle  \mathbf{r}
+| \widetilde{\psi}_{m\mathbf{k}} \rangle
+</math>
+
+::<math>
+\widetilde{n}^{1}(\mathbf{r}) =  \sum_{\alpha, \beta}
+                                       \widetilde{\phi}^\ast_\alpha(\mathbf{r})
+                                       \widetilde{\phi}_\beta (\mathbf{r})
+                                       \langle\widetilde{\psi}_{n\mathbf{k}}|\widetilde{p}_\alpha\rangle
+                                       \langle\widetilde{p}_\beta| \widetilde{\psi}_{m\mathbf{k}}\rangle
+</math>
+
+::<math>
+n^{1}(\mathbf{r}) =  \sum_{\alpha, \beta}
+                                       \phi^\ast_\alpha(\mathbf{r})
+                                       \phi_\beta (\mathbf{r})
+                                       \langle\widetilde{\psi}_{n\mathbf{k}}|\widetilde{p}_\alpha\rangle
+                                       \langle\widetilde{p}_\beta| \widetilde{\psi}_{m\mathbf{k}}\rangle.
+</math>
+
+The quantities with a superscript 1 are the one-center quantities. One can usually
+drop the complex conjugation for the partial waves, since they are real-valued,
+and the indices <math>\alpha</math> and <math>\beta</math> are restricted to those pairs that belong to the same atom,
+<math>\mathbf{R}_\alpha=\mathbf{R}_\beta</math>.
+
+The decomposition works because of a cancellation: for a complete set of projectors the one-center pseudo
+charge density <math>\widetilde{n}^{1}</math> is exactly
+identical to <math>\widetilde{n}</math> within the augmentation spheres. Inside a sphere the first two terms therefore cancel and the density reduces to the all-electron result <math>n^{1}</math>; outside, both one-center terms vanish and the density is the smooth <math>\widetilde{n}</math>. Each region is treated on the grid that suits it.
+
+Furthermore, it is often necessary to define <math>\rho_{\alpha\beta}</math>, the occupancies of each
+augmentation channel <math>(\alpha,\beta)</math> inside each PAW sphere. These  are calculated from the pseudo-orbitals
+by applying the projector functions and summing over all bands
+
+::<math>
+\rho_{\alpha\beta} = \sum_{n\mathbf{k}}
+               f_{n\mathbf{k}} \langle \widetilde{\psi}_{n\mathbf{k}} | \widetilde{p}_{\alpha} \rangle
+                   \langle \widetilde{p}_{\beta} | \widetilde{\psi}_{n\mathbf{k}} \rangle,
+</math>
+
+where the occupancy <math>f_{n\mathbf{k}}</math> is one for occupied orbitals
+and zero for unoccupied one-electron orbitals.
+
+== The compensation or augmentation density ==
+
+The decomposition above is exact, but it leaves one problem. The PAW method would yield exact overlap densities on the plane-wave grid
+if the density were calculated as
+
+::<math>
+n(\mathbf{r})= \langle \widetilde{\psi}_{n\mathbf{k}}| \mathbf{r}\rangle\langle  \mathbf{r}
+| \widetilde{\psi}_{m\mathbf{k}} \rangle + \sum_{\alpha, \beta}
+(
+                                       \phi^\ast_\alpha(\mathbf{r})
+                                       \phi_\beta (\mathbf{r})
+ -
+                                       \widetilde{\phi}^\ast_\alpha(\mathbf{r})
+                                       \widetilde{\phi}_\beta (\mathbf{r})
+)
+                                      \langle\widetilde{\psi}_{n\mathbf{k}}|\widetilde{p}_\alpha\rangle
+                                       \langle\widetilde{p}_\beta| \widetilde{\psi}_{m\mathbf{k}}\rangle
+</math>
+
+In practice, the second term changes far too rapidly in real space
+to be represented on a plane-wave grid. And since not even the norm
+of the pseudo-orbitals agrees with the norm of the all-electron orbitals, it does not suffice to calculate
+Hartree or exchange energies from the pseudo densities alone: those energies are long-ranged, so what happens inside a sphere is felt outside it.
+
+The way out is to add a third quantity, the compensation density <math>\widehat{n}</math>, whose purpose is to approximate
+
+::<math>
+Q_{\alpha,\beta}({\mathbf r})    =      \phi^\ast_\alpha(\mathbf{r})
+                                       \phi_\beta (\mathbf{r})
+ -
+                                       \widetilde{\phi}^\ast_\alpha(\mathbf{r})
+                                       \widetilde{\phi}_\beta (\mathbf{r}).
+</math>
+
+This compensation density (sometimes also referred to as augmentation density) is chosen such that the sum of the pseudo charge density
+and the compensation density
+<math>\widetilde{n}^{1} + \widehat{n}</math> has exactly the same moments as the exact
+density <math>n^{1}</math> within each augmentation sphere centered at the position
+<math>\mathbf{R}_\alpha</math>. This requires that
+
+::<math>
+\int_{\Omega_{r}}[n^{1}(\mathbf{r}) -\widetilde{n}^{1}(\mathbf{r}) -
+                       \widehat{n}(\mathbf{r})]|\mathbf{r}-\mathbf{R}_\alpha|^{L}
+                     Y_{LM}^{\ast}(\widehat{\mathbf{r}-\mathbf{R}_\alpha})\,d\mathbf{r} = 0
+
+\quad \forall \quad \mathbf{R}_\alpha, L, M.
+</math>
+
+Matching the moments is enough for the electrostatics: it implies that the potential
+originating from <math>n^{1}</math>
+is identical to that of <math>\widetilde{n}^{1}+\widehat{n}</math> outside
+the augmentation sphere, which is all the rest of the cell can see.
+Details on the construction of the compensation charge density in the VASP program
+have been published elsewhere<ref name="kressjoub:99"/>. The compensation charge density is written in the form
+of a one-center multipole expansion
+
+::<math>
+  \widehat{n}(\mathbf{r}) = \sum_{\alpha,\beta,LM} \widehat{Q}_{\alpha,\beta}^{LM}(\mathbf{r})\,
+              \langle \widetilde{\psi}_{n\mathbf{k}} | \widetilde{p}_{\alpha} \rangle
+              \langle \widetilde{p}_{\beta} | \widetilde{\psi}_{m\mathbf{k}} \rangle,
+</math>
+
+where the functions <math>\widehat{Q}_{\alpha\beta}^{LM}(\mathbf{r})</math> are given by
+::<math>
+\widehat{Q}_{\alpha \beta}^{LM}(\mathbf{r}) = q_{\alpha \beta}^{LM}\,g_{L}(|\mathbf{r}-\mathbf{R}_\alpha|)
+Y_{LM}(\widehat{\mathbf{r}-\mathbf{R}_\alpha}).
+</math>
+Here, the moment <math>L</math> of the function  <math>g_L(r)</math> is equal to 1, and the quantity <math>q_{\alpha\beta}^{LM}</math>
+is defined in Eq. (25) of Ref. <ref name="kressjoub:99"/>.
+
+== Shape restoration ==
+
+The compensation density of the previous section restores the ''moments'' of the all-electron
+density exactly, and nothing more. That is sufficient for the Hartree and the
+exchange-correlation term of density-functional theory (DFT), where the one-center terms are
+evaluated accurately on radial grids. For the Fock exchange and for the methods of
+[[:Category:Many-body perturbation theory|many-body perturbation theory]] — such as the
+[[GW approximation of Hedin's equations|GW approximation]], the
+[[ACFDT/RPA calculations|random-phase approximation]] (RPA) and
+[[MP2|second-order Møller-Plesset perturbation theory]] (MP2) — the one-center terms are
+presently not implemented. The moments alone are then not enough, because the shape of the
+density inside the augmentation sphere enters the result as well. The resulting errors are
+sizable for 3''d'' and 4''f'' elements.
+
+''Shape restoration'' removes this restriction by adding a set of further radial functions
+<math>\Delta g_{Ln}</math> to the compensation charge. When it is active, the compensation
+function <math>\widehat{Q}_{\alpha\beta}^{LM}</math> of the previous section is replaced by
+
+::<math>
+\widehat{Q}_{\alpha\beta}^{LM}(\mathbf{r}) = \left[\, q_{\alpha\beta}^{LM}\, g_{L}(r)
+ + \sum_{n=1}^{N} c_{\alpha\beta}^{Ln}\, \Delta g_{Ln}(r) \,\right]
+Y_{LM}(\widehat{\mathbf{r}-\mathbf{R}_\alpha}).
+</math>
+
+Here, <math>r</math> is the distance from the center of the augmentation sphere,
+<math>N</math> is the number of shape-restoring functions used for each <math>L</math>, and
+the sum over <math>L</math> runs up to a maximum value. The maximum <math>L</math> and the
+number <math>N</math> are controlled by {{TAG|LMAXFOCKAE}} and {{TAG|NMAXFOCKAE}}. Where
+shape restoration is not applied, the compensation charge of the previous section applies
+unchanged.
+
+Each <math>\Delta g_{Ln}</math> is built to carry no multipole moment: its <math>L</math>-th
+moment vanishes, in contrast to <math>g_L</math>, whose <math>L</math>-th moment is 1. The
+added charge therefore does not disturb the moments that <math>g_L</math> already restores
+exactly, and corrects only the ''shape'' of the density within the sphere. This is what the
+name of the method refers to, and it is the reason the two contributions can be superposed
+without interfering.
+
+The functions are combinations of <math>N+2</math> spherical Bessel functions
+<math>j_L</math>, two of whose coefficients are consumed by the vanishing-moment and
+vanishing-derivative conditions. Their wave vectors are the zeros of <math>j_L</math> at the
+augmentation-sphere radius, so that every shape-restoring function vanishes together with its
+radial derivative at the sphere boundary and does not disturb the density in the interstitial
+region. Where more than one function per <math>L</math> is used, the additional functions are
+constructed to be mutually orthogonal, and all of them are normalized to unit square norm so
+that they can be applied in the same way as projector functions. The coefficients
+<math>c_{\alpha\beta}^{Ln}</math> follow from a square system of equations that matches the
+Bessel transform of the difference between the all-electron and the pseudo density exactly at
+<math>N</math> selected wave vectors. Shape restoration is discussed in detail in
+Refs. {{cite|shishkin:prb:2006}} and {{cite|unzog:prb:2022}}.
+
+== Related tags and articles ==
+{{TAG|LMAXMIX}}, {{TAG|LMAXFOCK}}, {{TAG|LMAXFOCKAE}}, {{TAG|NMAXFOCKAE}}, {{TAG|QMAXFOCKAE}}, {{TAG|LFOCKAEDFT}}, {{TAG|LFOCKSTD}}, [[Pseudopotentials]]
+
+== References ==
+<references>
+<ref name="vander:90">[https://doi.org/10.1103/PhysRevB.41.7892 D. Vanderbilt, Phys. Rev. B 41, 7892 (1990).]</ref>
+<ref name="kresshaf:94">[http://iopscience.iop.org/article/10.1088/0953-8984/6/40/015/pdf G. Kresse, and J. Hafner, J. Phys.: Condens. Matter 6, 8245 (1994). ]</ref>
+<ref name="andersen:75">[https://doi.org/10.1103/PhysRevB.12.3060 O.K. Andersen, Phys. Rev. B 12, 3060 (1975). ]</ref>
+<ref name="bloechl:94">[https://doi.org/10.1103/PhysRevB.50.17953 P.E. Blöchl, Phys. Rev. B 50, 17953 (1994). ]</ref>
+<ref name="kressjoub:99">[https://doi.org/10.1103/PhysRevB.59.1758 G. Kresse, and D. Joubert, Phys. Rev. B  59, 1758 (1999). ]</ref>
+<ref name="hobbs:00">[https://doi.org/10.1103/PhysRevB.62.11556 D. Hobbs, G. Kresse, and J. Hafner, Phys. Rev. B. 62 (2000). ]</ref>
+</references>
+
+[[Category:Electronic minimization]][[Category:Projector-augmented-wave method]][[Category:Theory]]

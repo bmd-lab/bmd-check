@@ -1,0 +1,15 @@
+{{DISPLAYTITLE:KPOINTS_ELPH}}
+{{FILE|KPOINTS_ELPH}} is an optional input file to perform an additional one-shot calculation after self-consistency is reached in the context of an electron-phonon calculation. The format is the same as for the {{FILE|KPOINTS}} file. VASP first performs a self-consistent calculation using the '''k''' points specified in the {{FILE|KPOINTS}} file and then performs an additional one-shot calculation to obtain the Kohn&ndash;Sham orbitals and eigenenergies at the '''k''' points specified in the {{FILE|KPOINTS_ELPH}} file.
+
+The {{FILE|KPOINTS}} file must contain a uniform '''k''' mesh, when the {{FILE|KPOINTS_ELPH}} file should be used afterward.
+
+Alternatively, it is possible to choose the k-point mesh by specifying {{TAG|ELPH_KSPACING}} which determines the smallest allowed spacing between <b>k</b> points in units of <math>\AA^{-1}</math>.
+{{Available|6.5.0}}
+
+== Related tags and sections ==
+* {{TAG|ELPH_RUN}}
+* {{FILE|KPOINTS}}
+* {{FILE|KPOINTS_OPT}}
+* {{TAG|ELPH_KSPACING}}
+
+[[Category:Input files]][[Category:Electron-phonon_interactions]]

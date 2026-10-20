@@ -1,0 +1,13 @@
+{{DISPLAYTITLE:CSVR_PERIOD}}
+{{TAGDEF|CSVR_PERIOD|[real]|0}}
+
+Description: Time scale of the [[CSVR thermostat|CSVR thermostat]] in fs. 
+
+----
+
+{{TAG|CSVR_PERIOD}} sets the time scale (<math>\tau</math>) of the [[CSVR thermostat|CSVR thermostat]]. It is expressed in terms of the number of MD steps and must be interpreted in combination with the time step set by {{TAG|POTIM}}.  Typically, {{TAG|CSVR_PERIOD}} should take the values corresponding to 2-2000 fs, whereby the smaller the value, the more aggressive the thermostating. The special setting {{TAG|CSVR_PERIOD}}=0 generates the NVE ensemble. 
+
+== Related tags and articles ==
+{{TAG|POTIM}},  [[CSVR thermostat]]
+----
+[[Category:Molecular dynamics]][[Category:Thermostats]]

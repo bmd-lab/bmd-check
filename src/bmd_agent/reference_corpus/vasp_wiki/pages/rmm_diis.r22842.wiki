@@ -1,0 +1,56 @@
+The implementation of the Residual Minimization Method with Direct Inversion in the Iterative Subspace (RMM-DIIS) in {{VASP}}{{cite|kresse:cms:1996}}{{cite|kresse:prb:96}} is based on the original work of Pulay:{{cite|pulay:cpl:1980}}{{cite}}
+
+* The procedure starts with the evaluation of the preconditioned residual vector for some selected orbital <math>\psi^0_m</math>:
+::<math>
+K \vert R^0_m \rangle = K \vert R(\psi^0_m) \rangle
+</math>
+:where <math>K</math> is the [[preconditioning]] function, and the residual is computed as:
+::<math>\vert R(\psi) \rangle = (H-\epsilon_{\rm app}) \vert \psi \rangle
+</math>
+:with
+::<math>
+\epsilon_{\rm app} = \frac{\langle \psi \vert H \vert \psi \rangle}{\langle \psi \vert S \vert \psi \rangle}
+</math>
+* Then a Jacobi-like trial step is taken in the direction of the vector:
+::<math> \vert \psi^1_m \rangle = \vert \psi^0_m \rangle + \lambda K \vert R^0_m \rangle
+</math>
+: and a new residual vector is determined:
+::<math>\vert R^1_m \rangle = \vert R(\psi^1_m) \rangle
+</math>
+* Next a linear combination of the initial orbital <math>\psi^0_m</math> and the trial orbital <math>\psi^1_m</math>
+::<math>\vert \bar{\psi}^M \rangle = \sum^M_{i=0} \alpha_i \vert \psi^i_m \rangle, \,\, M=1 </math>
+:is sought, such that the norm of the residual vector is minimized. Assuming linearity in the residual vector:
+::<math>\vert \bar{R}^M \rangle = \vert R(\bar{\psi}^M) \rangle = \sum^M_{i=0} \alpha_i \vert R^i_m \rangle
+</math>
+: this requires the minimization of:
+::<math>\frac{\sum_{ij} \alpha_i^* \alpha_j \langle R^i_m \vert R^j_m \rangle}{\sum_{ij}\alpha_i^* \alpha_j \langle \psi^i_m \vert S \vert \psi^j_m \rangle}
+</math>
+: with respect to <math>{\{\alpha_i | i=0,..,M\}}</math>.
+: This step is usually called ''direct inversion of the iterative subspace'' (DIIS).
+* The next trial step (<math>M=2</math>) starts from <math>\bar{\psi}^1</math>, along the direction <math>K \bar{R}^1</math>. In each iteration <math>M</math> is increased by 1, and a new trial orbital:
+::<math>\vert \psi^M_m \rangle = \vert \bar{\psi}^{M-1} \rangle + \lambda K \vert \bar{R}^{M-1} \rangle
+</math>
+: and its corresponding residual vector <math>R(\psi^M_m)</math> are added to the iterative subspace, that is subsequently inverted to yield <math>\bar{\psi}^M</math>.
+: The algorithm keeps iterating until the norm of the residual <math>\bar{R}^M</math> has dropped below a certain threshold, or the maximum number of iterations per orbital has been reached ({{TAG|NRMM}}).
+* Replace <math>\psi^0_m</math> by <math>\bar{\psi}^M</math> and move on to start work on the next orbital, ''e.g.'' <math>\psi^0_{m+1}</math>.
+
+The size of the trial step <math>\lambda</math> is a critical value for the stability of the algorithm. We have found that a reasonable choice for the trial step can be obtained from the minimization of the Rayleigh quotient along the search direction in ''the first step'', this optimal <math>\lambda</math> is then used for a particular orbital until the algorithm moves on to the next orbital.{{cite|kresse:cms:1996}}{{cite|kresse:prb:96}}
+
+As mentioned before, the optimization of an orbital is stopped when either the maximum number of iterations per orbital ({{TAG|NRMM}}), or a certain convergence threshold has been reached. The latter may be fine-tuned by means of the {{TAG|EBREAK}}, {{TAG|DEPER}}, and {{TAG|WEIMIN}} tags. Note: we do not recommend you to do so! Rather rely on the defaults instead.
+
+The [[RMM-DIIS]] algorithm works on a "per-orbital" basis and as such it trivially parallelizes over orbitals, which is the default [[Parallelization| parallelization strategy of VASP]]. However, to cast some of the operations involved into the form of ''matrix-matrix multiplications'' and leverage the performance of BLAS3 library calls, the [[RMM-DIIS]] implementation in VASP works on {{TAG|NSIM}} orbitals simultaneously.
+
+Note that, in the [[Self-consistency_cycle|self-consistency cycle]] of {{VASP}}, subspace rotation and [[RMM-DIIS]] refinement of the orbitals alternate.
+Furthermore, {{VASP}} re-orthonormalizes the orbitals after the [[RMM-DIIS]] refinement step.
+It should be emphasized that, in principle, the [[RMM-DIIS]] method should also converge without any explicit subspace diagonalization and/or re-orthonormalization.
+However, in our experience their inclusion speeds up convergence so substantially that it shortens the time-to-solution of most calculations, even though these operations scale as <math>O(N^3)</math>.{{cite|kresse:cms:1996}}{{cite|kresse:prb:96}}
+
+A drawback of the [[RMM-DIIS]] method is that it always converges toward the eigenstates which are closest to the initial trial orbitals. This leads, in principle, to serious problems because there is no guarantee of convergence to the correct ground state at all: if the initial set of orbitals does not ‘‘span’’ the ground state it might happen that in the final solution some eigenstates are ‘‘missing’’. To avoid this, the initialization of the orbitals must be done with great care.
+Therefore, either the number of non-selfconsistent cycles at the start of [[Self-consistency_cycle|self-consistency cycle]] is chosen to be large ({{TAG|NELMDL}} = 12, for {{TAG|ALGO}} = VeryFast), or the non-selfconsistent cycles are done with the [[Blocked-Davidson algorithm|blocked-Davidson algorithm]] before switching over to the use of the [[RMM-DIIS]] ({{TAG|ALGO}} = Fast).
+
+The [[RMM-DIIS]] is approximately a factor of 1.5-2 faster than the [[Blocked-Davidson algorithm|blocked-Davidson algorithm]], but less robust.
+
+== References ==
+<references/>
+----
+[[Category:Electronic minimization]][[Category:Theory]]

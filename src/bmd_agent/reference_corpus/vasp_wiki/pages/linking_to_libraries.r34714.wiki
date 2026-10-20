@@ -1,0 +1,213 @@
+The link is specified by linker variables and then the linker is invoked as:
+ $(FCL) -o vasp  ..all-objects.. $(LLIBS)
+
+It is mandatory to link VASP to a library for Fast-Fourier transformations (FFT), the lib library, the parser library, and the linear algebra libraries BLAS, LAPACK, and scaLAPACK, as well as for the OpenACC GPU port [https://developer.nvidia.com/hpc-sdk NVIDIA HPC-SDK] (≧21.2). Other libraries, e.g., the HDF5 library and Wannier90, are optional.
+
+= Linker variables =
+
+=== FCL ===
+:The command that invokes the linker. In most cases:
+:<pre>FCL=$(FC) [+ some options]</pre>
+
+:*Using the Intel Composer suite (Fortran compiler + MKL libraries), typically:
+:<pre>FCL=$(FC) -mkl=sequential</pre>
+
+=== LLIBS ===
+:Specify libraries and/or objects to be linked against, in the usual way:
+:<pre>LLIBS=[-L/path/to/installation/lib -llibrary] [/path/to/file/library.a] [/path/to/file/object.o]</pre>
+
+:One has to specify several numerical libraries (BLAS, LAPACK or scaLAPACK, etc).
+
+:For instance, using the Intel Composer suite (and compiling with <code>CPP_OPTIONS= .. -DscaLAPACK ..</code>) this yields:
+
+<blockquote>
+<pre>
+MKL_PATH   = $(MKLROOT)/lib/intel64
+BLACS      = -lmkl_blacs_intelmpi_lp64
+SCALAPACK  = $(MKL_PATH)/libmkl_scalapack_lp64.a $(BLACS)
+LLIBS      += $(SCALAPACK)
+</pre>
+</blockquote>
+
+The list of default objects required to compile VASP is given by the variable <code>SOURCE</code> in the <code>/path/to/vasp.X.X.X/src/.objects</code> file.
+Objects to be added to this list can be specified in <code>makefile.include</code> by means of:
+<pre>OBJECTS= .. your list of objects ..</pre>
+In practice, several objects ''must'' be added in this manner, e.g., [[#Fast-Fourier transformation (mandatory)|FFT libraries]].
+
+= Libraries for linear algebra (mandatory) =
+
+To build VASP, you need to link against BLAS, LAPACK, and scaLAPACK. Some compiler suites, e.g., the Intel Composer suite, pre-package these libraries, so there is no need to download and build them yourself.
+
+* Using the Intel Composer suite, linking against the BLAS, LAPACK, and scaLAPACK libraries that are part of MKL is done as follows:
+<blockquote>
+<pre>
+FCL        = mpiifort -mkl=sequential
+
+MKL_PATH   = $(MKLROOT)/lib/intel64
+BLAS       =
+LAPACK     =
+BLACS      = -lmkl_blacs_intelmpi_lp64
+SCALAPACK  = $(MKL_PATH)/libmkl_scalapack_lp64.a $(BLACS)
+
+LLIBS     += $(SCALAPACK) $(LAPACK) $(BLAS)
+</pre>
+</blockquote>
+
+: In case you use Intel's compilers with OpenMPI instead of Intel-MPI replace the <code>BLACS</code> line above by:
+:<pre>BLACS       = -lmkl_blacs_openmpi_lp64</pre>
+
+* For [https://developer.nvidia.com/hpc-sdk NVIDIA HPC-SDK] (>=21.2) that is:
+<blockquote>
+<pre>
+BLAS       = -lblas
+LAPACK     = -llapack
+SCALAPACK  = -Mscalapack
+
+LLIBS     += $(SCALAPACK) $(LAPACK) $(BLAS)
+</pre>
+</blockquote>
+
+* When you have built BLAS, LAPACK, and scaLAPACK yourself, you should link against the corresponding shared-objects (<code>lib*.so</code>) as follows:
+<blockquote>
+<pre>
+LIBDIR     = /path/to/my/libs/
+BLAS       = -L$(LIBDIR) -lrefblas
+LAPACK     = -L$(LIBDIR) -ltmglib -llapack
+SCALAPACK  = -L$(LIBDIR) -lscalapack
+
+LLIBS     += $(SCALAPACK) $(LAPACK) $(BLAS)
+</pre>
+</blockquote>
+
+: To link against a static library object (<code>*.a</code>), for instance for scaLAPACK, replace the <code>SCALAPACK</code> line above by:
+:<pre>SCALAPACK  = $(LIBDIR)/libscalapack.a</pre>
+
+= fftw library (mandatory) =
+
+This library provides routines to perform Fast Fourier transformations (FFTs).
+
+=== OBJECTS ===
+:Add the objects to be compiled (or linked against) that provide the FFTs (may include static libraries of objects <code>*.a</code>).
+:Most probably you are building with <code>-DMPI</code> and want use the FFTs from some <tt>fftw</tt> library (recommended). In that case:
+:<pre>OBJECTS = fftmpiw.o fftmpi_map.o fftw3d.o fft3dlib.o</pre> 
+
+=== INCS ===
+:For the <tt>fftw</tt> library, i.e.,
+:<pre>OBJECTS= .. fftw3d.o fftmpiw.o ..</pre>
+:the variable <code>INCS</code> must be set to include the directory that holds <code>fftw3.f</code>:
+:<pre>INCS+=-I/path/to/fftw/installation</pre>
+:This is needed because <code>fftw3d.F</code> and <code>fftmpiw.F</code> include <code>fftw3.f</code>.
+{{NB|mind| If <code>INCS</code> for <tt>fftw</tt> library is not set, then <code>fftw3.f</code> has to be present in <code>/path/to/vasp.X.X.X/src</code>.|:}}
+
+Common choices are:
+
+* When building with the Intel Composer suite it is best to link against the MKL <tt>fftw</tt> wrappers of Intel's FFTs:
+<blockquote>
+<pre>
+FCL = $(FC) -mkl=sequential
+
+OBJECTS = fftmpiw.o fftmpi_map.o fftw3d.o fft3dlib.o
+INCS   += -I$(MKLROOT)/include/fftw
+</pre>
+</blockquote>
+
+* To explicitly link against an <tt>fftw</tt> library (in this case <tt>fftw-3.3.4</tt>):
+<blockquote>
+<pre>
+OBJECTS = fftmpiw.o fftmpi_map.o fftw3d.o fft3dlib.o
+FFTW       ?= /path/to/your/fftw-3.3.4
+LLIBS      += -L$(FFTW)/lib -lfftw3
+INCS       += -I$(FFTW)/include
+</pre>
+</blockquote>
+
+* For other configurations, please take lead from the <code>makefile.include.your_choice</code> files in <tt>/path/to/vasp.x.x.x/arch</tt> or look at the {{FILE|makefile.include}}.
+
+== Special rules for the optimization level of FFT related objects ==
+
+Based on past experience the optimization level for the compilation of the FFT-related objects is set explicitly.
+This is done as follows:
+
+ OBJECTS_O1 += fft3dfurth.o fftw3d.o fftmpi.o fftmpiw.o
+ OBJECTS_O2 += fft3dlib.o
+
+= lib library (mandatory) =
+
+The source of this library is included in the VASP distribution. The following variables are related to its configuration:
+
+=== CPP_LIB ===
+:The command to invoke the precompiler. In most cases, it is set to:
+:<pre>CPP_LIB=$(CPP)</pre>
+
+=== FC_LIB ===
+:The command to invoke your Fortran compiler. Usually, set to:
+:<pre>FC_LIB=$(FC)</pre>
+{{NB|mind| The library can be compiled without MPI support, i.e., when <code>FC{{=}}mpif90</code>, FC_LIB may specify a Fortran compiler without MPI support, e.g.,<code>FC_LIB{{=}}ifort</code>.|:}}
+
+=== FFLAGS_LIB ===
+:Fortran compiler flags, including a specification of the level of optimization. In most cases:
+:<pre>FFLAGS_LIB=-O1</pre>
+
+=== FREE_LIB ===
+:Specifies the options that the Fortran compiler requires to accept free-form source layout, without line-length limitation. In most cases, it will suffise to set:
+:<pre>FREE_LIB=$(FREE)</pre>
+
+=== CC_LIB ===
+:The command to invoke your C compiler, e.g., gcc, icc, etc.
+{{NB|mind|The <tt>lib</tt> library can be compiled without MPI support.|:}}
+
+=== CFLAGS_LIB ===
+:C compiler flags, including a specification of the level of optimization. In most cases:
+:<pre>CFLAGS_LIB=-O</pre>
+
+=== OBJECTS_LIB ===
+:List of "non-standard" objects to be added to the library. In most cases:
+:<pre>OBJECTS_LIB= linpack_double.o</pre>
+
+:When compiling VASP with [[Precompiler options#-Duse_shmem|-Duse_shmem]], one has to add <code>getshmem.o</code> as well, i.e., add the following line:
+:<pre>OBJECTS_LIB+= getshmem.o</pre>
+
+= parser library (mandatory) =
+
+The source of this library is included in the VASP distribution. The following variables are related to its configuration:
+
+=== CXX_PARS ===
+:The command to invoke your C++ compiler, e.g., g++, icpc, etc.
+
+The <tt>parser</tt> needs to be linked against a ''C++ Standard'' library.
+If this is not already part of the definition of <code>FCL</code> it can be added to the [[Compiler options|compiler option]] <code>LLIBS</code>.
+When using the Intel Composer suite this would amount to:
+
+ LLIBS += -lstdc++
+
+= QD library =
+
+The QD library is included in [https://developer.nvidia.com/hpc-sdk NVIDIA HPC SDK] ≧ 21.2 and supports quadruple precision arithmetic.
+Add the following lines to your {{FILE|makefile.include}}:
+
+ NVROOT     ?= /path/to/nvidia/hpc_sdk/Linux_x86_64/version
+ QD         ?= $(NVROOT)/compilers/extras/qd
+ LLIBS      += -L$(QD)/lib -lqdmod -lqd
+ INCS       += -I$(QD)/include/qd
+{{NB|tip|The following line might help to find the NVIDIA root:}} 
+ NVROOT      =$(shell which nvfortran | awk -F /compilers/bin/nvfortran '{ print $$1 }')
+{{NB|important|As of [https://developer.nvidia.com/hpc-sdk NVIDIA HPC SDK] {{=}} 21.2, the library path of the QD library needs to be added manually to the system environment:}}
+ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(NVROOT)/compilers/extras/qd/lib
+
+= Optional libraries =
+
+See [[Makefile.include#Customize|how to customize the makefile.include file]] to find an overview of optional libraries.
+
+== Related articles ==
+[[Installing VASP.6.X.X]],
+[[makefile.include]],
+[[Compiler options]],
+[[Precompiler options]],
+[[GPU ports of VASP]],
+[[Toolchains]],
+[[Validation tests]],
+[[Known issues]]
+
+----
+
+[[Category:VASP]][[Category:Installation]][[Category:Performance]][[Category:GPU]]

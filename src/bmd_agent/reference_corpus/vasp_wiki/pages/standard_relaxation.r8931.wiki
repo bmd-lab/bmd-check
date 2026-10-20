@@ -1,0 +1,9 @@
+==Used INCAR Tags ==
+{{TAG|ANDERSEN_PROB}}, {{TAG|EDIFF}}, {{TAG|EDIFFG}}, {{TAG|ENMAX}}, {{TAG|IBRION}}, {{TAG|ISMEAR}}, {{TAG|MDALGO}}, {{TAG|NSW}}, {{TAG|POTIM}}, {{TAG|SIGMA}}, {{TAG|SYSTEM}}, {{TAG|TEBEG}}, {{TAG|TEEND}}
+
+== Download ==
+[http://www.vasp.at/vasp-workshop/examples/h2o_on_tio2.tgz h2o_on_tio2.tgz, sub-folder std_relaxation]
+----
+[[VASP_example_calculations|To the list of examples]] or to the [[The_VASP_Manual|main page]]
+
+<!-- [[Category:Examples]] -->

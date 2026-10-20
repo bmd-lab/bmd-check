@@ -1,0 +1,69 @@
+{|cellpadding="5" cellspacing="15" style="width: 100%; border-spacing: 15px;"
+|class="vasp-dark-link-panel"  style="background-color:var(--vpurple-bg); --box-emph-color: var(--vpurple);"| [[Welcome|Take a tour]] ||class="vasp-dark-link-panel"  style="background-color:var(--vpurple-bg); --box-emph-color: var(--vpurple);"|[[Installing VASP.6.X.X|Install VASP]] ||class="vasp-dark-link-panel"  style="background-color:var(--vpurple-bg); --box-emph-color: var(--vpurple);"| [https://www.vasp.at/sign_in/registration_form/ Get a license]
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vred-bg); --box-emph-color: var(--vred);"| [[Changelog|Release notes]] ||class="vasp-dark-link-panel" style="background-color:var(--vred-bg); --box-emph-color: var(--vred);"| [https://www.vasp.at VASP website and news] ||class="vasp-dark-link-panel" style="background-color:var(--vred-bg); --box-emph-color: var(--vred);"| [https://www.vasp.at/forum/ Forum]
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vcyan-bg); --box-emph-color: var(--vcyan);"|[https://www.vasp.at/learn/ Learn], [[:Category:Examples|examples]], [[:Category:Tutorials|Wiki tutorials]]  ||class="vasp-dark-link-panel" style="background-color:var(--vcyan-bg); --box-emph-color: var(--vcyan);"| {{py4vasp}} ||class="vasp-dark-link-panel" style="background-color:var(--vcyan-bg); --box-emph-color: var(--vcyan);"| [https://www.vasp.at/sign_in/portal Portal]
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vblue-bg); --box-emph-color: var(--vblue);"| [[Known issues]] ||class="vasp-dark-link-panel" style="background-color:var(--vblue-bg); --box-emph-color: var(--vblue);"| [https://www.vasp.at/tutorials/latest/ Tutorials]||class="vasp-dark-link-panel" style="background-color:var(--vblue-bg); --box-emph-color: var(--vblue);"| [https://www.youtube.com/channel/UCBATkNZ7pkAXU9tx7GVhlaw Lectures]
+|-
+|}
+
+== Featured topics ==
+{| style="width: 100%" class="sortable wikitable"
+|-
+! scope="col" style="width: 20%; padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)" | '''Category'''
+! scope="col" class="unsortable" style="padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)" | ''subtopics (amongst others)''
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vpurple-bg); --box-emph-color: var(--vpurple); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Theory| Theoretical background]]|| style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| We collect '''theory pages''' from all the different areas VASP offers functionalities. These can also be found in the corresponding category of the topic. For instance, the article on the [[Blocked-Davidson algorithm]] is also linked from the [[electronic minimization]] page.
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vpurple-bg); --box-emph-color: var(--vpurple); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Calculation setup| Calculation setup]] || style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)" | The '''computational setup''' considers the [[installation]], the input and output [[files]], [[performance]], etc. To learn how to set up your calculation, it is probably best to look for a [[:Category:Howto|how-to page]], e.g., [[setting up an electronic minimization]], [[band-structure calculation using DFT]], [[constructing Wannier orbitals]], [[structure optimization]], etc.
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vred-bg); --box-emph-color: var(--vred); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"|[[:Category:Electronic minimization| Electronic minimization]]|| style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| '''Electronic minimization''' is the central task in many calculations. Here, you find pages describing the [[self-consistency cycle]], different algorithms, e.g., [[blocked-Davidson algorithm]], [[RMM-DIIS]], [[direct optimization of the orbitals]], and related topics like [[preconditioning]], [[density mixing]], etc.
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vred-bg); --box-emph-color: var(--vred); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Electronic ground-state properties| Electronic ground-state properties]]|| style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Band structure|Band structure]], [[:Category:Density of states |density of states]], partial DOS and on-site charge and magnetization ({{TAG|LORBIT}}), [[:Category:Electrostatics |electrostatics]], [[:Category:Charge density|charge density]], [[:Category:Potential|potential]], etc.
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vred-bg); --box-emph-color: var(--vred); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Magnetism| Spin degree of freedom]]|| style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[Spin-orbit coupling]], noncollinear magnetism, spin spirals, constrained magnetism, etc.
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vred-bg); --box-emph-color: var(--vred); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Exchange-correlation functionals|Exchange-correlation functionals]]|| style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Exchange-correlation_functionals|LDA]], [[:Category:Exchange-correlation_functionals|GGA]], [[:Category:Exchange-correlation_functionals|meta-GGA]], [[:Category:DFT+U|DFT+U]], [[:Category:Hybrid functionals|hybrid functionals]], [[:Category:van_der_Waals_functionals|van der Waals functionals]].
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vcyan-bg); --box-emph-color: var(--vcyan); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Symmetry| Symmetry and structure]]|| style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| Crystal symmetry, [[:Category:Crystal momentum|reciprocal space]], [[:Category:2D materials|surfaces]], pair-correlation function for liquids, etc.
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vcyan-bg); --box-emph-color: var(--vcyan); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Ionic minimization| Ionic minimization]]||style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[Structure optimization]], ionic-minimization methods, [[:Category:Forces|forces]], [[:Category:Transition States|transition states]], etc.
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vcyan-bg); --box-emph-color: var(--vcyan); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Molecular dynamics| Molecular dynamics]]||style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| Barostats, [[:Category:Thermostats|thermostats]], [[:Category:Ensembles|ensembles]], etc.
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vcyan-bg); --box-emph-color: var(--vcyan); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Ensemble properties| Ensemble properties]]||style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| Monitoring geometric parameters, pair-correlation function, thermal conductivity, diffusion, etc.
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vcyan-bg); --box-emph-color: var(--vcyan); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Advanced molecular-dynamics sampling| Advanced molecular-dynamics sampling]] ||style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[Interface pinning]], [[constrained molecular dynamics]], [[metadynamics]], [[thermodynamic integration]], etc.
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vcyan-bg); --box-emph-color: var(--vcyan); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Machine-learned force fields| Machine-learned force fields]]||style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| Training and application of force fields.
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vblue-bg); --box-emph-color: var(--vblue); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Phonons| Phonons]]||style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| Lattice vibrations, [[Phonons_from_finite_differences | finite differences]], [[Computing_the_phonon_dispersion_and_DOS | phonon dispersion relation]].
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vblue-bg); --box-emph-color: var(--vblue); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Electron-phonon_interactions | Electron-phonon interactions]]||style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[Bandgap_renormalization_due_to_electron-phonon_coupling | Band-structure renormalization]], [[Transport_coefficients_including_electron-phonon_scattering | transport]], [[Electron-phonon_interactions_from_Monte-Carlo_sampling |stochastic sampling]].
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vblue-bg); --box-emph-color: var(--vblue); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"|  [[:Category:Linear response| Response theory]]||style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| Static and frequency-dependent [[:Category:Dielectric properties|dielectric properties]], Berry phases, spectroscopy (UV, VIS, [[:Category:XAS|X-ray]], [[:Category:NMR|NMR]]), [[:Category:Phonons|phonons]], etc.
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vblue-bg); --box-emph-color: var(--vblue); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"|  [[:Category:Many-body perturbation theory| Many-body perturbation theory]]||style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| ACFDT, BSE, GW, MP2, cRPA.
+|-
+<!--| [[:Category:Defects| Defects and doping]]||class="vasp-dark-link-panel" style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| Dipole corrections for defects in solids, VCA, etc.
+|- -->
+<!-- | [[:Category:Core states| Core states]]||class="vasp-dark-link-panel" style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| Frozen-core approximation, X-ray abpsorption spectra (SCH calculations), ICORELEVEL, etc.
+|- -->
+|class="vasp-dark-link-panel" style="background-color:var(--vred-bg); --box-emph-color: var(--vred); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Wannier functions| Localized basis and projection]]||style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| Obtaining [[Wannier functions]], SCDM, partial DOS and on-site charge and magnetization ({{TAG|LORBIT}}), [[Constrained-random-phase approximation]]
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vpurple-bg); --box-emph-color: var(--vpurple); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Performance| Performance]]||style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:Parallelization| Parallelization]], [[:Category:Memory|memory management]], profiling, etc.
+<!---
+|-
+|class="vasp-dark-link-panel" style="background-color:var(--vpurple-bg); --box-emph-color: var(--vpurple); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"| [[:Category:VASP6|Outlook]]|| style="background: var(--vdefault-bg); padding:5px; border-style: solid; border-width: 15px; border-color: var(--vdefault-bg)"|Features that will only be available in VASP.6.X.
+|-
+--->
+|}
+
+== Support ==
+If you have questions or run into trouble, please have a look at the [[Known issues|known issues]] and/or post a question on the [https://www.vasp.at/forum/ VASP Forum].
+{{NB|mind|We offer support on a courtesy basis only, not as a contractual service.}}
+
+----
+[[The VASP Manual#toc|Back to the top]]

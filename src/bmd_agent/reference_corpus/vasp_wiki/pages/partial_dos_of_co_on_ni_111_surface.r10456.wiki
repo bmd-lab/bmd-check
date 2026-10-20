@@ -1,0 +1,97 @@
+{{Sur_sci - Tutorial}}
+
+== Task ==
+
+Calculation of the work function and partial DOS of a CO@Ni (111) surface, adsorbed on top.
+
+== Input ==
+
+=== {{TAG|POSCAR}} ===
+<pre>
+Ni - (111) + CO ontop
+   3.53000000000000     
+     0.7071067800000000    0.0000000000000000    0.0000000000000000
+    -0.3535533900000000    0.6123724000000000    0.0000000000000000
+     0.0000000000000000    0.0000000000000000    5.1961523999999998
+   5   1   1
+Selective dynamics
+Direct
+  0.0000000000000000  0.0000000000000000  0.0000000000000000   F   F   F
+  0.3333333300000021  0.6666666699999979  0.1111111100000031   F   F   F
+  0.6666666699999979  0.3333333300000021  0.2222222199999990   F   F   F
+  0.0000000000000000  0.0000000000000000  0.3330391292438326   T   T   T
+  0.3333333300000021  0.6666666699999979  0.4445422014835692   T   T   T
+  0.3333333300000021  0.6666666699999979  0.5402025044116211   T   T   T
+  0.3333333300000021  0.6666666699999979  0.6031536532245922   T   T   T
+ 
+  0.00000000E+00  0.00000000E+00  0.00000000E+00
+  0.00000000E+00  0.00000000E+00  0.00000000E+00
+  0.00000000E+00  0.00000000E+00  0.00000000E+00
+  0.00000000E+00  0.00000000E+00  0.00000000E+00
+  0.00000000E+00  0.00000000E+00  0.00000000E+00
+  0.00000000E+00  0.00000000E+00  0.00000000E+00
+  0.00000000E+00  0.00000000E+00  0.00000000E+00
+</pre>
+
+N.B.: this {{FILE|POSCAR}} is essentially the result ({{FILE|CONTCAR}} file) of the relaxation performed in the [[CO on Ni 111 surface]] example.
+
+=== {{TAG|INCAR}} ===
+ general:
+   {{TAGBL|ENMAX}} = 400
+   {{TAGBL|SYSTEM}} = CO adsorption on Ni(111)
+   {{TAGBL|ISMEAR}} = -5
+   {{TAGBL|ALGO}} = Fast
+     
+ LDOS:
+   {{TAGBL|LORBIT}} = 11
+     
+ workfunction:
+   {{TAGBL|IDIPOL}} = 3
+   {{TAGBL|LDIPOL}} = .TRUE.
+   {{TAGBL|LVHAR}} = .TRUE.
+ #  {{TAGBL|LVTOT}} = .TRUE.
+
+*For the calculation of the DOS we use a tetrahedron method with Blöchl corrections ({{TAG|ISMEAR}}=-5).
+*By setting {{TAG|LVHAR}}=''.TRUE.'' the Hartree part of the local potential is written to the file {{TAG|LOCPOT}}.
+*By setting {{TAG|LVTOT}}=''.TRUE.'' the total local potential is written tot the file {{TAG|LOCPOT}}.
+*By setting {{TAG|IDIPOL}}=3 dipole corrections in the direction of the third lattice vector are enabled.
+*We have active dipole corrections to potential (=dipole layer).
+
+=== {{TAG|KPOINTS}} ===
+<pre>
+k-points
+0
+Monkhorst-Pack
+9 9 1
+0 0 0
+</pre>
+
+== Calculation ==
+
+=== DOS ===
+
+*The lm-decomposed DOS helps to analyze the bonding:
+[[File:Fig CO on Ni111 LDOS 1.png|400px]]
+
+*CO <math>5\sigma, 1\pi, 2\pi^{*}</math> bonds.
+*From comparison with substrate LDOS:
+**Hybridization with Ni-<math>d_{3z^{2}-r^{2}}</math>.
+**No interaction with <math>d_{xy}</math> due to symmetry.
+
+=== Work function ===
+
+*The planar average of the potential for this example should look like the following:
+[[File:Fig CO on Ni111 LDOS 2.png|300px]]
+
+*<math>\epsilon_{\mathrm{F}} = 1.65</math> eV (from {{TAG|OUTCAR}} file.
+
+*Vacuum-potential at 8.24/6.77 eV: <math>\Phi_{\mathrm{CO}}=6.58,\Phi_{\mathrm{clean}}=5.11</math> eV.
+
+*Too small result for clean surface due to too small vacuum ...
+
+== Download ==
+[[Media:COonNi111_LDOS.tgz| COonNi111_LDOS.tgz]]
+ 
+{{Sur_sci}}
+
+[[Category:Examples]]

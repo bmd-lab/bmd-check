@@ -1,0 +1,78 @@
+Description: Estimation of the J magnetic exchange coupling using the GGA+U method.
+
+Switching off the symmetry ([[ISYM|ISYM]] = 0) is often necessary to generate different magnetic configurations. 
+
+
+''<u>Exercise :</u>'' Study the change of the 180° superexchange coupling J<sub>2</sub> between the next nearest neighbors (d<sub>Ni-Ni</sub> = 4.17 A) by varying the U<sub>eff</sub> value. The following equation J<sub>2</sub> = (E<sub>FM</sub> - E<sub>AFM</sub>) / 12 expresses the super exchange Ni-O-Ni coupling as a function of the energy difference of the ferromagnetic (FM) and antiferromagnetic (AFM) configurations. In this case, the superexchange coupling J<sub>1</sub> between the nearest neighbors is neglected. The theoretical results can be compared to the experimental one : J<sub>2</sub> = 19.01 meV (Hutchings M. T., Samuelsen E. J., ''Phys. Rev. B 6'', 9, '''1972''', 3447)
+
+----
+*{{TAG|INCAR}}
+
+ NiO GGA+U AFM
+   {{TAGBL|SYSTEM}}    = "NiO"
+     
+ Electronic minimization
+   {{TAGBL|ENCUT}}     = 450
+   {{TAGBL|EDIFF}}     = 1E-4
+   {{TAGBL|LORBIT}}    = 11
+   {{TAGBL|LREAL}}     = .False.
+   {{TAGBL|ISTART}}    = 0
+   {{TAGBL|ISYM}}      = 0
+   {{TAGBL|NELMIN}}    = 6
+     
+ DOS
+   {{TAGBL|ISMEAR}}    = -5
+     
+ Magnetism
+   {{TAGBL|ISPIN}}     = 2
+   {{TAGBL|MAGMOM}}    = 2.0 -2.0 2*0  # AFM conf.
+   # {{TAGBL|MAGMOM}}    = 2*2.0 2*0  # FM conf.
+
+ Mixer
+   {{TAGBL|AMIX}}      = 0.2
+   {{TAGBL|BMIX}}      = 0.00001
+   {{TAGBL|AMIX_MAG}}  = 0.8
+   {{TAGBL|BMIX_MAG}}  = 0.00001
+      
+ GGA+U
+   {{TAGBL|LDAU}}      = .TRUE.
+   {{TAGBL|LDAUTYPE}}  = 2
+   {{TAGBL|LDAUL}}     = 2 -1
+   {{TAGBL|LDAUU}}     = 5.00 0.00
+   {{TAGBL|LDAUJ}}     = 0.00 0.00
+   {{TAGBL|LDAUPRINT}} = 1
+   {{TAGBL|LMAXMIX}}   = 4 
+
+
+*{{TAG|KPOINTS}}
+<pre>
+k-points
+ 0
+gamma
+ 4  4  4 
+ 0  0  0
+</pre>
+
+*{{TAG|POSCAR}}
+<pre>
+NiO
+ 4.17
+ 1.0 0.5 0.5
+ 0.5 1.0 0.5
+ 0.5 0.5 1.0
+ 2 2
+Cartesian
+ 0.0 0.0 0.0
+ 1.0 1.0 1.0
+ 0.5 0.5 0.5
+ 1.5 1.5 1.5
+</pre>
+
+----
+Necessarely, the J magnetic coupling decreases with the increasing of the U<sub>eff</sub> value. To assess the obtained value, similar calculations could be done using a [[NiO HSE06|hybrid functional]].
+
+== Download ==
+[[Media:Nio_Jcoupl.tgz| nio_Jcoupl.tgz]]
+----
+
+[[Category:Examples]]

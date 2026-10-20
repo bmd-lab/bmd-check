@@ -1,0 +1,162 @@
+This theory section outlines the most important equations and their physical meaning in the context of electron-phonon calculations using VASP. It covers the theory of electron-phonon interactions in the two approaches implemented:
+*Electron-phonon interactions from perturbation theory
+*Electron-phonon interactions from statistical sampling
+
+For each section, additional theory pages are linked, along with corresponding how-to's
+
+== Electron-phonon interactions from perturbation theory ==
+
+One can obtain these quantities rigorously from many-body perturbation theory and then apply approximations to make the calculations feasible at the DFT level.
+For a comprehensive theoretical description of electron-phonon interactions using many-body perturbation theory, we recommend to read Ref. {{cite|giustino:rmp:2017}} or other contemporary literature.
+
+=== Electron self-energy ===
+<!--Add phonon self-energy when we have superconductivity-->
+<!--Maybe also add spectral function-->
+
+The interaction between electrons and lattice vibrations (phonons) leads to a modification of the electronic energies, described by the electron [https://en.wikipedia.org/wiki/Self-energy self-energy], <math>\Sigma_{n\mathbf{k}}(E, T)</math>, for the band <math>n</math> and wavevector <math>\mathbf{k}</math> at energy <math>E</math> and temperature <math>T</math> (often, the energy dependence is written as a frequency dependence, <math>\hbar \omega</math>).
+This complex quantity has a real part, <math>\text{Re}[\Sigma_{n\mathbf{k}}(E, T)]</math>, which represents the shift or "renormalization" of the electron's energy.
+The imaginary part, <math>\text{Im}[\Sigma_{n\mathbf{k}}(E, T)]</math>, describes the finite lifetime of the electronic state due to scattering with phonons.
+
+Using second-order perturbation theory, the electron self-energy can be separated into two contributions: the [[ELPH_SELFEN_FAN | Fan-Migdal]] (FM) and [[ELPH_SELFEN_DW | Debye-Waller]] (DW) terms:
+:<math>
+\Sigma_{n\mathbf{k}}(E, T) = \Sigma^{\text{FM}}_{n\mathbf{k}}(E, T) + \Sigma^{\text{DW}}_{n\mathbf{k}}(E, T).
+</math>
+In practice, we often use the on-the-mass-shell approximation, where the self-energy is evaluated at the Kohn-Sham (KS) eigenvalue, <math>E = \varepsilon_{n\mathbf{k}}</math>.
+Let us highlight the FM contribution, which involves the electron-phonon matrix elements <math>g_{mn\mathbf{k}, \nu \mathbf{q}}</math>:
+:<math>
+\Sigma^{\text{FM}}_{n\mathbf{k}}(T) = \frac{1}{N_q} \sum_{m\nu\mathbf{q}} |g_{mn\mathbf{k}, \nu \mathbf{q}}|^2 \left[ \frac{n_{\nu\mathbf{q}}(T) + 1 - f_{m\mathbf{k}+\mathbf{q}}(T)}{\varepsilon_{n\mathbf{k}} - \varepsilon_{m\mathbf{k}+\mathbf{q}} - \omega_{\nu\mathbf{q}} + i\delta} + \frac{n_{\nu\mathbf{q}}(T) + f_{m\mathbf{k}+\mathbf{q}}(T)}{\varepsilon_{n\mathbf{k}} - \varepsilon_{m\mathbf{k}+\mathbf{q}} + \omega_{\nu\mathbf{q}} + i\delta} \right],
+</math>
+where <math>n_{\nu\mathbf{q}}(T)</math> is the Bose-Einstein occupation of phonon mode <math>(\nu, \mathbf{q})</math> with index <math>\nu</math> and phonon wavevector <math>\mathbf{q}</math>, <math>\omega_{\nu\mathbf{q}}</math> is the phonon frequency, <math>N_q</math> is the number of <math>\mathbf{q}</math>-points, and <math>f_{m\mathbf{k}+\mathbf{q}}(T)</math> is the Fermi-Dirac occupation of the electronic state with band <math>m</math> and wavevector <math>\mathbf{k}+\mathbf{q}</math>.
+The infinitesimal imaginary shift <math>i \delta</math> in the denominator ensures the correct pole structure of the self-energy.
+In practice, <math>\delta</math> is often finite and used as a smearing or convergence parameter.
+
+The DW contribution is a purely real shift and can be calculated using the phonon frequencies and eigenvectors, as well as the second derivatives of the KS potential with respect to atomic displacements:
+:<math>
+\Sigma^{\text{DW}}_{n\mathbf{k}}(T) = \frac{1}{N_q} \sum_{\nu\mathbf{q}} g^{2,\text{DW}}_{n \mathbf{k}, \nu\mathbf{q}} (2n_{\nu\mathbf{q}}(T) + 1),
+</math>
+where <math>g^{2,\text{DW}}_{n \mathbf{k}, \nu\mathbf{q}}</math> represents the second-order change in the KS potential due to phonon mode <math>(\nu, \mathbf{q})</math>.
+To evaluate this term in practice, we employ the rigid-ion approximation, which simplifies the calculation by assuming that the potential changes rigidly with atomic displacements{{cite|giustino:rmp:2017}}.
+This approximation is implemented in VASP.
+It means that we do not need to compute the second derivatives of the KS potential explicitly, but can instead use the first derivatives (i.e., the electron-phonon matrix elements) to estimate the DW term.
+
+The combination of <math>\Sigma^{\text{FM}}_{n\mathbf{k}}(T) + \Sigma^{\text{DW}}_{n\mathbf{k}}(T)</math> at this level of approximation is often called the Allen-Heine-Cardona (AHC) theory{{cite|allen:jpcss:1976}}{{cite|allen:prb:1981}}.
+To be precise, the expressions we showed here are have come to be know as nonadiabatic AHC theory, owing to the fact that the phonon frequency <math>\omega_{\nu \mathbf{q}}</math> appears in the denominator of the FM self-energy.
+Physically, this means that energy can be exchanged between the electrons and phonons.
+In contrast, there is also an adiabatic formula where the phonon frequency is neglected in the denominator, which assumes that the electrons respond instantaneously to the slower lattice vibrations:
+:<math>
+\Sigma^{\text{FM, ad}}_{n\mathbf{k}}(T) = \frac{1}{N_q} \sum_{m\nu\mathbf{q}} |g_{mn\mathbf{k}, \nu \mathbf{q}}|^2 \frac{2 n_{\nu\mathbf{q}}(T) + 1}{\varepsilon_{n\mathbf{k}} - \varepsilon_{m\mathbf{k}+\mathbf{q}} + i\delta}.
+</math>
+The adiabatic approximation is sometimes used for calculating band-structure renormalizations in semiconductors and insulators, where the phonon frequencies are typically much smaller than the electronic energy differences.
+However, the adiabatic approximation breaks down in polar materials due to the long-range Fröhlich interaction, which can lead to divergences in the self-energy.
+
+To compute both the FM and DW contributions, we need the electron-phonon matrix elements.
+In the context of KS DFT, the matrix elements can be defined using the KS orbitals, <math>\psi_{n\mathbf{k}}</math>, and the perturbation of the KS potential, <math>V_{\text{KS}}</math>, due to phonon displacements:
+:<math>
+g_{mn\mathbf{k}, \nu \mathbf{q}} = \left\langle \psi_{m\mathbf{k}+\mathbf{q}} \left| \partial_{\nu \mathbf{q}} V_{\text{KS}} \right| \psi_{n\mathbf{k}} \right\rangle,
+</math>
+We usually call the object <math>\partial_{\nu \mathbf{q}} V_{\text{KS}}</math> the electron-phonon potential.
+The phonon displacement operator <math>\partial_{\nu \mathbf{q}}</math> can be expressed as a superposition of atomic displacements:
+:<math>
+\partial_{\nu \mathbf{q}} = \sum_{l\kappa\alpha} \sqrt{\frac{\hbar}{2 m_\kappa \omega_{\nu\mathbf{q}}}} e_{\kappa\alpha,\nu \mathbf{q}} \mathrm{e}^{\mathrm{i} \mathbf{q}\cdot\mathbf{R}_l} \frac{\partial}{\partial u_{l\kappa\alpha}},
+</math>
+where <math>\kappa</math> and <math>\alpha</math> index the atoms in the unit cell and Cartesian directions, respectively, <math>m_\kappa</math> is the mass of atom <math>\kappa</math>, <math>e_{\kappa\alpha,\nu \mathbf{q}}</math> is the phonon eigenvector component, and <math>u_{l\kappa\alpha}</math> is the displacement of atom <math>\kappa</math> in cell <math>\mathbf{R}_l</math>. 
+
+There is a set of instructions on how to [[Electron-phonon_potential_from_supercells|compute the electron-phonon potential]].
+
+==== Band-structure renormalization ====
+
+As mentioned above, the electron-phonon interactions lead to a renormalization of the electronic band structure.
+The renormalized electronic energies, <math>E_{n\mathbf{k}}(T)</math>, can be obtained by adding the real part of the self-energy to the KS eigenvalues:
+:<math>
+E_{n\mathbf{k}}(T) = \varepsilon_{n\mathbf{k}} + \text{Re}[\Sigma_{n\mathbf{k}}(T)],
+</math>
+where <math>\varepsilon_{n\mathbf{k}}</math> are the Kohn-Sham eigenvalues.
+
+Of particular interest is the renormalization of the bandgap in semiconductors and insulators, which refers to the change in the energy difference between the conduction band minimum (CBM) and the valence band maximum (VBM) due to these electron-phonon interactions.
+In this case, we evaluate <math>\Sigma_{n\mathbf{k}}(T)</math> at the KS eigenvalues that correspond to the CBM and VBM to get the bandgap renormalization.
+The renormalization varies with temperature as phonon populations change.
+However, it also occurs at 0 K due to zero-point atomic motion where it is referred to as zero-point renormalization (ZPR).
+
+For the computation of the band-structure renormalization, it is important to include both the FM and DW contributions to the self-energy.
+Neglecting the DW term can lead to significant errors in the predicted bandgap renormalization, as the DW term often partially cancels the FM contribution{{cite|giustino:rmp:2017}}.
+
+For information on how to compute the band-structure renormalization using VASP, please refer to [[Bandgap_renormalization_due_to_electron-phonon_coupling|this how-to page]] of the manual.
+
+==== Transport coefficients ====
+The [[Electronic transport coefficients | transport coefficients]] describe how efficiently charge, heat, or another quantity is carried through the material.  The electronic transport coefficients are derived via the linearized Boltzmann equation within the relaxation time approximation (RTA) {{Cite|giustino:rmp:2017}}:
+
+<math>
+\frac{\partial f^0_{n \mathbf{k}}}{\partial \varepsilon_{n \mathbf{k}}} \mathbf{v}_{n \mathbf{k}} \cdot (-e)\textbf{E} = - \sum_\nu \int \frac{d \mathbf{q}}{\Omega_{BZ}} \Gamma_{mn \nu}(\mathbf{k}, \mathbf{q}) \times [(f_{n \mathbf{k}}  -  f^0_{n \mathbf{k}}) - (f_{n \mathbf{k} + \mathbf{q}}  -  f^0_{n \mathbf{k} + \mathbf{q}})]
+</math>,
+
+where <math>f^0_{n \mathbf{k} + \mathbf{q}}</math> is the electron occupation at band <math>n</math> at k-point <math>\mathbf{k}</math> and q-point <math>\mathbf{k}</math>, <math>\varepsilon_{n \mathbf{k}}</math> is the electron band energy, <math>\textbf{v}_{n \mathbf{k}}</math> is the carrier velocity, <math>\textbf{E}</math> is the electric field, <math>\Omega_{BZ}</math> is the cell volume, and <math>\Gamma_{mn \nu}(\mathbf{k}, \mathbf{q})</math> is a kernel describing the interaction between the electrons and phonons. 
+
+We employ the frozen-band approximation, which assumes that the electronic potential and eigenvalues computed for the undoped system remain unchanged when electrons are added or removed.
+
+The current <math>J</math> can then be iteratively solved and the Onsager coefficients derived. From the Onsager coefficients, the electrical conductivity <math>\sigma</math>, the Seebeck coefficient <math>S</math>, Peltier coefficient <math>\Pi</math>, and electronic thermal conductivity <math>\kappa_e</math> can be calculated. The electronic transport coefficients are described in more detail in [[Electronic transport coefficients | this theory page]]. 
+
+Details about calculating the electronic transport coefficients can be found in [[Transport coefficients including electron-phonon scattering | this how-to]].
+
+== Electron-phonon interactions from statistical sampling ==
+
+In contrast to the perturbative approach outlined above, this section shows how to describe electron-phonon interactions from a statistical point of view.
+To begin with, the probability distribution of finding an atom within the coordinates <math>\kappa+d\kappa</math> (where <math>\kappa</math> denotes the Cartesian coordinates as well as the atom number) at temperature <math>T</math> in the harmonic approximation is given by the following expression{{cite|bloch:zfp:1932}}{{cite|landau:ctp:1959}}
+
+<math>
+dW_{\nu}(\kappa,T)=\frac{1}{2\pi \langle u^{2}_{\nu \kappa}\rangle} e^{-\kappa^{2}/(2 \langle u^{2}_{\nu \kappa}\rangle)} d\kappa,
+</math>
+
+where the mean-square displacement of the harmonic oscillator is given as
+
+<math>
+\langle u^{2}_{\nu \kappa}\rangle = \frac{\hbar}{2 M_{\kappa} \omega_{\nu}} \coth{\frac{\hbar \omega_{\nu}}{2 k_{B}T}}. 
+</math>
+
+Here <math>M_{\kappa}</math>, <math>\nu</math> and <math>\omega_{\nu}</math> denote the mass, phonon eigenmode and phonon eigenfrequency, respectively.
+The equation for <math>dW</math> is valid at any temperature and the high (Maxwell-Boltzmann distribution) and low temperature limits are easily regained.
+In order to obtain an observable <math>O(T)</math> at a given temperature <math>T</math>, the average of the observable sampled at different coordinate sets <math>x_{T}^{\textrm{MC},i}</math> with sample size <math>n</math> is taken
+
+<math>
+\langle O(T)\rangle = \frac{1}{n} \sum\limits_{i=1}^{n} O(x_{T}^{\textrm{MC,i}}).
+</math>
+
+=== Full Monte Carlo sampling ===
+
+Each set <math>i</math> is obtained from the equilibrium atomic positions <math>x_{\textrm{eq}}</math> as
+
+<math>
+x_{T}^{\textrm{MC,i}} = x_{\textrm{eq}} + \Delta \tau^{\textrm{MC,i}}
+</math>
+
+with the displacement
+
+<math>
+\Delta \tau^{\textrm{MC,i}} = \sqrt{\frac{1}{M_{\kappa}}} \sum\limits_{\nu}^{3(N-1)} \varepsilon_{\kappa,\nu}  \mathcal{N}.
+</math>
+
+Here <math>\varepsilon_{\kappa,\nu}</math> denotes the unit vector of eigenmode <math>\nu</math> on atom <math>\kappa</math>. The magnitude of the displacement in each Cartesian direction is obtained from the normal-distributed random variable <math>\mathcal{N}</math> with a probability distribution according to <math>dW</math>.
+
+=== ZG configuration (one-shot method) ===
+
+Motivated by the empirical observation that for increasing super-cell sizes the number of required structures in the MC method can be decreased, M. Zacharias and F. Giustino{{cite|zacharias:prb:2016}} proposed a one-shot method where only a single set of displacements is used
+
+<math>
+\Delta \tau^{\textrm{OS}} = \sqrt{\frac{1}{M_{\kappa}}} \sum\limits_{\nu}^{3(N-1)} (-1)^{\nu-1} \varepsilon_{\kappa,\nu} \sigma_{\nu,T},
+</math>
+
+where the summation over the eigenmodes runs in an ascending order with respect to the values of the eigenfrequencies, and the magnitude of each displacement is given by
+
+<math>
+\sigma_{\nu,T} = \sqrt{(2 n_{\nu,T}+1) \frac{\hbar}{2 \omega_{\nu}}}.
+</math>
+
+Here <math>n_{\nu,T}=[\mathrm{exp}(\hbar \omega_{\nu} /k_{B}T)-1]^{-1}</math> denotes the Bose-Einstein occupation number.
+In this way, the sum for the observable <math>\langle O(T)\rangle</math>  is reduced to a single calculation. In Ref. {{cite|zacharias:prb:2016}} it was shown that for super-cell sizes <math>N\rightarrow \infty</math> the structural configuration obtained using the ZG configuration should lead to equivalent results as fully converged MC calculations. In practice, it was shown that already relatively small supercell sizes are sufficient to achieve good accuracy, but the convergence with respect to the cell size can vary between different materials. In Ref. {{cite|karsai:njp:2018}} we have also used a slightly modified approach, in which the signs of the displacements are chosen randomly instead of <math>\pm 1</math>. This was only necessary when calculating volume-dependent ZPR, since the modes sometimes change the order as the volume changes. Using alternating signs for the displacement then causes small discontinuities in the ZPR volume curve of the order of 5 meV for carbon diamond. By averaging over many random phases, this problem can be eliminated. Nevertheless 5 meV difference between the ZG configuration and full MC is considered as accurate enough in most calculations.
+
+For information on how to compute the band-structure renormalization using VASP, please refer to [[Electron-phonon interactions from Monte-Carlo sampling|this how-to page]] of the manual.
+
+== References ==
+<references/>
+
+----
+[[Category:Phonons]][[Category:Electron-phonon interactions]][[Category:Theory]]

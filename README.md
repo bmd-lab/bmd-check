@@ -328,8 +328,10 @@ release. Corpus updates are explicit maintainer operations with
 [`tools/vasp_reference/fetch_corpus.py`](tools/vasp_reference/README.md),
 reviewed through normal pull requests.
 
-The corpus is currently unpopulated, and bmd-check does not use it in its
-output yet. Preserved pages are third-party material; see
+Release 1.0.0 holds the complete public VASP Wiki documentation as of
+2026-10-20: 1,047 main-namespace pages (one further page is excluded under the
+archival character policy), with revision pinning, SHA-256 verification and
+recorded GFDL 1.2 licensing. bmd-check does not use it in its output yet. Preserved pages are third-party material; see
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## License

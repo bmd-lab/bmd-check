@@ -1,0 +1,18 @@
+The {{TAG|ELFCAR}} file is created when the {{TAG|LELF}}=''.TRUE.'' in the {{TAG|INCAR}} file is set and contains the electron localization function denoted by <math>ELF</math> in Ref. <ref name="silvi:nature:371"/>. 
+
+The same file format is used as for the {{TAG|CHGCAR}} file. That is, lattice vectors, atomic coordinates  and number of cartesian sampling points <math>N_x, N_y, N_z</math> are written, followed by <math>ELF(x,y,z)</math> with <math>x</math> being the fastest and <math>z</math> the slowest index. 
+
+For {{TAG|ISPIN}}=2, <math>ELF_{\uparrow}</math> is written first followed by <math>ELF_{\downarrow}</math>.
+
+It is recommended to avoid wrap around errors, when evaluating the {{TAG|ELFCAR}} file. This can be done by specifying {{TAG|PREC}}=''High'' in the {{TAG|INCAR}} file.
+
+*N.B. The electronic localization function is not implemented for non-collinear calculations. 
+
+== References ==
+<references>
+<ref name="silvi:nature:371">[http://www.nature.com/nature/journal/v371/n6499/pdf/371683a0.pdf B. Silvi and A. Savin, Nature 371, 683-686 (1994).]</ref>
+</references>
+
+----
+
+[[Category:Files]][[Category:Output files]]

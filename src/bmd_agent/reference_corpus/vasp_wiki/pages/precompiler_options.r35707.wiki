@@ -1,0 +1,206 @@
+Precompiler flags are used to activate/deactivate certain code features at the time of compilation, e.g., the use of MPI, the advanced molecular dynamics features, etc. Many precompiler flags are set by default in the [[makefile.include#Archetypical_files|templates 
+provided for the makefile.include file]]. The commands are as follows:
+
+;CPP
+:The command to invoke the precompiler you want to use, for instance:
+:* Using Intel's Fortran precompiler:
+:<pre>CPP=fpp -f_com=no -free -w0 $*$(FUFFIX) $*$(SUFFIX) $(CPP_OPTIONS)</pre>
+
+:* Using cpp:
+:<pre>CPP=/usr/bin/cpp -P -C -traditional $*$(FUFFIX) >$*$(SUFFIX) $(CPP_OPTIONS)</pre>
+{{NB|mind| This variable has to include <code>$(CPP_OPTIONS)</code>. If not, <code>CPP_OPTIONS</code> will be ignored!|:}}
+
+;CPP_OPTIONS
+:Specify the precompiler flags:
+
+:<pre>CPP_OPTIONS=[-Dflag1 [-Dflag2] ... ]</pre>
+{{NB|mind| <code>CPP_OPTIONS</code> is only used in {{FILE|makefile.include}}, where it is added to the <code>CPP</code> variable.|:}}
+
+== Default ==
+=== -DHOST=[string] ===
+:A string (20 characters max.) that describes the platform on which VASP is compiled, e.g., <code> -DHOST=\"LinuxIFC\"</code> for a Linux host using an Intel Fortran compiler.
+
+=== -DMPI ===
+:(Mandatory) Set this to compile the parallel version of VASP.
+
+=== -Duse_collective ===
+:Set this to use MPI collectives in the all-to-all communication and global summations.
+:In case one specifies this, the value of MPI_BLOCK (below) will be meaningless.
+
+=== -DMPI_BLOCK=[integer] ===
+:Specifies the block size used by the in-house MPI all-to-all communication and global summations.
+
+=== -DscaLAPACK ===
+:Set this to use scaLAPACK.
+
+=== -DCACHE_SIZE=[integer] ===
+:Specifies the size of the cache memory. Only used by the in-house real-to-complex FFT routines (fft3dlib.F).
+:By default these are no longer used, instead we use the real-to-complex FFT routines from fftw3.
+
+=== -Davoidalloc ===
+:Set this to use automatic instead of allocatable arrays in many routines related to the real space projection operators. This option is by default set in all our provided makefiles, and is highly suggested to enable this option.
+
+=== -Dvasp6 ===
+:Set this to activate all VASP.6.X.X specific features.
+
+=== -Dtbdyn ===
+:Adds the advanced molecular dynamics routines.
+
+=== -Dfock_dblbuf ===
+:Uses double buffer technique for the computation of exchange potential. Available as of VASP.6, N/A for the CUDA-C GPU-port.
+
+=== -D_OPENMP ===
+:(Optional ) Switch on [[Combining MPI and OpenMP|a combination of MPI and OpenMP for the parallelization]].
+
+== Specific for the OpenACC port to NVIDIA GPUs ==
+
+=== -DACC_OFFLOAD ===
+:Mandatory for openACC starting from version 6.5.0: Activate all OpenACC-related code paths.
+=== -DNVCUDA ===
+:Mandatory: Activate when compiling the OpenACC offloading with the Nvidia compiler suite nvhpc (new in VASP version 6.5.0).
+
+=== -DUSENCCL ===
+:Mandatory: Use the NVIDIA Collective Communications Library (NCCL) instead of MPI for relevant instances of collective reduction operations (MPI_Allreduce).
+
+=== -Dqd_emulate ===
+:Mandatory: To compile the OpenACC GPU-port you need either the NVIDIA HPC-SDK or a recent version (>= 19.10) of PGI's Compilers & Tools. Both of these compilers do not natively support quadruple precision and require the use of the QD library to emulate quadruple precision arithmetic.
+
+=== -DCRAY_MPICH ===
+:Mandatory for Cray machines: When compiling on a Cray machine, this flag deactivates a check to determine if the MPI version used is CUDA aware, which fails for MPICH. If MPICH is not used, this flag should not be set.
+
+== Specific for the OpenMP port to AMD and Intel GPUs ==
+
+=== -DOMP_OFFLOAD ===
+:Mandatory for openMP GPU port: Activate all OpenMP-offload related code paths.
+
+=== -D_OPENMP ===
+:Mandatory for openMP activation on CPU and GPU.
+
+=== -DINTELMKL ===
+:Mandatory for Intel GPU offloading using the Intel compiler.
+
+=== -DCRAYHIP ===
+:Mandatory for AMD GPU offloading using the Cray compiler.
+
+=== -DUSENCCL ===
+:Recommended for AMD, not supported for Intel GPUs: Use the RocM Collective Communications Library (RCCL) instead of MPI for relevant instances of collective reduction operations (MPI_Allreduce).
+
+== Optional ==
+
+=== -DVASP_HDF5 ===
+:(Strongly recommended) Set this to add [[:Category:HDF5 support|HDF5 support]]. This option has been available since VASP 6.2.0.
+:'''N.B.''': one needs to [[Makefile.include#HDF5_support_.28strongly_recommended.29|add HDF5 to makefile.include]].
+
+=== -Duse_shmem ===
+:Use [[Shared memory|shared-memory]] segments to reduce the memory demands of [[ALGO|GW (ALGO = EVGW0, EVGW, QPGW0, and QPGW)]] and [[Machine_learning_force_field_calculations:_Basics#Performance_and_memory_usage|machine-learned&ndash;force-field]] calculations.
+
+=== -Dshmem_bcast_buffer ===
+:Use [[Shared memory|shared-memory]] segments to reduce the amount of MPI communication in hybrid-functional calculations.
+
+=== -Dshmem_rproj ===
+:Use [[Shared memory|shared-memory]] segments to reduce the storage demands of the [[LREAL|real-space PAW projectors]].
+
+=== -Dsysv ===
+:Use <tt>ipcs</tt> [[Shared memory|shared-memory]] segments and <tt>system-V</tt> semaphores.
+
+=== -DVASP2WANNIER90 ===
+:Set this to include the interface between VASP and Wannier90.
+{{NB|deprecated|For VASP<6.2.0, see [[#-DVASP2WANNIER90 and -DVASP2WANNIER90v2|-DVASP2WANNIER90 and -DVASP2WANNIER90v2]] in the deprecated section below!|:}}
+
+=== -Dlibbeef ===
+:Set this to include the GGA BEEF functional (corresponds to {{TAG|GGA}}=BF).
+:'''N.B.''': one needs to [[Makefile.include#Libbeef_.28optional.29|add libbeef to makefile.include]].
+{{NB|mind| LibBEEF is '''not''' supported in any of the [[GPU ports of VASP]].|:}}
+
+=== -DDFTD4 ===
+:Set this to link to the package of van der Waals [[DFT-D4]] methods.
+:'''Note''' that you need to [[Makefile.include#DFT-D4 and simple-DFT-D3_.28optional.29|install DFT-D4 and add it to the makefile.include]].
+
+=== -DDFTD4_API_V3 ===
+:Set this to link to version 3.7.0 (or older) of the [[DFT-D4]] package when using VASP.6.6.0 or newer versions.
+:'''Note''' that you need to [[Makefile.include#DFT-D4 and simple-DFT-D3_.28optional.29|install DFT-D4 and add it to the makefile.include]].
+
+=== -DSDFTD3 ===
+:Set this to link to the [[simple-DFT-D3]] package of van der Waals DFT-D3 methods.
+:'''Note''' that you need to [[Makefile.include#DFT-D4 and simple-DFT-D3_.28optional.29|install simple-DFT-D3 and add it to the makefile.include]].
+
+=== -DLIBMBD ===
+:Set this to include the library libMBD of many-body dispersion (MBD) methods for van der Waals interactions.
+:'''Note''' that you need to [[Makefile.include#libMBD_.28optional.29|install LibMBD and add it to the makefile.include]].
+
+=== -DSCPC ===
+:Set this to include the self-consistent potential-correction (SCPC) method.
+:'''Note''' that you need to install SCPC and add it to the makefile.include.
+
+=== -DPROFILING ===
+:Switches on detailed profiling of the code. This carries a (slight) performance penalty.
+
+=== -DUSELIBXC ===
+:Set this to include the library of exchange-correlation functionals Libxc.
+:'''Note''' that you need to install Libxc >= 5.2.0 (or the master version from [https://gitlab.com/libxc/libxc gitlab] for the latest implemented functionals) with the option <code>--disable-fhc</code> and [[Makefile.include#Libxc_.28optional.29|add this to the makefile.include]].
+{{NB|mind| LibXC is '''not''' supported in any of the [[GPU ports of VASP]].|:}}
+
+=== -DELPA ===
+:Set this to include the library of ELPA eigenvalue solvers.
+:'''N.B.''': one needs to [[Makefile.include#ELPA_.28optional.29|add ELPA to makefile.include]].
+
+=== -DLAPACK36 ===
+
+:Required for [http://www.netlib.org/lapack/lapack-3.6.0.html <tt>LAPACK-3.6.0</tt>] and newer to replaced deprecated routine <tt>DGEGV</tt> by <tt>DGGEV</tt>.
+
+== Specific to the experimental VASPml library ==
+
+=== -Dlibvaspml ===
+:Set this to automatically compile and link the [[VASPml library]] together with {{VASP}}. Without <code>-Dlibvaspml</code> the remaining options in this section are ignored.
+
+=== -DVASPML_ENABLE_GRACE ===
+{{NB|mind|This option is available as of {{VASP}} 6.6.0|:}}
+:Set this to enable support for [[Running GRACE force fields in VASP|GRACE machine-learned force fields inside {{VASP}}]].
+
+=== -DVASPML_USE_MKL / -DVASPML_NO_MKL ===
+:This options enforces (<code>.._USE_..</code>) or prevents (<code>.._NO_..</code>) the use of Intel's MKL library inside the VASPml library. As of {{VASP}} 6.6.0 the default behavior is that <code>-DVASPML_USE_MKL</code> is automatically assumed if an Intel compiler (<code>icpc, icpx</code>) is used. On the other hand, for any other compiler MKL will not be used by default (<code>-DVASPML_NO_MKL</code> is implied). Hence, these options are required only for builds which reverse this logic, e.g.,
+:* to link a GCC compiler build to MKL, add <code>-DVASPML_USE_MKL</code>, or,
+:* to avoid the MKL library for an Intel build, add <code>-DVASPML_NO_MKL</code>.
+{{NB|deprecated|Earlier versions of {{VASP}} (6.5.X) do not provide this automatism and the <code>-DVASPML_NO_MKL</code> is not available. There, the <code>-DVASPML_USE_MKL</code> option is mandatory even if an Intel compiler is used to build the VASPml library.|:}}
+
+=== -DVASPML_DEBUG_LEVEL=[0|1|2|3] ===
+:If set to 1, 2 or 3 enables various sanity checks during runtime with low, medium and high impact on performance, respectively. Setting it to 0 or omitting the flag disables runtime checks.
+{{NB|mind|Do not use this flag for production runs as it may decrease performance.|:}}
+
+=== -DVASPML_USE_CBLAS ===
+{{NB|deprecated|This option is only required for {{VASP}} 6.5.X and is automatically implied for newer verions.|:}}
+:Set this to use CBLAS (C interface for BLAS routines) for linear algebra inside the VASPml library.
+
+== Deprecated ==
+{{NB|deprecated| <code>-DNGZhalf</code>, <code>-DwNGZhalf</code>, <code>-DNGXhalf</code>, <code>-DwNGXhalf</code> are deprecated options. Building the standard, gamma-only, or non-collinear version of the code is specified through an additional argument to the make command as discussed in [[Installing VASP.6.X.X|Installing VASP.6.X.X]].|:}}
+
+=== -D_OPENACC ===
+{{NB|deprecated|This precompiler flag has been deprecated since version 6.5.0. It has been replaced by -DACC_OFFLOAD|:}}
+:Mandatory for openACC before version 6.5.0: Activate all OpenACC-related code paths.
+
+=== -DUSENCCLP2P ===
+{{NB|deprecated|This precompiler flag has been deprecated since version 6.4.0.|:}}
+:Optional but strongly recommended for VASP versions < 6.4.0; (requires NCCL >= 2.7.8): Use the NVIDIA Collective Communications Library (NCCL) instead of MPI for relevant instances of all-to-all operations (MPI_Alltoallv).
+
+=== -DnoAugXCmeta ===
+:This option was added to compute the meta-GGA contributions from the non-augmented pseudo density (instead of the augmented density). There is a condition concerning the behavior of the von-Weizsäcker kinetic energy density (calculated using the first derivative of the charge density) and the kinetic energy density computed from the orbitals ingrained into TPSS and revTPSS. This condition can be strongly violated when one augments the charge density. For the TPSS and revTPSS the functionals can become unstable in those cases. SCAN and its derivates (RSCAN, R2SCAN, etc) do not assume the aforementioned conditions to be met and remain stable for the augmented density as well so this option should not be used as it may negatively affect the final results.
+
+=== -DVASP2WANNIER90 and -DVASP2WANNIER90v2 ===
+:Set this to include the interface between VASP and Wannier90.
+:Up to VASP 6.1.x you need to set -DVASP2WANNIER90 to interface with Wannier90 v.1.x, and -DVASP2WANNIER90v2 for Wannier90 v.2.x, and add the Wannier90 library to [[makefile.include]].
+:Since VASP 6.2.0 you need to set -DVASP2WANNIER90 to interface with Wannier90 v.2.x or v.3.x.
+
+== Related articles ==
+[[Installing VASP.6.X.X]],
+[[makefile.include]],
+[[Compiler options]],
+[[Linking to libraries]],
+[[GPU ports of VASP]],
+[[Toolchains]],
+[[Validation tests]],
+[[VASPml library]],
+[[Known issues]]
+
+----
+
+[[Category:VASP]][[Category:Installation]][[Category:Performance]][[Category:GPU]]

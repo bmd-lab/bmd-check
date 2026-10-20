@@ -1,0 +1,62 @@
+The {{FILE|POTCAR}} file is a mandatory [[Input files|input file]] that holds the [[:Category:Pseudopotentials|pseudopotential]] for each element in the structure. The templates for each element can be downloaded from the [https://www.vasp.at/sign_in/portal/ VASP Portal]. 
+There are sometimes multiple templates for one element with subtle differences.
+
+==Step-by-step instructions==
+
+'''Step 1:''' Select the [[Available_pseudopotentials|latest version]] of {{FILE|POTCAR}} files unless you need to use an older one to reproduce a result.
+
+'''Step 2:''' Choose  
+* [[Available_pseudopotentials#Standard_potentials|standard potentials]] for calculations depending mainly on occupied states, e.g., within density-functional theory, using [[hybrid functionals]], or
+* [[Available_pseudopotentials#GW_potentials|GW variants]] if the calculation requires high accuracy for unoccupied states, i.e., for [[optical properties|optical response]] and [[many-body perturbation theory]].
+
+'''Step 3:''' Select a {{FILE|POTCAR}} for a certain family of [[Exchange-correlation functionals|exchange-correlation (XC) functionals]].
+{{NB|tip|The standard choice is to use the [[Available_pseudopotentials#Standard_potentials|PBE version]] based on {{TAG|LEXCH}}{{=}}PE which has a high transferability to other [[XC functionals]].|:}}
+:All potentials are constructed based on solving the scalar relativistic Schrödinger equation for a reference system with a certain [[Exchange-correlation functionals|XC functional]]. In most versions, one set is available for the LDA, and one for the GGA. The transferability to other [[Exchange-correlation functionals|XC functionals]] is seamless by specifying the {{TAG|XC}} tag in the {{FILE|INCAR}}.
+
+'''Step 4 (optional):''' Choose a [[Available pseudopotentials#Different variants specified by the suffix|different variant (reference atomic valence configuration, etc.) specified by the suffix]]. 
+{{NB|tip|The standard choice is to use the bold version in the [[Available pseudopotentials#Recommended PAW potentials|list of PAW potentials]].|:}}
+:See [[choosing pseudopotentials]].
+{{NB|important|Generally opt for the recommended {{FILE|POTCAR}} files, but test if the property of interest is sensitive to the choice of the pseudopotential. It may be possible to choose a computationally cheaper version or necessary to select a more demanding one.|:}}
+
+'''Step 5:''' For a single element in the structure, you can copy the {{FILE|POTCAR}} to the working directory, e.g,
+  cp /path/to/pot/Al/POTCAR .
+:For structures with multiple elements, the selected {{FILE|POTCAR}} files must be concatenated to create one {{FILE|POTCAR}} file containing all species present in the structure. Combine the potentials by entering, for instance,
+  cat /path/to/pot/Al/POTCAR /path/to/pot/C/POTCAR /path/to/pot/H/POTCAR > POTCAR 
+
+:The order of the potentials must correspond to the order of the species in the {{FILE|POSCAR}} file. 
+{{NB|tip|If species names are given in the {{FILE|POSCAR}}, and the order does not match the order in the {{FILE|POTCAR}}, a warning is printed, but VASP will still run.|:}}
+
+==Recommendations and advice==
+
+{{NB|important|Except for the 1st-row elements, all PAW potentials are designed to work at an energy cutoff ({{TAG|ENMAX}} tag in the {{FILE|POTCAR}}) of roughly 250 eV. This is a key aspect of making the calculation computationally cheap. We recommend performing a convergence study of the quantity of interest with respect to the energy cutoff ({{TAG|ENCUT}} tag in the {{FILE|INCAR}}).}}  
+{{NB|mind| Mismatched order of species in the {{FILE|POSCAR}} and {{FILE|POTCAR}} files is a common mistake! Add species names to your {{FILE|POSCAR}} to receive a warning if this happens.}}
+{{NB|mind|You can mix and match {{FILE|POTCAR}} families. Even combining pseudopotentials generated with different [[XC functionals]] is possible, however make sure to specify the [[XC functional]] in the {{FILE|INCAR}}, see {{TAG|XC}}.}}
+
+==Example for preparing a {{FILE|POTCAR}} for the Heusler alloy TiCo<sub>2</sub>Si==
+
+In this example, we want to prepare a {{FILE|POTCAR}} for a PBE calculation of ferromagnetic TiCo<sub>2</sub>Si. We are interested in the energy difference between the ferromagnetic and the nonmagnetic solutions.
+
+The structure is defined by the following {{FILE|POSCAR}}:
+ TiCo2Si
+  1.0
+   0.0000000000000000    2.8580789844367893    2.8580789844367893
+   2.8580789844367893    0.0000000000000000    2.8580789844367893
+   2.8580789844367893    2.8580789844367893    0.0000000000000000
+ Co Si Ti
+  2  1  1
+ direct
+   0.7500000000000000    0.7500000000000000    0.7500000000000000 Co
+   0.2500000000000000    0.2500000000000000    0.2500000000000000 Co
+   0.0000000000000000    0.0000000000000000    0.0000000000000000 Si
+   0.5000000000000000    0.5000000000000000    0.5000000000000000 Ti
+
+We will use the potpaw_PBE.64 potential set, and since we are interested in small energy differences caused by different magnetic solutions, we should use potentials with additional semicore-states in the valence for the 3d metals. The Co_pv and Ti_sv potentials seem appropriate for the transition metals. We do not expect Si to become magnetic and are not interested in unoccupied states, so the Si potential is a good choice compared to the harder, computationally more demanding Si_GW or even Si_sv_GW.
+
+On a UNIX machine, one can use the <code>cat</code> command to concatenate files together. One can redirect the output from <code>stdout</code> to a file using the <code>></code> operator. The order in the {{FILE|POSCAR}} dictates the order in the {{FILE|POTCAR}}:
+ cat ~/potpaw_PBE.64/Co_pv/POTCAR ~/potpaw_PBE.64/Si/POTCAR ~/potpaw_PBE.64/Ti_sv/POTCAR > ~/scratch/TiCo2Si/POTCAR
+
+==Related tags and sections==
+
+[[Available potentials]], {{FILE|POTCAR}}, [[Choosing pseudopotentials]], <!--[[Theory:Pseudopotential basics]],--> [[Projector-augmented-wave formalism]]
+
+[[Category:Pseudopotentials]][[Category:Howto]]

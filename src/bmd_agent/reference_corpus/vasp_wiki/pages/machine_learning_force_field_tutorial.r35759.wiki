@@ -1,0 +1,8 @@
+{{Template:Machine learning force field - Tutorial}}
+
+The tutorial is made of the following parts:
+<div style="background:var(--vdefault-bg); border:solid 1px var(--vlines); padding:0.5em 1em; margin-right:14em;">
+# [[Liquid Si - MLFF|Liquid Si - MLFF]]
+</div>
+
+[[Category:Tutorials]]

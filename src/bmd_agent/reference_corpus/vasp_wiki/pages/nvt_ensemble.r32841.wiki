@@ -1,0 +1,42 @@
+The [[NVT ensemble]] (canonical ensemble) is a [[:Category:Ensembles|statistical ensemble]] that is used to study material properties under the conditions of a  
+constant particle number N, constant volume V and a temperature fluctuating around an equilibrium value <math>\langle T \rangle</math>. 
+This page describes how to sample the NVT ensemble from a [[Molecular dynamics calculations|molecular-dynamics]] run.  
+ 
+''' Instructions for setting up an NVT ensemble ''' 
+
+There are multiple choices of thermostats to control the temperature for the NVT ensemble:  
+The stochastic [[Andersen thermostat]], [[Langevin thermostat]] and [[CSVR thermostat]], as well as 
+the deterministic [[Nosé-Hoover thermostat]], [[Nosé-Hoover chain thermostat]] and [[MDALGO#MDALGO.3D13:_Multiple_Anderson_thermostats|Multiple Andersen thermostats]] can be used. 
+See table for the corresponding {{TAG|MDALGO}} setting and related tags. 
+
+{|class="wikitable" style="margin:aut
+! NVT ensemble !! Nosé-Hoover<ref name="legacy-nh"/> !! Andersen !! Nosé-Hoover !! Langevin  !! Nosé-Hoover chain !! CSVR !! Multiple Andersen  
+|- 
+|{{TAG|MDALGO}}        ||  style="text-align:center;"|   0          ||  style="text-align:center;"|   1        ||   style="text-align:center;"|   2            ||   style="text-align:center;"|   3      ||   style="text-align:center;"|   4      ||   style="text-align:center;"|   5      ||   style="text-align:center;"|      13 
+|- {{TAG|PSUBSYS}} 
+| additional tags to set || style="text-align:center;"| {{TAG|SMASS}}  || style="text-align:center;"| {{TAG|ANDERSEN_PROB}} || style="text-align:center;"| {{TAG|SMASS}} || style="text-align:center;"|   {{TAG|LANGEVIN_GAMMA}}      || style="text-align:center;"|   {{TAG|NHC_NCHAINS}}, {{TAG|NHC_PERIOD}}, {{TAG|NHC_NRESPA}}, {{TAG|NHC_NS}}      || style="text-align:center;"|   {{TAG|CSVR_PERIOD}}      || style="text-align:center;"|  {{TAG|NSUBSYS}}, {{TAG|TSUBSYS}}, {{TAG|PSUBSYS}} 
+|} 
+
+The additional tags in the column for every thermostat have to be set. For example, the [[Nosé-Hoover thermostat]] needs the additional {{TAG|SMASS}} tag. To enforce constant volume throughout the calculation, set {{TAG|ISIF|3|op=<}}. In NVT MD runs there is no control over pressure because the volume is fixed. The average value will therefore depend on the initial lattice given in the {{FILE|POSCAR}} file. It is often desirable to equilibrate the lattice degrees of freedom, for example, by running an [[NpT_ensemble|NpT simulation]] or by performing structure and volume optimization with {{TAG|IBRION|1 or 2}} and setting {{TAG|ISIF|2|op=>}}. A general guide for molecular-dynamics simulations can be found on the [[Molecular dynamics calculations|molecular-dynamics]] page.
+
+''Example {{FILE|INCAR}} file for the [[Nosé-Hoover thermostat]]'' 
+
+  #INCAR molecular-dynamics tags NVT ensemble 
+  {{TAGBL|IBRION}} = 0                   # choose molecular dynamics 
+  {{TAGBL|MDALGO}} = 2                   # use Nosé-Hoover thermostat 
+  {{TAGBL|ISIF}} = 2                     # compute stress tensor but do not change box volume/shape 
+  {{TAGBL|TEBEG}} = 300                  # set temperature 
+  {{TAGBL|NSW}} = 10000                  # number of time steps 
+  {{TAGBL|POTIM}} = 1.0                  # time step in femto seconds 
+  {{TAGBL|SMASS}} = 1.0                  # setting the virtual mass for the Nosé-Hoover thermostat
+{{NB|mind| This {{FILE|INCAR}} file only contains the parameters for the molecular-dynamics part. The [[Electronic minimization|electronic minimization]] or the [[Machine-learned force fields|machine learning]] tags have to be added.}}
+
+==Related tags and articles==
+[[Molecular dynamics calculations|Molecular-dynamics calculations]], {{TAG|ISIF}}, {{TAG|MDALGO}}, {{TAG|LANGEVIN_GAMMA}}, {{TAG|SMASS}},{{TAG|ANDERSEN_PROB}}, {{TAG|NSUBSYS}}, {{TAG|TSUBSYS}}, {{TAG|PSUBSYS}}
+
+== Footnotes and references ==
+<references>
+<ref name="legacy-nh">If possible, use another Nosé–Hoover thermostat implementation, e.g. {{TAG|MDALGO|2}}, see also comments [[MDALGO#MDALGO=0:_Standard_molecular_dynamics|here]].</ref>
+</references>
+
+[[Category:Molecular dynamics]][[Category:Ensembles]][[Category:Thermostats]]

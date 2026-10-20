@@ -1,0 +1,57 @@
+The phonon calculations using [[Phonons:_Theory#Density_functional_perturbation_theory|density-functional-perturbation theory (DFPT)]] are carried out by setting [[IBRION#ibrion78|'''IBRION'''=7 or 8]] in the {{FILE|INCAR}} file.
+{{NB|mind|Only zone-center (&Gamma;-point) frequencies are calculated.}}
+
+In general, the DFPT routines in VASP are somewhat rudimentary and only support displacements commensurate with the supercell, i.e., so-called q=0 phonons.
+Therefore, this approach offers few advantages over computing [[Phonons_from_finite_differences|phonons from finite differences]].
+In particular, the DFPT routines are limited to LDA and GGA functionals, and they do not determine the elastic tensors, since the perturbation with respect to the strain tensor is not implemented.
+The only advantage of the linear response routines is that they eliminate the need to choose the magnitude of the finite displacement {{TAG|POTIM}}.
+Therefore, it might be helpful to first calculate phonon frequencies within DFPT and then switch to the [[Phonons from finite differences|finite differences approach]] in order to determine the largest displacement that will produce results compatible with the linear response routines.
+
+A few technical comments: VASP solves the [[Phonons:_Theory#IonSternheimer|linear Sternheimer equation]] to determine the linear response of the orbitals. 
+Hence, unoccupied orbitals are not required. 
+Internally, the VASP routines for linear response rely on finite differences in two places:
+#  The first place is the determination of the second derivative of the [[:Category:Exchange-correlation_functionals|exchange-correlation functional]]: Since most functionals do not support an algebraic determination of second derivatives, VASP always resorts to finite differences to determine the second-order change of the exchange correlation-potential and the PAW one-center terms for each atomic displacement. 
+# Second, after VASP has determined the first-order change of the orbitals, it computes all [[Phonons:_Theory#ForceConstantsDFPT|second derivatives using finite displacements]]. 
+
+To this end, VASP displaces the selected atom in the selected directions [[Phonons:_Theory#FiniteDiffWF|adds the calculated linear response to the orbitals]], and finally determines the differences in the forces and the stress tensor for positive and negative displacements.
+It can be shown that this yields precisely the [[Phonons:_Theory#InternalStrainDFPT|second-order force constants]] and the [[Phonons:_Theory#InternalStrainDFPT|internal strain tensor]], respectively.
+
+== Input ==
+
+To use DFPT, set the tag [[IBRION#ibrion78|'''IBRION'''=7 or 8]] in the {{TAG|INCAR}} file.
+There are two options for using the DFPT routines to compute the second-order force-constants
+* {{TAG|IBRION}}=7, all the atoms are displaced in all three Cartesian directions,
+* {{TAG|IBRION}}=8, uses symmetry to reduce the number of displacements.
+
+If {{TAG|LEPSILON}}=.TRUE. or {{TAG|LCALCEPS}}=.TRUE., additional dielectric properties are computed. 
+
+== Output ==
+
+The second derivates of the total energy with respect to ionic displacements (interatomic force constants) are computed,
+the [[Phonons:_Theory#DynamicalMatrix|dynamical matrix]] is constructed, diagonalized and the phonon modes and frequencies of the system are reported after the following lines:
+
+  Eigenvectors and eigenvalues of the dynamical matrix
+  ----------------------------------------------------
+
+The mixed second derivative with respect to the strain and the ionic displacement (internal strain tensor) are evaluated and reported.
+Although the contributions from the ionic relaxations to the elastic tensor are calculated, the ion-clamped elastic tensor (rigid ion) is not determined because the perturbation with respect to the strain tensor is not implemented.
+
+Furthermore, the [[Phonons:_Theory#BornChargeDFPT|Born effective charges]] are determined analytically by contracting the linear response of the orbitals over the "polarization" vector Eq. (30) in Ref. {{cite|gajdos:prb:2006}}.
+These should agree well with the Born effective charges that were previously determined when the linear response with respect to external fields {{TAG|LEPSILON}}=.TRUE. was calculated (there are two different routes to calculate mixed derivatives).
+The final summary output towards the end of the {{TAG|OUTCAR}} file writes the Born effective charges determined from the linear response with respect to external fields.
+
+It is possible to [[Computing_the_phonon_dispersion_and_DOS|obtain the phonon dispersion at different '''q''' points]] by computing the force constants on a sufficiently large supercell and Fourier interpolating the dynamical matrices in the primitive cell.
+
+It is also possible to use phonopy{{cite|phonopy}} to use the results of a density-functional-perturbation theory calculation done with VASP.{{cite|phonopy_dfpt}}
+{{NB|mind|{{TAG|IBRION}}{{=}}7 or 8 are supported by VASP.5.1 and later versions.}}
+
+== Related tags and sections ==
+{{TAG|IBRION}},
+{{TAG|LEPSILON}},
+[[Phonons: Theory]],
+[[Phonons from finite differences]]
+
+== References ==
+<references/>
+
+[[Category:Phonons]][[Category:Howto]]

@@ -24,6 +24,7 @@ from vasp_wiki_support import (
     FakeRevision,
     FakeWiki,
     read_manifest,
+    write_unpopulated_corpus,
 )
 
 REPO = Path(__file__).resolve().parents[1]
@@ -46,6 +47,7 @@ def load_tool() -> ModuleType:
 
 
 tool = load_tool()
+RELEASED_POLICY = corpus.AUTHORITATIVE_POLICY  # captured before tests pin a synthetic license
 
 
 @pytest.fixture
@@ -63,9 +65,10 @@ def wiki() -> FakeWiki:
 
 @pytest.fixture
 def committed(tmp_path: Path) -> Path:
-    directory = tmp_path / "committed"
-    shutil.copytree(PACKAGED, directory)
-    return directory
+    # Tool tests start from the unpopulated anchor (the state before the first
+    # release) so they exercise first acquisitions independently of the
+    # packaged corpus release.
+    return write_unpopulated_corpus(tmp_path / "committed")
 
 
 def tree(directory: Path) -> dict[str, bytes]:
@@ -204,7 +207,7 @@ def test_normalized_titles_are_followed_and_recorded(tmp_path: Path, committed: 
 
 def _mutating(mutation):
     def mutate(payload, params):
-        if params.get("meta") == "siteinfo":
+        if params.get("meta") == "siteinfo" or params.get("prop") == "categories":
             return payload
         return mutation(payload)
 
@@ -357,6 +360,12 @@ def test_http_redirects_are_refused() -> None:
     handler = tool._RefuseRedirects()
     with pytest.raises(tool.FetchError):
         handler.redirect_request(None, None, 302, "Found", {}, "https://evil.example/")
+    with pytest.raises(tool.FetchError) as refused:
+        handler.redirect_request(None, None, 302, "Found", {}, "https://evil.example/")
+    assert "evil" not in str(refused.value)
+    with pytest.raises(tool.FetchError) as official:
+        handler.redirect_request(None, None, 301, "Moved", {}, "https://vasp.at/wiki/api.php?x=1")
+    assert "to https://vasp.at/wiki/api.php;" in str(official.value)
 
 
 def test_https_fetch_refuses_disallowed_urls_without_connecting(monkeypatch) -> None:
@@ -513,8 +522,19 @@ def test_release_refuses_a_staging_ledger_that_diverged(tmp_path: Path, committe
     assert run(committed, "release", "--staging", str(staging), "--corpus-version", "1.0.0") == 2
 
 
-def test_verify_reports_the_packaged_unpopulated_corpus(capsys) -> None:
+def test_verify_reports_the_packaged_corpus(capsys, monkeypatch) -> None:
+    monkeypatch.setattr(tool.corpus, "AUTHORITATIVE_POLICY", RELEASED_POLICY)
     assert tool.main(["verify", str(PACKAGED)]) == 0
+    out = capsys.readouterr().out
+    manifest = read_manifest(PACKAGED)
+    if manifest["corpus_kind"] == corpus.KIND_UNPOPULATED:
+        assert "unavailable: unpopulated" in out
+    else:
+        assert f"verified corpus {manifest['corpus_version']} ({manifest['corpus_digest']})" in out
+
+
+def test_verify_reports_an_unpopulated_corpus(tmp_path: Path, committed: Path, capsys) -> None:
+    assert tool.main(["verify", str(committed)]) == 0
     assert "unavailable: unpopulated" in capsys.readouterr().out
 
 

@@ -1,0 +1,54 @@
+'''Interface pinning'''{{cite|pedersen:prb:13}} is used to determine the melting point from a [[:Category: Molecular dynamics|molecular-dynamics]] simulation of the interface between a liquid and a solid phase. 
+<!-- == Theory == -->
+The typical behavior of such a simulation is to freeze or melt, while the interface is ''pinned'' with a bias potential.
+This potential applies an energy penalty for deviations from the desired two-phase system.
+It is preferred simulating above the melting point because the bias potential prevents melting better than freezing.
+
+The Steinhardt-Nelson{{cite|steinhardt:prb:83}} order parameter <math>Q_6</math> discriminates between the solid and the liquid phase.
+With the bias potential
+
+:<math>U_\text{bias}(\mathbf{R}) = \frac\kappa2 \left(Q_6(\mathbf{R}) - A\right)^2 </math>
+
+penalizes differences between the order parameter for the current configuration <math>Q_6({\mathbf{R}})</math> and the one for the desired interface <math>A</math>.
+<math>\kappa</math> is an adjustable parameter determining the strength of the pinning.
+
+Under the action of the bias potential, the system equilibrates to the desired two-phase configuration.
+An important observable is the difference between the average order parameter <math>\langle Q_6\rangle</math> in equilibrium and the desired order parameter <math>A</math>.
+This difference relates to the chemical potentials of the solid <math>\mu_\text{solid}</math> and the liquid <math>\mu_\text{liquid}</math> phase
+
+:<math>
+N(\mu_\text{solid} - \mu_\text{liquid}) = 
+\kappa (Q_{6,\text{solid}} - Q_{6,\text{liquid}})(\langle Q_6 \rangle - A)
+</math>
+
+where <math>N</math> is the number of atoms in the simulation.
+
+Computing the forces requires a differentiable <math>Q_6(\mathbf{R})</math>.
+<!-- PLEASE REPHRASE - I did not understand this part and how it relates to Q_6(R) -->
+In the VASP implementation a smooth fading function <math>w(r)</math> is used to weight each pair of atoms at distance <math>r</math> for the calculation of the <math>Q_6(\mathbf{R},w)</math> order parameter. This fading function is given as
+
+:<math> w(r) = \left\{ \begin{array}{cl} 1  &\textrm{for} \,\, r\leq n \\
+                      \frac{(f^2 - r^2)^2 (f^2 - 3n^2 + 2r^2)}{(f^2 - n^2)^3}  &\textrm{for} \,\, n<r<f \\
+                      0  &\textrm{for} \,\,f\leq r \end{array}\right. </math>
+
+<!-- is w(r) equivalent to (1 - t)^2(1 + 2t) with t = (r - n) / (f - n)? -->
+
+Here <math>n</math> and <math>f</math> are the near- and far-fading distances, respectively. 
+<!-- END REPHRASE -->
+The radial distribution function <math>g(r)</math> of the crystal phase yields a good choice for the fading range.
+To prevent spurious stress, <math>g(r)</math> should be small where the derivative of <math>w(r)</math> is large.
+Set the near fading distance <math>n</math> to the distance where <math>g(r)</math> goes below 1 after the first peak.
+Set the far fading distance <math>f</math> to the distance where <math>g(r)</math> goes above 1 again before the second peak.
+
+== Related tags and articles ==
+{{FILE|ICONST}}, {{TAG|OFIELD_Q6_NEAR}}, {{TAG|OFIELD_Q6_FAR}}, {{TAG|OFIELD_KAPPA}}, {{TAG|OFIELD_A}}, {{FILE|REPORT}}
+
+[[Interface pinning calculations]]
+
+== References ==
+<references/>
+
+<noinclude>
+
+----
+[[Category:Advanced molecular-dynamics sampling]][[Category:Theory]]

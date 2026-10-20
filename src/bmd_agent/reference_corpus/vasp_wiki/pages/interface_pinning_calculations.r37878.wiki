@@ -1,0 +1,38 @@
+'''Interface pinning''' uses the <math>Np_zT</math> ensemble where the barostat only acts along the <math>z</math> direction.
+This ensemble uses a Langevin thermostat and a Parrinello-Rahman barostat with lattice constraints in the remaining two dimensions.
+The solid-liquid interface must be in the <math>x</math>-<math>y</math> plane perpendicular to the action of the barostat.
+
+Set the following tags for the '''interface pinning''' method:
+;{{TAG|OFIELD_Q6_NEAR}}: Defines the near-fading distance <math>n</math>.
+;{{TAG|OFIELD_Q6_FAR}}: Defines the far-fading distance <math>f</math>.
+;{{TAG|OFIELD_KAPPA}}: Defines the coupling strength <math>\kappa</math> of the bias potential.
+;{{TAG|OFIELD_A}}: Defines the desired value of the order parameter <math>A</math>.
+
+The following example {{FILE|INCAR}} file calculates the interface pinning in sodium{{cite|pedersen:prb:13}}:
+ {{TAGBL|TEBEG}} = 400                   # temperature in K
+ {{TAGBL|POTIM}} = 4                     # timestep in fs
+ {{TAGBL|IBRION}} = 0                    # run molecular dynamics
+ {{TAGBL|ISIF}} = 3                      # use Parrinello-Rahman barostat for the lattice
+ {{TAGBL|MDALGO}} = 3                    # use Langevin thermostat
+ {{TAGBL|LANGEVIN_GAMMA_L}} = 3.0        # friction coefficient for the lattice degree of freedoms (DoF)
+ {{TAGBL|LANGEVIN_GAMMA}} = 1.0          # friction coefficient for atomic DoFs for each species
+ {{TAGBL|PMASS}} = 100                   # mass for lattice DoFs
+ {{TAGBL|LATTICE_CONSTRAINTS}} = F F T   # fix x-y plane, release z lattice dynamics
+ {{TAGBL|OFIELD_Q6_NEAR}} = 3.22         # near fading distance for function w(r) in Angstrom
+ {{TAGBL|OFIELD_Q6_FAR}} = 4.384         # far fading distance for function w(r) in Angstrom
+ {{TAGBL|OFIELD_KAPPA}} = 500            # strength of bias potential in eV/(unit of Q)^2
+ {{TAGBL|OFIELD_A}} = 0.15               # desired value of the Q6 order parameter
+
+== Related tags and articles ==
+{{FILE|ICONST}}, {{TAG|OFIELD_Q6_NEAR}}, {{TAG|OFIELD_Q6_FAR}}, {{TAG|OFIELD_KAPPA}}, {{TAG|OFIELD_A}}, {{FILE|REPORT}}
+
+[[Interface pinning]]
+
+== References ==
+<references/>
+
+<noinclude>
+
+----
+
+[[Category:Advanced molecular-dynamics sampling]][[Category:Howto]]

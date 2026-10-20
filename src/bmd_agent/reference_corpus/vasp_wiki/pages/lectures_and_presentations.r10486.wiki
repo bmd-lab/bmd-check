@@ -1,0 +1,24 @@
+
+*[[Media:VASP_lecture_Basics.pdf| DFT, PW, and PAW]]: "VASP: The basics. DFT, plane waves, PAW, ...". Video: [http://www.youtube.com/watch?v=vJkNv095Aj8&t=3s Part1] and [http://www.youtube.com/watch?v=dVguc4W1hrQ&t=180s Part2]
+
+*[[Media:VASP_lecture_Basics2.pdf| Electronic convergence, BZ sampling]]: "VASP: The basics (II). Electronic convergence, BZ sampling ...".
+
+*[[Media:VASP_lecture_Basics3.pdf| Structural relaxation, MD]]: "VASP: The basics (III). Structural relaxation, phonons, MD ...".
+
+*[[Media:VASP_lecture_Hybrids.pdf| Hybrid functionals]]: "VASP: Hybrid functionals". [http://www.youtube.com/watch?v=OQhRYzWAGfk&t=20s Video] 
+
+*[[Media:VASP_lecture_Dielectric.pdf| Dielectric properties]]: "VASP: Dielectric response. Perturbation theory, linear response, and finite electric fields". [http://www.youtube.com/watch?v=rnXnqDvaSNo&t=18s Video]
+
+*[[Media:VASP_lecture_RPA.pdf| Beyond DFT: RPA]]: "VASP: Beyond DFT. The Random-Phase-Approximation". [http://www.youtube.com/watch?v=7Vt3s8WWGCU&t=5s Video]
+
+*[[Media:VASP_lecture_BSE.pdf| BSE]]: "VASP: Beyond DFT. The Bethe-Salpeter Equation".
+
+*[[Media:VASP_lecture_HPC.pdf| Performance]]: "VASP: running on HPC resources".
+
+<!--*[http://www.vasp.at/vasp-workshop/lectures/VASP_lecture_Magnetism.pdf Magnetism]: "Magnetism: Spin-orbit coupling, magnetic exchange and anisotropy".
+
+*[[Media:VASP_lecture_NMR.pdf| NMR]]: "NMR calculations".
+-->
+----
+
+[[Category:VASP]][[Category:Workshops]]

@@ -1,0 +1,13 @@
+The {{FILE|QPOINTS}} file specifies the ('''q''' points) used to sample the Brillouin zone.
+This file is used in the context of phonon dispersion calculations.
+The format is the same as the {{FILE|KPOINTS}} file.
+
+==Related tags and articles==
+{{TAG | LPHON_DISPERSION}},
+{{TAG | PHON_NWRITE}},
+{{TAG | LPHON_POLAR}},
+{{TAG | PHON_DIELECTRIC}},
+{{TAG | PHON_BORN_CHARGES}},
+{{TAG | PHON_G_CUTOFF}}
+
+[[Category:VASP]][[Category:Files]][[Category:Input files]]

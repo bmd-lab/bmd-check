@@ -1,0 +1,117 @@
+VASP can continue a calculation from the converged results of a previous run instead of restarting the electronic minimization from scratch. The wavefunctions are reused through {{TAG|ISTART}} and the charge density through {{TAG|ICHARG}}; some methods additionally need the kinetic energy density or the local potential. The files that store these quantities are the ''restart files''.
+
+The restart files are {{FILE|WAVECAR}} (wavefunctions), {{FILE|CHGCAR}} (charge density together with the PAW one-center occupancies), {{FILE|TAUCAR}} (kinetic energy density, for meta-GGA functionals), and {{FILE|POT}} (local potential, for OEP calculations). Alternatively, these quantities are written to the single HDF5 file {{FILE|vaspwave.h5}}. The restart files differ from analysis and visualization output such as {{FILE|CHG}}, {{FILE|LOCPOT}}, {{FILE|DOSCAR}}, or {{FILE|vasprun.xml}}: the latter store derived or reduced quantities (for example, {{FILE|CHG}} omits the PAW one-center occupancies) and are not read back to continue a calculation.
+
+Which restart files are written, and whether in the legacy format or in {{FILE|vaspwave.h5}}, is controlled by {{TAG|LWAVE}}, {{TAG|LCHARG}}, {{TAG|LTAU}}, {{TAG|LVTOT}}, {{TAG|LH5}}, and {{TAG|LCHARGH5}}.
+
+== How the tags interact ==
+
+{{TAG|LWAVE}}, {{TAG|LCHARG}}, {{TAG|LTAU}}, and {{TAG|LVTOT}} decide '''whether''' the wavefunctions, the charge density, the kinetic energy density, and the local potential are written. {{TAG|LH5}} decides the '''format''': the legacy files for {{TAG|LH5|.FALSE.}}, or {{FILE|vaspwave.h5}} for {{TAG|LH5|.TRUE.}}, which suppresses the legacy files entirely. {{TAG|LCHARGH5}} is the exception: rather than switching the format, it writes the charge density to {{FILE|vaspwave.h5}} ''in addition'', so that the density is available for plotting with {{py4vasp}} while the restart information is still written to the legacy files.
+
+The files are written according to the following rules:
+* {{FILE|WAVECAR}} &mdash; {{TAG|LWAVE|.TRUE.}} and {{TAG|LH5|.FALSE.}}; the {{FILE|vaspwave.h5}} group <code>/wave</code> &mdash; {{TAG|LWAVE|.TRUE.}} and {{TAG|LH5|.TRUE.}}
+* {{FILE|CHGCAR}} &mdash; {{TAG|LCHARG|.TRUE.}} and {{TAG|LH5|.FALSE.}}; the {{FILE|vaspwave.h5}} group <code>/charge</code> &mdash; {{TAG|LCHARGH5|.TRUE.}}
+* {{FILE|TAUCAR}} &mdash; like {{FILE|CHGCAR}}, but additionally requires {{TAG|LTAU|.TRUE.}}; the {{FILE|vaspwave.h5}} group <code>/kinetic_energy_density</code> follows the <code>/charge</code> rule. {{TAG|LTAU}} defaults to {{TAG|LTAU|.TRUE.}} for meta-GGA functionals.
+* {{FILE|POT}} &mdash; {{TAG|LVTOT|.TRUE.}} and {{TAG|LH5|.FALSE.}}; the {{FILE|vaspwave.h5}} group <code>/potential</code> requires {{TAG|LVTOT|.TRUE.}} and {{TAG|LH5|.TRUE.}}. Only OEP and hybrid-functional OEP calculations write {{FILE|POT}}.
+
+=== Defaults ===
+
+The defaults of {{TAG|LWAVE}}, {{TAG|LCHARG}}, {{TAG|LH5}}, and {{TAG|LVTOT}} are fixed and do not depend on the other tags:
+* {{TAG|LWAVE|.TRUE.}}
+* {{TAG|LCHARG|.TRUE.}}
+* {{TAG|LH5|.FALSE.}}
+* {{TAG|LVTOT|.FALSE.}}
+
+{{TAG|LTAU}} defaults to {{TAG|LTAU|.TRUE.}} for meta-GGA functionals that need the kinetic energy density, and to {{TAG|LTAU|.FALSE.}} otherwise. {{TAG|LCHARGH5}} also has no fixed default: when it is not set, its value is {{TAG|LH5}} <code>.AND.</code> {{TAG|LCHARG}}. As a result, switching to HDF5 output with {{TAG|LH5|.TRUE.}} writes the charge density to {{FILE|vaspwave.h5}} automatically (as long as {{TAG|LCHARG|.TRUE.}}), while an explicit {{TAG|LCHARGH5|.FALSE.}} suppresses it.
+{{NB|tip|To plot the charge density with {{py4vasp}} while still writing restart information to the legacy {{FILE|WAVECAR}}, set {{TAG|LCHARGH5|.TRUE.}} together with {{TAG|LH5|.FALSE.}}.}}
+
+== Overview table ==
+
+The table gives an overview of written restart files for every combination of effective (i.e., after applying the defaults) tag values. ✓ marks a written file, &mdash; a file that is not written. The highlighted row is the default configuration. The kinetic energy density ({{FILE|TAUCAR}}) and the OEP local potential ({{FILE|POT}}) follow the same pattern as the charge density, additionally gated by {{TAG|LTAU}} and {{TAG|LVTOT}}.
+
+{| class="wikitable" style="text-align:center;"
+|+ Restart files written for each effective tag combination (wavefunctions and charge density)
+! {{TAG|LWAVE}} !! {{TAG|LCHARG}} !! {{TAG|LH5}} !! {{TAG|LCHARGH5}} !! {{FILE|WAVECAR}} !! {{FILE|CHGCAR}} !! {{FILE|vaspwave.h5}} /wave !! {{FILE|vaspwave.h5}} /charge
+|- style="background:#eaffea;"
+| .TRUE. || .TRUE. || .FALSE. || .FALSE. || ✓ || ✓ || — || —
+|-
+| .TRUE. || .TRUE. || .FALSE. || .TRUE. || ✓ || ✓ || — || ✓
+|-
+| .TRUE. || .FALSE. || .FALSE. || .FALSE. || ✓ || — || — || —
+|-
+| .TRUE. || .FALSE. || .FALSE. || .TRUE. || ✓ || — || — || ✓
+|-
+| .FALSE. || .TRUE. || .FALSE. || .FALSE. || — || ✓ || — || —
+|-
+| .FALSE. || .TRUE. || .FALSE. || .TRUE. || — || ✓ || — || ✓
+|-
+| .FALSE. || .FALSE. || .FALSE. || .FALSE. || — || — || — || —
+|-
+| .FALSE. || .FALSE. || .FALSE. || .TRUE. || — || — || — || ✓
+|-
+| .TRUE. || .TRUE. || .TRUE. || .FALSE. || — || — || ✓ || —
+|-
+| .TRUE. || .TRUE. || .TRUE. || .TRUE. || — || — || ✓ || ✓
+|-
+| .TRUE. || .FALSE. || .TRUE. || .FALSE. || — || — || ✓ || —
+|-
+| .TRUE. || .FALSE. || .TRUE. || .TRUE. || — || — || ✓ || ✓
+|-
+| .FALSE. || .TRUE. || .TRUE. || .FALSE. || — || — || — || —
+|-
+| .FALSE. || .TRUE. || .TRUE. || .TRUE. || — || — || — || ✓
+|-
+| .FALSE. || .FALSE. || .TRUE. || .FALSE. || — || — || — || —
+|-
+| .FALSE. || .FALSE. || .TRUE. || .TRUE. || — || — || — || ✓
+|}
+{{NB|mind|The tag {{TAG|LWAVEH5}} has no effect in current versions of VASP and is ignored. Use {{TAG|LH5}} to redirect the wavefunctions to {{FILE|vaspwave.h5}}.}}
+{{NB|mind|Reading the charge density back from {{FILE|vaspwave.h5}} is not yet implemented. A fixed-density restart ({{TAG|ICHARG|11}}) cannot use a {{FILE|vaspwave.h5}} that was written with {{TAG|LH5|.TRUE.}}; write the {{FILE|CHGCAR}} for such restarts. See [[Known_issues#KnownIssue73|issue 73]].}}
+{{NB|mind|This page describes VASP 6.5 and later. HDF5 output ({{FILE|vaspwave.h5}}) is available as of VASP 6.0, and additional datasets are written as of VASP 6.6.0. In VASP 6.0 to 6.4.2 the default of {{TAG|LCHARG}} was <code>.NOT.</code>{{TAG|LH5}}, and some combinations with {{TAG|LH5|.TRUE.}} still wrote the legacy {{FILE|CHGCAR}}.}}
+
+== Recognizing which restart file was read ==
+
+At startup VASP reports on the standard output which restart files it found and read, just before the <code>entering main loop</code> line. The excerpts below are for the wavefunction and charge-density restart.
+
+No restart file present &mdash; the wavefunctions are initialized from scratch and the charge density from overlapping atoms:
+<pre>
+ WAVECAR not read
+ entering main loop
+</pre>
+
+Wavefunctions read from {{FILE|WAVECAR}} ({{TAG|ISTART|1}}); the charge density is then built from these wavefunctions:
+<pre>
+ found WAVECAR, reading the header
+ reading WAVECAR
+ the WAVECAR file was read successfully
+ initial charge from wavefunction
+ entering main loop
+</pre>
+
+Wavefunctions and charge density read from the legacy files ({{TAG|ISTART|1}}, {{TAG|ICHARG|1}}):
+<pre>
+ found WAVECAR, reading the header
+ reading WAVECAR
+ the WAVECAR file was read successfully
+ charge density read from file: CHGCAR, restart
+ entering main loop
+</pre>
+
+Wavefunctions read from {{FILE|vaspwave.h5}} ({{TAG|LH5|.TRUE.}}, {{TAG|ISTART|1}}):
+<pre>
+ found vaspwave.h5, reading the header of group: wave
+ reading vaspwave.h5
+ found vaspwave.h5, reading group = wave
+ the vaspwave.h5 file was read successfully
+ initial charge from wavefunction
+ entering main loop
+</pre>
+Here the charge density is taken from the wavefunctions (''initial charge from wavefunction''); the charge density stored in {{FILE|vaspwave.h5}} is not read (see [[Known_issues#KnownIssue73|issue 73]]).
+
+== Related tags and articles ==
+
+Files: {{FILE|WAVECAR}}, {{FILE|CHGCAR}}, {{FILE|CHG}}, {{FILE|TAUCAR}}, {{FILE|POT}}, {{FILE|LOCPOT}}, {{FILE|vaspwave.h5}}
+
+Tags: {{TAG|LWAVE}}, {{TAG|LCHARG}}, {{TAG|LCHARGH5}}, {{TAG|LTAU}}, {{TAG|LVTOT}}, {{TAG|LH5}}, {{TAG|ISTART}}, {{TAG|ICHARG}}
+
+[[Category:Howto]][[Category:Charge density]]

@@ -1,0 +1,64 @@
+{{Template:Bulk_systems}}
+
+== Task ==
+
+Calculation of the DOS in fcc Ni.
+
+== Incar ==
+
+=== {{TAG|POSCAR}} ===
+ fcc:
+  3.53 
+  0.5 0.5 0.0
+  0.0 0.5 0.5
+  0.5 0.0 0.5
+    1
+ cartesian
+ 0 0 0
+
+
+=== {{TAG|INCAR}} ===
+
+  {{TAGBL|SYSTEM}} = fcc Ni
+  {{TAGBL|ISTART}} = 0 ; {{TAGBL|ICHARG}} = 2
+  {{TAGBL|ENCUT}}  = 270
+  {{TAGBL|ISMEAR}} = -5 
+  {{TAGBL|LORBIT}} = 11
+     
+  {{TAGBL|ISPIN}}  = 2
+  {{TAGBL|MAGMOM}} = 1
+
+=== {{TAG|KPOINTS}} ===
+ k-points
+  0
+ Monkhorst Pack
+  11 11 11
+  0  0  0
+
+== Calculation ==
+
+*The bash-script <tt>plotdos</tt> invokes ''awk'' and ''gnuplot'' to get the DOS from the {{FILE|vasprun.xml}} file and plot it.
+<pre>
+awk 'BEGIN{i=1} /dos>/,\
+                /\/dos>/ \
+                 {a[i]=$2 ; b[i]=$3 ; i=i+1} \
+     END{for (j=12;j<i-5;j++) print a[j],b[j]}' vasprun.xml > dos.dat
+
+ef=`awk '/efermi/ {print $3}' vasprun.xml`
+
+cat >plotfile<<!
+# set term postscript enhanced eps colour lw 2 "Helvetica" 20
+# set output "optics.eps"
+plot "dos.dat" using (\$1-$ef):(\$2) w lp
+!
+
+gnuplot -persist plotfile
+
+rm dos.dat plotfile
+</pre>
+
+== Download ==
+[[Media:2_8_fccNi_dos.tgz| 2_8_fccNi_dos.tgz]]
+----
+
+[[Category:Examples]]

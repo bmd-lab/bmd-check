@@ -1,0 +1,94 @@
+{{Sur_sci - Tutorial}}
+
+== Task ==
+
+Calculation of the adsorption energies and the work function of a Ni (111) surface with high precision.
+
+== Input ==
+
+=== {{TAG|POSCAR}} ===
+<pre>
+ fcc (111) surface                      
+   3.53000000000000     
+     0.7071067800000000    0.0000000000000000    0.0000000000000000
+    -0.3535533900000000    0.6123724000000000    0.0000000000000000
+     0.0000000000000000    0.0000000000000000    5.1961523999999999
+   Ni
+     5
+Selective dynamics
+Direct
+  0.0000000000000000  0.0000000000000000  0.0000000000000000   F   F   F
+  0.3333333300000021  0.6666666699999979  0.1111111100000031   F   F   F
+  0.6666666699999979  0.3333333300000021  0.2222222199999990   F   F   F
+ -0.0000000000000000 -0.0000000000000000  0.3320935940210170   T   T   T
+  0.3333333300000021  0.6666666699999979  0.4413539967541983   T   T   T
+ 
+  0.00000000E+00  0.00000000E+00  0.00000000E+00
+  0.00000000E+00  0.00000000E+00  0.00000000E+00
+  0.00000000E+00  0.00000000E+00  0.00000000E+00
+  0.00000000E+00  0.00000000E+00  0.00000000E+00
+  0.00000000E+00  0.00000000E+00  0.00000000E+00
+</pre>
+
+
+=== {{TAG|INCAR}} ===
+  {{TAGBL|ENMAX}} = 400
+     
+ general:
+   {{TAGBL|SYSTEM}} = clean nickel (111) surface
+   {{TAGBL|ISTART}} = 0
+   {{TAGBL|ICHARG}} = 2
+   {{TAGBL|ISMEAR}} = 2 ; {{TAGBL|SIGMA}} = 0.2
+   {{TAGBL|ALGO}} = Fast
+   {{TAGBL|EDIFF}} = 1E-6
+     
+ special:
+   {{TAGBL|LVHAR}} = .TRUE.
+ #  {{TAGBL|LVTOT}} = .TRUE.
+
+*Run a single point calculation for the Ni(111) clean surface at a higher cutoff (400eV), which is needed to compute the adsorption energy.
+*Potentials for O and C require an energy cut-off of 400eV:
+**Previous calculation for clean cannot be used as reference.
+**Recalculate with same energy cut-off.
+
+=== {{TAG|KPOINTS}} ===
+<pre>
+K-Points
+0
+Monkhorst-Pack
+9 9 1
+0 0 0
+</pre>
+
+== Calculation ==
+
+=== Adsorption energies ===
+
+*Change of cut-off lowers total energy:
+**-25.732 eV (270 eV); -25.737 eV (400 eV).
+**Becomes more important for larger cells.
+
+*The adsorption energy is calculated in the following way:
+**<math> E_{\mathrm{ads}} = E_{\mathrm{total}} - E_{\mathrm{clean}} - E_{\mathrm{CO}}</math>.
+**<math> E_{\mathrm{ads}} = -40.829 + 25.737 + 14.835 = -0.257 </math> eV.
+
+=== Work function ===
+
+* We use this run also to calculate the work-function of Ni(111).
+
+*Use p4vasp to show the planar average of the potential:
+[[File:Fig Ni 111 high prec 1.png|700px]]
+<!--
+*The plot of the planar average of the potential for this example should look like the following:
+[[File:Fig Ni 111 high prec 2.png|200px]]
+-->
+*Vacuum potential <math>E^{\mathrm{vac}} = 5.45</math> eV.
+*Fermi level <math>\epsilon_{\mathrm{F}} = 0.224</math> eV. (from {{TAG|OUTCAR}} file).
+*Work function <math> \Phi = E^{\mathrm{vac}} - \epsilon_{\mathrm{F}} = 5.23</math> eV.
+
+== Download ==
+[[Media:Ni111clean_400eV.tgz| Ni111clean_400eV.tgz]]
+ 
+{{Sur_sci}}
+
+[[Category:Examples]]

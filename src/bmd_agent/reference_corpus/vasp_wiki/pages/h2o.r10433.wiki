@@ -1,0 +1,51 @@
+{{Template:At_and_mol - Tutorial}}
+
+== Task ==
+
+Relaxation of an <math>\mathrm{H}_{2}\mathrm{O}</math> molecule.
+
+== Input ==
+
+=== {{TAG|POSCAR}} ===
+ H2O _2
+ 0.52918   ! scaling parameter
+  15 0 0
+  0 15 0
+  0 0 15
+ 1 2
+ select
+ cart
+      0.00     0.00     0.00 F F F
+      1.10    -1.43     0.00 T T F
+      1.10     1.43     0.00 T T F
+
+All coordinates are scaled by the factor 0.52918.
+
+=== {{TAG|INCAR}} ===
+ {{TAGBL|PREC}} = Normal    ! standard precision 
+ {{TAGBL|ENMAX}} = 400      ! cutoff should be set manually
+ {{TAGBL|ISMEAR}} = 0 ; {{TAGBL|SIGMA}} = 0.1
+ {{TAGBL|IBRION}} = 1       ! use DIIS algorithm to converge
+ {{TAGBL|NFREE}} = 2        ! 2 independent degrees of freedom
+ {{TAGBL|NSW}} = 10         ! 10 ionic steps
+ {{TAGBL|EDIFFG}} = -0.02   ! forces smaller 0.02 A/eV
+
+=== {{TAG|KPOINTS}} ===
+ Gamma-point only
+  0
+ Monkhorst Pack
+  1 1 1
+  0 0 0
+
+== Calculation ==
+
+*Use {{TAG|PREC}}=''Normal'' (Default for VASP.5.X)
+*It is strongly urged that the energy cutoffs are set manually in the {{TAG|INCAR}} file, as it provides more control over the calculations.
+*For the ionic optimization the DIIS algorithm is used. This algorithm builds an approximation of the Hessian matrix and converges usually faster than the conjugate gradient algorithm. It is however recommended to set the independent degrees of freedom manually. *{{TAG|EDIFFG}} determines when to terminate the relaxation. Positive values: energy change between steps must be less than the value set by {{TAG|EDIFFG}}. Negative values: <math>|\mathbf{F}_{i}| < |\mathrm{EDIFFG}| \forall i=1,N_{\mathrm{ions}} </math>.
+
+== Download ==
+[[Media:H2O.tgz| H2O.tgz]]
+ 
+{{Template:At_and_mol}}
+
+[[Category:Examples]]

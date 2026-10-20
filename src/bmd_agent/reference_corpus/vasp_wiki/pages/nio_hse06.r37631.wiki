@@ -1,0 +1,66 @@
+Description: Hybrid functional calculation using the HSE06 functional.
+
+It is strongly recommended to start from a converged PBE calculation ([[ISTART|ISTART]] = 1) before beginning with a DFT+HF method. For other [[List_of_hybrid_functionals|hybrid functionals]]
+
+''<u>Exercise :</u>'' Check the values presented [[NiO_GGA+U|here]].
+----
+*{{TAG|INCAR}}
+ NiO HSE06 AFM
+   {{TAGBL|SYSTEM}}   = "NiO"
+     
+ Electronic minimization
+   {{TAGBL|ENCUT}}    = 450
+   {{TAGBL|EDIFF}}    = 1E-5
+   {{TAGBL|LORBIT}}   = 11
+   {{TAGBL|LREAL}}    = .False.
+   {{TAGBL|ISTART}}   = 0
+   {{TAGBL|NELMIN}}   = 6
+     
+ DOS
+   {{TAGBL|ISMEAR}}   = -5
+     
+ Magnetism
+   {{TAGBL|ISPIN}}    = 2
+   {{TAGBL|MAGMOM}}   = 2.0 -2.0 2*0.0
+     
+ Mixer
+   {{TAGBL|AMIX}}     = 0.2
+   {{TAGBL|BMIX}}     = 0.00001
+   {{TAGBL|AMIX_MAG}} = 0.8
+   {{TAGBL|BMIX_MAG}} = 0.00001 
+     
+ Hybrid functional
+   #{{TAGBL|LHFCALC}}  = .TRUE.
+   #{{TAGBL|HFSCREEN}} = 0.2 
+   #{{TAGBL|ALGO}}     = D
+   #{{TAGBL|TIME}}     = 0.4
+
+*{{TAG|KPOINTS}}
+<pre>
+k-points
+ 0
+gamma
+ 4  4  4 
+ 0  0  0
+</pre>
+
+*{{TAG|POSCAR}}
+<pre>
+NiO
+ 4.17
+ 1.0 0.5 0.5
+ 0.5 1.0 0.5
+ 0.5 0.5 1.0
+ 2 2
+Cartesian
+ 0.0 0.0 0.0
+ 1.0 1.0 1.0
+ 0.5 0.5 0.5
+ 1.5 1.5 1.5
+</pre>
+
+== Download ==
+[[Media:Nio_hse06.tgz| nio_hse06.tgz]]
+----
+
+[[Category:Examples]]

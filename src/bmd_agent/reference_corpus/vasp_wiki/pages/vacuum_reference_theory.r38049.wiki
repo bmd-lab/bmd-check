@@ -1,0 +1,141 @@
+Finding a reference to compare between experiments or calculations can be challenging. Experimentally, there is usually a standard reference taken, e.g., the standard hydrogen electrode (SHE) under standard conditions. Computationally, it can be difficult to even compare the energies of cells if a reference is not carefully taken. The local potential cannot be used for a cell because it is relative to the individual cell. Instead, it is more useful to find a common reference, e.g., the vacuum.
+
+This page derives the vacuum alignment <math>e\Delta\bar{\phi}</math> that enters the free-energy difference of an electrochemical half-cell, and states the approximations it rests on {{Cite|jinnouchi:ncm:2024}}. For the procedure that computes it, see [[Vacuum reference]].
+
+The derivation proceeds in four steps. The free energy of the half-cell reaction is written with an explicit electron-reservoir term, that term is expressed relative to the energy zero of the periodic calculation, the result is averaged along the integration path, and the offset itself is estimated from the oxygen core levels.
+
+== Free energy with an electron reservoir ==
+During the Fe<sup>2+</sup>/Fe<sup>3+</sup> half-cell reaction, one electron is exchanged with an electron reservoir. The Helmholtz free-energy difference is
+
+<math display="block">
+\Delta A
+=
+\int_0^1
+\left\langle U_1-U_0 \right\rangle_{\lambda}
+\,\mathrm{d}\lambda
+-
+\mu n ,
+</math>
+
+where <math>\left\langle U_1-U_0\right\rangle_{\lambda}</math> is the ensemble-averaged potential-energy difference between an interacting system (<math>\lambda=1</math>) and non-interacting system (<math>\lambda=0</math>) taken from thermodynamic integration with coupling parameter <math>\lambda</math>, <math>\mu</math> is the electron chemical potential expressed relative to the same energy reference as the calculated energies, and <math>n</math> is the signed number of electrons exchanged with the reservoir.
+
+== Aligning the bulk calculation to the vacuum ==
+The desired absolute reference is an electron at rest in vacuum, <math>\mu_{\mathrm{vac}}\equiv0~\mathrm{eV}.</math>
+This does not mean that the chemical potential appearing in the periodic bulk calculation can be set to zero. The bulk calculation contains no vacuum region, and its electrostatic potential has an arbitrary additive constant. Consequently, <math>\mu_{\mathrm{vac}}</math> must first be expressed relative to the energy zero of each bulk calculation.
+
+A water-slab calculation is used to establish this alignment. The electrostatic potential in its nominal vacuum region provides an estimate of the vacuum level. Because the slab and vacuum regions are finite, this estimate may be affected by interfacial fluctuations and interactions between periodic images and is therefore an approximation to the macroscopic vacuum level. The O <math>1s</math> level is used to transfer the reference from the slab to the bulk calculation. It is a deep, strongly localized state whose energy follows shifts of the local electrostatic potential. Its dependence on the local chemical environment is reduced by averaging over many water molecules and configurations. In the bulk calculation, water molecules within half a unit cell of the Fe ion are excluded to avoid ion-specific core-level shifts. A more detailed account of core-level calculations is given in Ref. {{Cite|jinnouchi:chemsci:2025}}.
+
+The chemical potential of the vacuum electron expressed relative to the bulk energy zero at coupling parameter <math>\lambda</math> is approximated by
+
+<math display="block">
+\mu_{\mathrm{bulk},\lambda}
+\approx
+\mu_{\mathrm{vac}}
+-
+\left\langle\epsilon_{1s,\mathrm{slab}}\right\rangle
++
+\left\langle\epsilon_{1s,\mathrm{bulk}}\right\rangle_{\lambda}
+\equiv
+e\Delta\bar{\phi}_{\lambda}.
+</math>
+
+Thus, although <math>\mu_{\mathrm{vac}}=0</math> on the vacuum scale, the chemical potential entering the bulk free-energy calculation is generally not zero. The reservoir contribution is therefore approximated by the vacuum alignment energy  
+
+<math display="block">
+-\mu_{\mathrm{bulk},\lambda}n
+\approx
+-n e\Delta\bar{\phi}_{\lambda},
+</math>
+
+where <math>\Delta\bar{\phi}_{\lambda}</math> is the vacuum-to-bulk potential offset at coupling parameter <math>\lambda</math>.
+Since the alignment depends on <math>\lambda</math>, the consistently aligned free-energy difference may be written as
+
+<math display="block">
+\Delta A
+\approx
+\int_0^1
+\left[
+\left\langle U_1-U_0\right\rangle_{\lambda}
+-
+n e\Delta\bar{\phi}_{\lambda}
+\right]
+\,\mathrm{d}\lambda .
+</math>
+
+Equivalently, defining the path-averaged alignment by
+
+<math display="block">
+e\Delta\bar{\phi}
+=
+\int_0^1 e\Delta\bar{\phi}_{\lambda}\,\mathrm{d}\lambda ,
+</math>
+
+gives
+
+<math display="block">
+\Delta A
+\approx
+\int_0^1
+\left\langle U_1-U_0\right\rangle_{\lambda}
+\,\mathrm{d}\lambda
+-
+n e\Delta\bar{\phi}.
+</math>
+
+== Estimating the offset from the O 1s levels ==
+For bulk-like water molecules, the O <math>1s</math> energy may be written schematically as
+
+<math display="block">
+\epsilon_{1s,i}
+\approx
+\epsilon_{1s}^{\mathrm{chem}}-e\phi_i.
+</math>
+
+The chemical contribution is approximately the same in the bulk and slab calculations and largely cancels upon averaging. The difference between their averaged O <math>1s</math> levels therefore estimates the offset between the respective electrostatic-potential references.
+
+[[File:Vacuum_ref.png|600px|thumb|center|'''Figure 1'''. Alignment of the periodic bulk-water calculation with the vacuum reference. The average O <sub>1s</sub> level of water molecules far from the Fe ion, <span style="color:#A82C35"><math>\left\langle\epsilon_{1s,\mathrm{bulk}}\right\rangle_{\lambda}</math></span>, is used as the bulk reference. Water molecules within half a unit cell of the ion are excluded. The O <sub>1s</sub> level in the bulk-like region of the water slab, <span style="color:#3E70EA"><math>\left\langle\epsilon_{1s,\mathrm{slab}}\right\rangle</math></span>, connects this reference to the vacuum level estimated from the slab calculation. Their difference gives the approximate potential offset <span style="color:#8342A4"><math>e\Delta\bar{\phi}_{\lambda}</math></span> and hence the chemical potential of the vacuum electron expressed in the bulk energy reference. Reproducing Fig. 1 of Ref. {{Cite|jinnouchi:ncm:2024}}.]]
+
+For the Fe<sup>2+</sup>/Fe<sup>3+</sup> reaction, the path-averaged O <math>1s</math> level is approximated by the mean of the endpoint values,
+
+<math display="block">
+\int_0^1
+\left\langle\epsilon_{1s,\mathrm{bulk}}\right\rangle_{\lambda}
+\,\mathrm{d}\lambda
+\approx
+\frac{
+\left\langle\epsilon_{1s,\mathrm{Fe^{2+}}}\right\rangle
++
+\left\langle\epsilon_{1s,\mathrm{Fe^{3+}}}\right\rangle
+}{2}.
+</math>
+
+The resulting path-averaged chemical potential in the bulk reference is
+
+<math display="block">
+e\Delta\bar{\phi}
+\approx
+\mu_{\mathrm{vac}}
+-
+\left\langle\epsilon_{1s,\mathrm{slab}}\right\rangle
++
+\frac{
+\left\langle\epsilon_{1s,\mathrm{Fe^{2+}}}\right\rangle
++
+\left\langle\epsilon_{1s,\mathrm{Fe^{3+}}}\right\rangle
+}{2}.
+</math>
+
+The endpoint average assumes that the alignment varies approximately linearly along the thermodynamic-integration path. The sign of <math>n</math> must be chosen consistently with the direction of electron transfer.
+
+== Related tags and articles ==
+;How-tos
+* [[Vacuum reference]]
+* [[Thermodynamic integration: redox potential]]
+;Theory
+* [[Thermodynamic integration]]
+
+== References ==
+<references/>
+
+[[Category:Theory]][[Category:Advanced molecular-dynamics sampling]][[Category:Electrostatics]][[Category:Potential]]
+<!--[[Category:Electrochemistry]]-->

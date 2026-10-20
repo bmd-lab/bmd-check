@@ -1,0 +1,75 @@
+{{NB|mind|This feature is only available from VASP 6.0 or higher.}}
+
+For the theory on electron-phonon interactions from Monte-Carlo (MC) sampling, see the [[Electron-phonon_interactions_theory#Electron-phonon_interactions_from_statistical_sampling|theory page]].
+
+First of all this method needs a sufficiently large supercell.
+It also involves phonon calculations for the <math>\Gamma</math> point (see {{TAG|Phonons from finite differences}}). So many tags in the {{TAG|INCAR}} will be used from the phonon calculations.
+
+The first implementation of electron-phonon interactions from MC sampling in VASP is found in Ref. {{cite|karsai:njp:2018}}.
+
+The original publication of the ZG configuration (one-shot method) is found in Ref. {{cite|zacharias:prb:2016}}. 
+
+== Step-by-step instructions ==
+'''Step 1''': Run a single calculation to create the {{TAG|POSCAR}} file(s) with special positions either belonging to the ZG configuration method or MC sampling. To enable electron-phonon interactions from MC methods {{TAG|PHON_LMC}}=''.TRUE.'' has to be set in the {{TAG|INCAR}} file. Also, {{TAG|IBRION}}=6 has to be selected (the sampling methods are currently only implemented for {{TAG|IBRION}}=6). The description of the remaining required {{TAG|INCAR}} tags for each method is given below. Both methods produce {{TAG|POSCAR}} files with different distorted Wycoff positions but unchanged Brillouin matrix. The ZG configuration method produces one structure for each temperature defined in {{TAG|PHON_TLIST}}. The files are labeled as 
+ POSCAR.T=TEMP.
+The MC sampling code produces many {{TAG|POSCAR}} files at a given temperature defined by {{TAG|TEBEG}}. The files are labeled as 
+ POSCAR.T=TEBEG.NUMBER
+where NUMBER runs from 1 to {{TAG|PHON_NSTRUCT}}.
+
+'''Step 2''': Run calculation for the previously created {{TAG|POSCAR}} files on the desired observable. These calculations can be anything that is suitable for an MC sum <math>\langle O(T)\rangle = \frac{1}{n} \sum\limits_{i=1}^{n} O(x_{T}^{\textrm{MC,i}})</math>, for example, band gap calculations, absorption spectra calculations, etc.
+
+'''Step 3 (optional)''': Calculate the desired observable for the original "pristine" supercell. This step can be necessary when changes to an observable due to electron-phonon interactions are required. An example of such a calculation is the calculation of the band-gap renormalization due to electron-phonon interactions. 
+
+'''Step 4 (optional)''': If MC sampling was used, average the results over the number of structures created in step 1 ({{TAG|PHON_NSTRUCT}}).
+
+== ZG configuration (one-shot sampling) ==
+
+M. Zacharias and F. Giustino{{cite|zacharias:prb:2016}} introduced a one-shot method (named ZG configuration after the authors). This method is an approximation to full MC sampling. It only uses a single distorted structure and hence it is computationally much cheaper than the full MC sampling. It retains an accuracy very close to the full MC sampling for converged supercell sizes. For example, we showed that for the zero-point renormalization of the band gap, the accuracy is within 5 meV between the ZG configurations and the full MC sampling{{cite|karsai:njp:2018}}. Hence we suggest using this method preferably, when convergence of the supercell size is hard to achieve or the 5 meV accuracy is enough.
+
+To select the ZG configuration {{TAG|PHON_NSTRUCT}}=0 has to be set in the {{TAG|INCAR}} file. 
+
+The list of temperatures (in K) has to be provided using the tag {{TAG|PHON_TLIST}}, respectively, in the {{TAG|INCAR}} file. An example would look like:
+ {{TAGBL|PHON_TLIST}} = 0.0 100.0 200.0 350.0
+This makes the simultaneous calculation of the ZG configuration at several temperatures possible. 
+
+An example {{TAG|INCAR}} file for a temperature range from 0-700 K (with step size of 100 K) is given as:
+ {{TAGBL|System}} = DEFAULT
+ {{TAGBL|PREC}} = Accurate
+ {{TAGBL|ISMEAR}} = 0; {{TAGBL|SIGMA}} = 0.1;
+ {{TAGBL|IBRION}} = 6
+ {{TAGBL|PHON_TLIST}} = 0.0 100.0 200.0 300.0 400.0 500.0 600.0 700.0
+ {{TAGBL|PHON_NSTRUCT}} = 0
+ {{TAGBL|PHON_LMC}} = .TRUE.
+
+== Full MC sampling ==
+
+The tag {{TAG|PHON_NSTRUCT}} sets the number of structures generated due to the MC sampling. Convergence of the observable with respect to this number should be monitored.
+
+The tag {{TAG|TEBEG}}=0 is also needed to choose the temperature at which the sampling is run.
+
+Additionally, the {{TAG|PHON_LBOSE}} can be set ''.TRUE.'' or ''.FALSE.'' (default {{TAG|PHON_LBOSE}}=''.TRUE.''), which selects Bose-Einstein or Maxwell-Boltzmann statistics, respectively.  
+
+A sample {{TAG|INCAR}} file for 0 K looks like the following:
+ 
+ System = DEFAULT
+ {{TAGBL|PREC}} = Accurate
+ {{TAGBL|ISMEAR}} = 0; {{TAGBL|SIGMA}} = 0.1;
+ {{TAGBL|IBRION}} = 6
+ 
+ {{TAGBL|PHON_LMC}} = .TRUE.
+ {{TAGBL|PHON_NSTRUCT}} = 100
+ {{TAGBL|TEBEG}} = 0.0
+
+== Related tags and articles ==
+* {{TAG|PHON_LBOSE}}
+* {{TAG|PHON_LMC}}
+* {{TAG|PHON_NSTRUCT}}
+* {{TAG|PHON_TLIST}}
+* [[Electron-phonon_interactions_theory#Electron-phonon_interactions_from_statistical_sampling | Electron-phonon interactions from statistical sampling]]
+* [[Bandgap renormalization due to electron-phonon coupling|Band-structure renormalization]]
+* [[Transport coefficients including electron-phonon scattering|Transport calculations]]
+
+== References ==
+<references/>
+----
+[[Category:Phonons]][[Category:Electron-phonon interactions]][[Category:Howto]]

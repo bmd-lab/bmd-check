@@ -1,0 +1,11 @@
+The {{TAG|POSCAR.prim}} file contains the structural information of the primitive cell required for the {{TAG|k-point projection scheme}}.
+
+The format of this file is similar to the {{TAG|POSCAR}} file.
+
+== Related Tags and Sections ==
+{{FILE|PRJCAR}}, {{TAG|LKPROJ}}, {{TAG|POSCAR}}
+
+----
+
+
+[[Category:Files]]

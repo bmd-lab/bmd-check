@@ -1,0 +1,262 @@
+The exchange energy in hybrid functionals is a mixture of semilocal (SL) and nonlocal Hartree-Fock (HF) types. They can be categorized into different families according to the type of semilocal approximation (LDA, GGA, or MGGA) or the treatment of the short- and long-range parts of the exchange. A rather general formula that encompasses the different families of hybrid functionals is given by
+
+:<math>E_{\mathrm{xc}}^{\mathrm{hybrid}}=a_{\mathrm{SR}} E_{\mathrm{x,SR}}^{\mathrm{HF}}(\mu) + a_{\mathrm{LR}} E_{\mathrm{x,LR}}^{\mathrm{HF}}(\mu) + (1-a_{\mathrm{SR}})E_{\mathrm{x,SR}}^{\mathrm{SL}}(\mu) + (1-a_{\mathrm{LR}})E_{\mathrm{x,LR}}^{\mathrm{SL}}(\mu) + E_{\mathrm{c}}^{\mathrm{SL}}</math>
+
+where
+*<math>a_{\mathrm{SR}}</math> and <math>a_{\mathrm{LR}}</math> are the '''mixing parameters (fraction of HF exchange) at short and long range''', respectively.
+*<math>\mu</math> is the '''screening parameter''' that determines the separation between short range (SR) and long range (LR).
+
+The SR and LR components of the full-range <math>E_{\mathrm{x}}^{\mathrm{SL}}</math> and <math>E_{\mathrm{x}}^{\mathrm{HF}}</math> exchange energies are constructed such that at all values of <math>\mu</math>
+*<math>E_{\mathrm{x}}^{\mathrm{HF}}=E_{\mathrm{x,SR}}^{\mathrm{HF}}(\mu)+E_{\mathrm{x,LR}}^{\mathrm{HF}}(\mu)</math>
+*<math>E_{\mathrm{x}}^{\mathrm{SL}}=E_{\mathrm{x,SR}}^{\mathrm{SL}}(\mu)+E_{\mathrm{x,LR}}^{\mathrm{SL}}(\mu)</math>
+
+The HF exchange energy (full-range, SR, or LR) is given by
+<span id="ExFockSR">
+:<math>
+E_{\mathrm{x,(SR/LR)}}^{\rm HF}(\mu)=
+-\frac{1}{2}\sum_{n\mathbf{k},m\mathbf{q}}
+f_{n\mathbf{k}} f_{m\mathbf{q}} 
+\int \int d^3\mathbf{r} d^3\mathbf{r}'
+v(\mu,|\mathbf{r}-\mathbf{r}'|)
+\psi_{n\mathbf{k}}^{*}(\mathbf{r})\psi_{m\mathbf{q}}^{*}(\mathbf{r}')
+\psi_{n\mathbf{k}}(\mathbf{r}')\psi_{m\mathbf{q}}(\mathbf{r})
+</math>
+</span>
+with <math>\{\psi_{n\mathbf{k}}(\mathbf{r})\}</math> being the set of one-electron 
+Bloch states of the system, and <math>\{f_{n\mathbf{k}}\}</math> the corresponding
+set of (possibly fractional) occupational numbers.
+The sums over <math>{\bf k}</math> and <math>{\bf q}</math> run over all k-points chosen to sample the Brillouin zone, whereas the sums over <math>m</math> and <math>n</math> run over all bands at these k-points. 
+The corresponding nonlocal HF exchange potential is given by
+<span id="VxFock">
+:<math>
+V_{\mathrm{x,(SR/LR)}}^{\mathrm{HF}}\left(\mu,\mathbf{r},\mathbf{r}'\right)=
+-\sum_{m\mathbf{q}}f_{m\mathbf{q}}v(\mu,|\mathbf{r}-\mathbf{r}'|)\psi_{m\mathbf{q}}^{*}(\mathbf{r}')\psi_{m\mathbf{q}}(\mathbf{r})
+</math>
+</span>
+The orbital-dependent form of the HF exchange energy is such that hybrid functionals are implemented within the generalized KS scheme{{cite|seidl:prb:96}}. Thus, the total energy is minimized with respect to the orbitals instead of the electron density as in LDA and GGA, which means that the HF potential is a nonlocal operator as in the Hartree-Fock-Roothaan theory.
+
+=== Expressions of the Hartree-Fock potential for the plane-wave basis set ===
+
+Using the decomposition of the Bloch states <math>\psi_{m\mathbf{q}}</math> in plane waves,
+
+:<math>
+\psi_{m\mathbf{q}}(\mathbf{r})=
+\frac{1}{\sqrt{\Omega}}
+\sum_\mathbf{G}C_{m\mathbf{q}}(\mathbf{G})e^{i(\mathbf{q}+\mathbf{G}) \cdot \mathbf{r}}
+</math>
+
+the HF exchange potential can be written as 
+
+:<math>
+V_{\mathrm{x,(SR/LR)}}^{\mathrm{HF}}\left(\mu,\mathbf{r},\mathbf{r}'\right)=
+\sum_{\mathbf{k}}\sum_{\mathbf{G}\mathbf{G}'}
+e^{i(\mathbf{k}+\mathbf{G})\cdot\mathbf{r}}
+V_{\mathbf{k}}\left(\mu, \mathbf{G},\mathbf{G}'\right)
+e^{-i(\mathbf{k}+\mathbf{G}')\cdot\mathbf{r}'}
+</math>
+where
+:<math>
+V_{\mathbf{k}}\left(\mu, \mathbf{G},\mathbf{G}'\right)=
+\langle \mathbf{k}+\mathbf{G} | V_{\mathrm{x,(SR/LR)}}^{\mathrm{HF}} | \mathbf{k}+\mathbf{G}'\rangle
+</math>
+
+== Types of potentials ==
+
+For most hybrid functionals proposed in the literature, the interelectronic Coulomb potential <math>v(\mu,|\mathbf{r}-\mathbf{r}'|)</math> is one of these types (<math>r=|\mathbf{r}-\mathbf{r}'|</math>):
+* Full range (bare Coulomb potential):
+:<math>
+v^{\mathrm{bare}}(r)=\frac{1}{r}
+</math>
+<span id="VxFockRecip">
+:<math>
+V_{\mathbf{k}}^{\mathrm{bare}}\left( \mathbf{G},\mathbf{G}'\right)=
+-\frac{4\pi}{\Omega} \sum_{m\mathbf{q}}f_{m\mathbf{q}}\sum_{\mathbf{G}''}
+\frac{C^*_{m\mathbf{q}}(\mathbf{G}'-\mathbf{G}'') C_{m\mathbf{q}}(\mathbf{G}-\mathbf{G}'')}
+{|\mathbf{k}-\mathbf{q}+\mathbf{G}''|^2}
+</math>
+</span>
+* Short-range with error function:
+:<math>
+v_{\mathrm{SR}}^{\mathrm{erf}}(\mu,r)=\frac{\mathrm{erfc}(\mu r)}{r}
+</math>
+<span id="VxFockSRRecip">
+:<math>
+\begin{align}
+V_{\mathbf{k},\mathrm{SR}}^{\mathrm{erf}}\left(\mu, \mathbf{G},\mathbf{G}'\right)=
+-\frac{4\pi}{\Omega} \sum_{m\mathbf{q}}f_{m\mathbf{q}}\sum_{\mathbf{G}''}
+\frac{C^*_{m\mathbf{q}}(\mathbf{G}'-\mathbf{G}'') C_{m\mathbf{q}}(\mathbf{G}-\mathbf{G}'')}
+{|\mathbf{k}-\mathbf{q}+\mathbf{G}''|^2}
+\left( 1-e^{-|\mathbf{k}-\mathbf{q}+\mathbf{G}''|^2 /(4\mu^2)} \right)
+\end{align}
+</math>
+</span>
+[[File:Screened_operator.png|340px|thumb|right|Short- and long-range potentials using the error or exponential screening compared to the bare potential. <math>\mu=1</math> is used.]]
+* Short-range with exponential function:
+:<math>
+v_{\mathrm{SR}}^{\mathrm{exp}}(\mu,r)=\frac{e^{-\mu r}}{r}
+</math>
+<span id="VxFockRecip">
+:<math>
+V_{\mathbf{k},\mathrm{SR}}^{\mathrm{exp}}\left(\mu, \mathbf{G},\mathbf{G}'\right)=
+-\frac{4\pi}{\Omega} \sum_{m\mathbf{q}}f_{m\mathbf{q}}\sum_{\mathbf{G}''}
+\frac{C^*_{m\mathbf{q}}(\mathbf{G}'-\mathbf{G}'') C_{m\mathbf{q}}(\mathbf{G}-\mathbf{G}'')}
+{|\mathbf{k}-\mathbf{q}+\mathbf{G}''|^2 + \mu^2}
+</math>
+</span>
+The corresponding long-range potentials are given by <math>v_{\mathrm{LR}}^{\mathrm{erf/exp}}=v^{\mathrm{bare}}-v_{\mathrm{SR}}^{\mathrm{erf/exp}}</math>.
+
+In VASP, these expressions are implemented within the [[Projector-augmented-wave_formalism|PAW formalism]].{{cite|paier:jcp:05}}{{cite|angyan:jpa:2006}}
+
+The families of hybrid functionals implemented in VASP are listed below along with examples, whose corresponding {{TAG|INCAR}} files can be found at the page [[list_of_hybrid_functionals|list of hybrid functionals]].
+{{NB|important|The screening <math>\mu</math> ({{TAG|HFSCREEN}} tag) can be used only when the semilocal functional is PBE, PBEsol, or LDA ({{TAG|GGA}}{{=}}PE, PS, or CA, respectively). The other {{TAG|GGA}} and {{TAG|METAGGA}} functionals have no screened version available in VASP.}}
+
+== Families of hybrid functionals ==
+
+=== HF exchange at full range ===
+
+There is no range separation, i.e. the same fraction of HF exchange is applied at full range, <math>a_{\mathrm{SR}}=a_{\mathrm{LR}}=a</math> ({{TAG|AEXX}} tag):
+
+:<math>E_{\mathrm{xc}}^{\mathrm{hybrid}}=a E_{\mathrm{x}}^{\mathrm{HF}} + (1-a)E_{\mathrm{x}}^{\mathrm{SL}} + E_{\mathrm{c}}^{\mathrm{SL}}</math>
+{{NB|mind|
+*These functionals are set with {{TAG|LHFCALC}}{{=}}.TRUE. By default {{TAG|AEXX}}{{=}}0.25, but can be set to another value.
+*The semilocal part can be of the LDA, GGA or MGGA type.
+}}
+
+These are the original and most simple forms of hybrid functionals. Two examples, PBE0 and B3LYP, are given below.
+
+*[[list_of_hybrid_functionals#PBE0|PBE0]]:{{cite|perdew:jcp:1996}} 
+
+:<math>
+E_{\mathrm{xc}}^{\mathrm{PBE0}}=\frac{1}{4} E_{\mathrm{x}}^{\mathrm{HF}} +
+\frac{3}{4} E_{\mathrm{x}}^{\mathrm{PBE}} + E_{\mathrm{c}}^{\mathrm{PBE}}
+</math>
+</span>
+:It is based on the PBE GGA functional{{cite|perdew:prl:1996}} and <math>a=1/4</math>.
+
+*[[list_of_hybrid_functionals#B3LYP|B3LYP]]{{cite|stephens:jpc:1994}}, well known and popular amongst quantum chemists: 
+
+<span id="B3LYP">
+:<math>
+\begin{align}
+E_{\mathrm{x}}^{\mathrm{B3LYP}} &=0.8 E_{\mathrm{x}}^{\mathrm{LDA}}+
+0.2 E_{\mathrm{x}}^{\mathrm{HF}} + 0.72 (E_{\mathrm{x}}^{\mathrm{B88}}-E_{\mathrm{x}}^{\mathrm{LDA}}) +
+0.19 E_{\mathrm{c}}^{\mathrm{VWN3}}+ 0.81 E_{\mathrm{c}}^{\mathrm{LYP}}
+\end{align}
+</math>
+</span>
+:The exchange part consists of 80% of LDA exchange plus 20% of HF exchange, and 72% of the gradient corrections of the B88 GGA functional.{{cite|becke:pra:1988}} The correlation consists of 81% of LYP{{cite|lee:prb:1988}} correlation energy, which contains a LDA and a GGA part, and 19% of the LDA Vosko-Wilk-Nusair correlation functional III,{{cite|vosko1980}} which was fitted to the correlation energy in the random phase approximation of the homogeneous electron gas.
+
+=== HF exchange at short range (error-function screening) ===
+
+The HF exchange is used only at short-range (the long-range part is fully semilocal, <math>a_{\mathrm{LR}}=0</math>) and the screening is done with the error function:
+
+:<math>E_{\mathrm{xc}}^{\mathrm{hybrid}}=a_{\mathrm{SR}} E_{\mathrm{x,SR}}^{\mathrm{HF}}(\mu) + (1-a_{\mathrm{SR}})E_{\mathrm{x,SR}}^{\mathrm{SL}}(\mu) + E_{\mathrm{x,LR}}^{\mathrm{SL}}(\mu) + E_{\mathrm{c}}^{\mathrm{SL}}</math>
+
+The mixing <math>a_{\mathrm{SR}}</math> and screening <math>\mu</math> are controlled by the {{TAG|AEXX}} and {{TAG|HFSCREEN}} tags, respectively.
+
+The most popular range-separated functional, HSE, is given below.
+*[[List_of_hybrid_functionals#HSE03|HSE03]]{{cite|heyd:jcp:03}}{{cite|heyd:jcp:04}}{{cite|heyd:jcp:06}} and [[List_of_hybrid_functionals#HSE06|HSE06]]{{cite|krukau:jcp:06}}:
+
+:<math>
+E_{\mathrm{xc}}^{\mathrm{HSE}}= \frac{1}{4}E_{\mathrm{x,SR}}^{\mathrm{HF}}(\mu)
++ \frac{3}{4} E_{\mathrm{x,SR}}^{\mathrm{PBE}}(\mu) 
++ E_{\mathrm{x,LR}}^{\mathrm{PBE}}(\mu) + E_{\mathrm{c}}^{\mathrm{PBE}}
+</math>
+
+:They are based on the PBE GGA functional{{cite|perdew:prl:1996}} and <math>a_{\mathrm{SR}}=1/4</math>. It has been shown that the optimum <math>\mu</math>, controlling the range separation is approximately 0.2-0.3 &Aring;<sup>-1</sup>.{{cite|heyd:jcp:03}}{{cite|heyd:jcp:04}}{{cite|heyd:jcp:06}}{{cite|krukau:jcp:06}} [[List_of_hybrid_functionals#HSE03|HSE03]] and [[List_of_hybrid_functionals#HSE06|HSE06]] correspond to {{TAG|HFSCREEN}}=0.3 and 0.2, respectively. Note that the two limit cases of HSE are [[List_of_hybrid_functionals#PBE0|PBE0]] at <math>\mu=0</math> and PBE at <math>\mu\rightarrow\infty</math>.
+
+=== HF exchange at short range and long range with different mixings (error-function screening) ===
+
+The fractions of HF exchange at short and long range (<math>a_{\mathrm{SR}}</math> and <math>a_{\mathrm{LR}}</math>, respectively) can be different:
+
+:<math>E_{\mathrm{xc}}^{\mathrm{hybrid}}=a_{\mathrm{SR}} E_{\mathrm{x,SR}}^{\mathrm{HF}}(\mu) + a_{\mathrm{LR}} E_{\mathrm{x,LR}}^{\mathrm{HF}}(\mu) + (1-a_{\mathrm{SR}})E_{\mathrm{x,SR}}^{\mathrm{SL}}(\mu) + (1-a_{\mathrm{LR}})E_{\mathrm{x,LR}}^{\mathrm{SL}}(\mu) + E_{\mathrm{c}}^{\mathrm{SL}}</math>
+
+These functionals are selected with {{TAG|LMODELHF}}=.TRUE. The mixings <math>a_{\mathrm{LR}}</math> and <math>a_{\mathrm{SR}}</math> are controlled by the {{TAG|AEXX}} and {{TAG|BEXX}} tags, respectively, and the screening <math>\mu</math> by the {{TAG|HFSCREEN}} tag.
+{{NB|important|The possibility to set <math>a_{\mathrm{SR}}</math> with {{TAG|BEXX}} within the {{TAG|LMODELHF}}{{=}}.TRUE. method was introduced in VASP.6.6.0. Until VASP.6.5.1 <math>a_{\mathrm{SR}}</math> was fixed to 1 and could not be changed.}}
+
+This functional form has been used in the context of dielectric-dependent hybrids. Examples are provided below.
+
+*[[List_of_hybrid_functionals#RS-DDH|RS-DDH]]:{{cite|skone:prb:2016}}
+
+:<math>
+E_{\mathrm{xc}}^{\mathrm{RS-DDH}}=\frac{1}{4} E_{\mathrm{x,SR}}^{\mathrm{HF}}(\mu) + a_{\mathrm{LR}} E_{\mathrm{x,LR}}^{\mathrm{HF}}(\mu) + \frac{3}{4}E_{\mathrm{x,SR}}^{\mathrm{PBE}}(\mu) + (1-a_{\mathrm{LR}})E_{\mathrm{x,LR}}^{\mathrm{PBE}}(\mu) + E_{\mathrm{c}}^{\mathrm{PBE}}
+</math>
+:where <math>a_{\mathrm{SR}}=1/4</math> and <math>a_{\mathrm{LR}}=\varepsilon^{-1}</math> is chosen as the inverse of the dielectric constant <math>\varepsilon^{-1}</math>.
+
+*[[List_of_hybrid_functionals#DD-RSH-CAM|DD-RSH-CAM]],{{cite|chen2018nonempirical}} [[List_of_hybrid_functionals#DD-RSH-CAM|DSH]]:{{cite|cui2018doubly}}
+
+:<math>
+E_{\mathrm{xc}}^{\mathrm{DD-RSH-CAM}}=E_{\mathrm{x,SR}}^{\mathrm{HF}}(\mu) + a_{\mathrm{LR}} E_{\mathrm{x,LR}}^{\mathrm{HF}}(\mu) + (1-a_{\mathrm{LR}})E_{\mathrm{x,LR}}^{\mathrm{PBE}}(\mu) + E_{\mathrm{c}}^{\mathrm{PBE}}
+</math>
+:where <math>a_{\mathrm{SR}}=1</math> and <math>a_{\mathrm{LR}}=\varepsilon^{-1}</math> is chosen as the inverse of the dielectric constant <math>\varepsilon^{-1}</math>.
+
+=== HF exchange at long range (error-function screening) ===
+
+The HF exchange is used only at long-range (the short-range part is fully semilocal, <math>a_{\mathrm{SR}}=0</math>) and the screening is done with the error function:
+
+:<math>E_{\mathrm{xc}}^{\mathrm{hybrid}}=a_{\mathrm{LR}} E_{\mathrm{x,LR}}^{\mathrm{HF}}(\mu) + E_{\mathrm{x,SR}}^{\mathrm{SL}}(\mu) + (1-a_{\mathrm{LR}})E_{\mathrm{x,LR}}^{\mathrm{SL}}(\mu) + E_{\mathrm{c}}^{\mathrm{SL}}</math>
+
+These functionals are selected with {{TAG|LRHFCALC}}=.TRUE. The mixing <math>a_{\mathrm{LR}}</math> and screening <math>\mu</math> are controlled by the {{TAG|AEXX}} and {{TAG|HFSCREEN}} tags, respectively.
+{{NB|mind|{{TAG|LRHFCALC}}{{=}}.TRUE. automatically sets {{TAG|AEXX}}{{=}}1. However, {{TAG|AEXX}} can be set to another value.}}
+{{NB|important|When {{TAG|AEXX}}{{=}}1 (the default for {{TAG|LRHFCALC}}{{=}}.TRUE.), the correlation <math>E_{\mathrm{c}}^{\mathrm{SL}}</math> is not included. However, it can be included by setting {{TAG|ALDAC}}{{=}}1.0 and {{TAG|AGGAC}}{{=}}1.0.}}
+
+Long-range hybrid functionals are more popular in molecular chemistry, where a proper decay of the exchange-correlation potential at long range far from the nuclei may be important, and thus less useful for bulk solids. Examples belonging to this class of functionals are:
+
+*[[List_of_hybrid_functionals#RSHXLDA|RSHXLDA]] and [[List_of_hybrid_functionals#RSHXPBE|RSHXPBE]]:{{cite|iikura:jcp:2001}}{{cite|gerber:cpl:2005}}{{cite|gerber:jcp:2007}}
+:<math>
+E_{\mathrm{xc}}^{\mathrm{RSHXLDA}} = E_{\mathrm{x,LR}}^{\mathrm{HF}}(\mu) + E_{\mathrm{x,SR}}^{\mathrm{LDA}}(\mu) + E_{\mathrm{c}}^{\mathrm{LDA}}
+</math>
+:<math>
+E_{\mathrm{xc}}^{\mathrm{RSHXPBE}} = E_{\mathrm{x,LR}}^{\mathrm{HF}}(\mu) + E_{\mathrm{x,SR}}^{\mathrm{PBE}}(\mu) + E_{\mathrm{c}}^{\mathrm{PBE}}
+</math>
+:When LDA is chosen, a value of <math>\mu=0.75</math> &Aring;<sup>-1</sup> is recommended for solids.{{cite|gerber:jcp:2007}}
+
+=== HF exchange at short range (exponential screening) ===
+
+The HF exchange is used only at short-range (the long-range part is fully semilocal, <math>a_{\mathrm{LR}}=0</math>) and the screening is done with the exponential function:
+
+:<math>E_{\mathrm{xc}}^{\mathrm{hybrid}}=a_{\mathrm{SR}} E_{\mathrm{x,SR}}^{\mathrm{HF}}(\mu) + (1-a_{\mathrm{SR}})E_{\mathrm{x,SR}}^{\mathrm{SL}}(\mu) + E_{\mathrm{x,LR}}^{\mathrm{SL}}(\mu) + E_{\mathrm{c}}^{\mathrm{SL}}</math>
+
+The exponential screening, also called Thomas-Fermi (TF) screening,{{cite|bylander:prb:90}}{{cite|seidl:prb:96}}{{cite|picozzi:prb:00}} is activated by setting {{TAG|LTHOMAS}}=.TRUE.. The mixing <math>a_{\mathrm{SR}}</math> and screening <math>\mu=k_{\rm TF}</math> are controlled by the {{TAG|AEXX}} and {{TAG|HFSCREEN}} tags, respectively.
+{{NB|mind|{{TAG|LTHOMAS}}{{=}}.TRUE. automatically sets {{TAG|AEXX}}{{=}}1. However, {{TAG|AEXX}} can be set to another value.}}
+{{NB|important|
+*When {{TAG|AEXX}}{{=}}1 (the default for {{TAG|LTHOMAS}}{{=}}.TRUE.), the correlation <math>E_{\mathrm{c}}^{\mathrm{SL}}</math> is not included. However, it can be included by setting {{TAG|ALDAC}}{{=}}1.0 and {{TAG|AGGAC}}{{=}}1.0.
+*This functional should be used only with LDA ({{TAG|GGA}}{{=}}CA).}}
+
+The sX-LDA functional, which uses <math>a_{\mathrm{SR}}=1</math>, is probably the first hybrid using an exponential screening:
+
+*[[List_of_hybrid_functionals#sX-LDA|sX-LDA]]:{{cite|bylander:prb:90}}
+:<math>
+E_{\mathrm{xc}}^{\mathrm{sX-LDA}} = E_{\mathrm{x,SR}}^{\mathrm{HF}}(\mu) + E_{\mathrm{x,LR}}^{\mathrm{LDA}}(\mu) + E_{\mathrm{c}}^{\mathrm{LDA}}
+</math>
+
+For typical semiconductors, a Thomas-Fermi screening length <math>\mu=k_{\rm TF}</math> of about 1.8 &Aring;<sup>-1</sup> yields reasonable band gaps. In principle, however, the Thomas-Fermi screening length depends on the valence-electron density. VASP determines <math>k_{\rm TF}</math> from the number of valence electrons (read from the {{FILE|POTCAR}} file) and the volume (leading to an average density <math>\bar{n}</math>) and writes the corresponding value of <math>k_{\rm TF}=\sqrt{4\bar{k}_{\rm F}/\pi}</math>, where <math>\bar{k}_{\rm F}=(3\pi^2\bar{n})^{1/3}</math> to the {{FILE|OUTCAR}} file ('''note that this value is only printed for information and is not used during the calculation'''):
+  Thomas-Fermi vector in A             =   2.00000
+Since VASP counts the semi-core states and ''d''-states as valence electrons, although these states do not contribute to the screening, the values reported by VASP are often not recommended.
+
+Another important detail concerns the implementation of the local LDA part in VASP. Literature [see Eqs. (3.10), (3.14), and (3.15) in Ref. {{cite|seidl:prb:96}}] suggests to use in the enhancement factor <math>F(z)</math> a position-independent variable <math>z=k_{\rm TF}/\bar{k}_{\rm F}</math> where <math>\bar{k}_{\rm F}</math> is as defined above but using the average density <math>\bar{n}</math> in the unit cell.
+However, implemented in VASP is a position-dependent variable <math>z({\bf r})=k_{\rm TF}/k_{\rm F}({\bf r})</math>, where <math>k_{\rm F}({\bf r})=(3\pi^2 n({\bf r}))^{1/3}</math> is the Fermi wave vector calculated with the local density <math>n({\bf r})</math>, while the constant <math>k_{\rm TF}</math> is set by {{TAG|HFSCREEN}}.
+
+== Related tags and articles ==
+{{TAG|AEXX}},
+{{TAG|BEXX}},
+{{TAG|ALDAX}},
+{{TAG|ALDAC}},
+{{TAG|AGGAX}},
+{{TAG|AGGAC}},
+{{TAG|AMGGAX}},
+{{TAG|AMGGAC}},
+{{TAG|HFSCREEN}},
+{{TAG|LHFCALC}},
+{{TAG|LMODELHF}},
+{{TAG|LTHOMAS}},
+{{TAG|LRHFCALC}},
+[[List of hybrid functionals]],
+[[Downsampling of the Hartree-Fock operator]],
+[[Coulomb singularity]]
+
+== References ==
+<references/>
+
+
+[[Category:Exchange-correlation functionals]][[Category:Hybrid_functionals]][[Category:Theory]]

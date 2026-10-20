@@ -1,0 +1,22 @@
+{{DISPLAYTITLE:vaspcheckfd.h5}}
+
+The [[vaspcheckfd.h5]] file is used to store the displacements for a restartable finite differences calculation when using {{TAG|IBRION|6}}.
+It contains information related to the displacements (<code>displacements</code>) for [[phonons from finite differences]]. The data for each displacement (<code>data-N</code>), and symmetry information (<code>symmetry</code>). To generate or use the [[vaspcheckfd.h5]] file, refer to how to [[Restarting finite differences calculations|restart finite differences calculations]] with the {{TAG|CHECKPOINT_FD}} tag.
+
+You can view the contents of the file using <code>h5ls vaspcheckfd.h5</code>, which contains the ''N'' displacements (in this case ''N''=4):
+<syntaxhighlight lang="bash">
+ data-1                   Group
+ data-2                   Group
+ data-3                   Group
+ data-4                   Group
+ ...
+ displacements            Group
+ symmetry                 Group
+</syntaxhighlight>
+
+== Related tags and articles ==
+* {{TAG|CHECKPOINT_FD}}, {{TAG|IBRION}}, {{FILE|CONTCAR_disp-N}}
+* [[Restarting finite differences calculations]]
+* [[Phonons from finite differences]]
+
+[[Category:Files]][[Category:Input files]][[Category:Output files]][[Category:Phonons]]

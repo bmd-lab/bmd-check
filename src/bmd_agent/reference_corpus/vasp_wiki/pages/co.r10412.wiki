@@ -1,0 +1,76 @@
+{{Template:At_and_mol - Tutorial}}
+
+== Task ==
+
+Relaxation of the bond length in a CO molecule.
+
+== Input ==
+
+=== {{TAG|POSCAR}} ===
+ CO molecule in a box
+  1.0          ! universal scaling parameters
+  8.0 0.0 0.0  ! lattice vector  a(1)
+  0.0 8.0 0.0  ! lattice vector  a(2)
+  0.0 0.0 8.0  ! lattice vector  a(3)
+ 1 1           ! number of atoms for each species
+ cart          ! positions in cartesian coordinates
+  0 0 0        ! first atom
+  0 0 1.12     ! second atom
+
+=== {{TAG|INCAR}} ===
+ {{TAGBL|SYSTEM}} = CO molecule in a box
+ {{TAGBL|ISMEAR}} = 0 ! Gaussian smearing
+ {{TAGBL|NSW}} = 5    ! 5 ionic steps
+ {{TAGBL|IBRION}} = 2 ! use the conjugate gradient algorithm
+
+=== {{TAG|KPOINTS}} ===
+ Gamma-point only
+  0
+ Monkhorst Pack
+  1 1 1
+  0 0 0
+
+=== {{TAG|POTCAR}} ===
+
+The {{TAG|POTCAR}} file is created by the concatenation of two individual {{TAG|POTCAR}} files corresponding to O and C, e.g.:
+ cat  .../O/POTCAR  .../C POTCAR  > POTCAR
+
+== Calculation ==
+
+*A similar relaxation as in the previous case ({{TAG|O_dimer}}) is performed but in this case more steps are required, since the first estimate for the minimum is not very accurate. The trial steps are much too long ({{TAG|POTIM}} parameter).
+
+    1 F= -.14764064E+02 E0= -.14764064E+02  d E =-.147641E+02
+  curvature:   0.00 expect dE= 0.000E+00 dE for cont linesearch  0.000E+00
+  trial: gam= 0.00000 g(F)=  0.820E+00 g(S)=  0.000E+00 ort = 0.000E+00 (trialstep = 0.100E+01)
+  search vector abs. value=  0.820E+00
+  bond charge predicted
+ ...         ...      ...
+ ...         ...      ...
+ ...         ...      ...
+    2 F= -.12660858E+02 E0= -.12660858E+02  d E =0.210321E+01
+  trial-energy change:    2.103205  1 .order    1.311207   -0.819873    3.442288
+  step:   0.1924(harm=  0.1924)  dis= 0.02705  next Energy=   -14.842919 (dE=-0.789E-01)
+  bond charge predicted
+ ...         ...      ...
+ ...         ...      ...
+ ...         ...      ...
+    3 F= -.14747869E+02 E0= -.14747869E+02  d E =0.161943E-01
+  curvature:  -0.10 expect dE=-0.902E-01 dE for cont linesearch -0.902E-01
+  ZBRENT: interpolating
+  opt :   0.0929  next Energy=   -14.802162 (dE=-0.381E-01)
+  bond charge predicted
+ ...         ...      ...
+ ...         ...      ... 
+ ...         ...      ...
+    4 F= -.14796822E+02 E0= -.14796822E+02  d E =-.327586E-01
+  curvature:  -0.04 expect dE=-0.330E-03 dE for cont linesearch -0.330E-03
+  trial: gam= 0.00000 g(F)=  0.814E-02 g(S)= 0.000E+00 ort =-0.817E-01 (trialstep = 0.819E+00)
+  search vector abs. value=  0.814E-02
+  reached required accuracy - stopping structural energy minimisation
+
+== Download ==
+[[Media:CO.tgz| CO.tgz]]
+ 
+{{Template:At_and_mol}}
+
+[[Category:Examples]]

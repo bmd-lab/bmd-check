@@ -1,0 +1,181 @@
+__TOC__
+
+ACFDT stands for the adiabatic connection fluctuation dissipation theorem and is an alternative way to derive the energy expression for the correlation energy in the random phase approximation (RPA). In the following, the diagrammatic description is presented. For the ACFDT formulation, the reader is referred to the literature.{{cite|harl:2008}} There is also a lecture {{Video|rpa:merzuk:2025|introducing RPA}} on our YouTube channel.
+
+== Diagrammatic approach to the correlation energy ==
+The correlation energy <math>E_c</math> is defined as the missing piece of the Hartree-Fock energy <math>E_{x}</math> to the total energy, that is <math>E_{tot} = E_{x} + E_c</math>. The exact form of <math>E_c</math> is unknown and can be calculated only approximately for a realistic system. The Random Phase Approximation (RPA) is such an approximation that provides access to <math>E_c</math>. The RPA was first studied by Bohm and Pines for the homogeneous electron gas and was later recognized by Gell-Mann and Brueckner as an approximation of <math>E_c</math> that can be expressed in the same language as Feynman used a few years earlier to describe the positron.
+{{cite|bohm:pr:82}}{{cite|gell-mann:pr:106}}{{cite|feynman:pr:76}}
+
+Feynman's diagrammatic approach is based on quantum field theory (QFT), which in turn is based on the Gell-Mann and Low theorem. This theorem states that the eigenstate of an interacting Hamiltonian can be expressed in terms of the eigenstates of the non-interacting one.{{cite|gell-mann:pr:84}} For this reason, each diagrammatic calculation, like the RPA or [[GW approximation of Hedin's equations|GW]], requires the solution of the non-interacting Hamiltonian <math>H_0</math> of the system, like for instance the Hartree-Fock energies and orbitals or the solutions of the Kohn-Sham Hamiltonian <math>\epsilon_{n\bf k}, \phi_{n\bf k}</math>.  
+
+QFT is commonly formulated in the Dirac (also known as interaction) picture, where dynamics described by the interaction part <math>\hat V</math> of the fully interacting Hamiltonian <math>\hat H=\hat H_0+\hat V</math> are singled out via time-dependent operators like
+<math> \hat V(t)=e^{i\hat H_0t}\hat Ve^{-i\hat H_0t}</math>. These operators act on states like the non-interacting groundstate of the system <math>|\Psi_0\rangle</math>, causing fluctuations at a specific point in time. The main idea of QFT is to understand observations, which can be measured by an observer, as a collective phenomenon of all possible fluctuations.{{cite|mattuck:2012}}  
+
+Thereby, fluctuations are understood as the creation of virtual electrons (and holes) that interact with each other and are annihilated after some time. Formally this is achieved by introducing creation <math>\hat\psi^\dagger({\bf r},t)</math> and annihilation operators <math>\hat\psi({\bf r},t)</math> that satisfy following relations
+
+<math>
+\hat\psi({\bf r},t)|\Psi_0\rangle = 0 =\langle \Psi_0 | \hat\psi({\bf r},t)
+</math>
+
+<math>
+\lbrace \psi({\bf r},t),\psi^\dagger({\bf r},t)\rbrace = 
+\psi^\dagger({\bf r},t)\psi^\dagger({\bf r},t) + 
+\psi^\dagger({\bf r},t),\psi({\bf r},t)
+= i\delta({\bf r}-{\bf r}')
+</math>
+
+<math>
+\lbrace\psi^\dagger({\bf r},t),\psi^\dagger({\bf r},t) \rbrace = 0 = 
+\lbrace\psi({\bf r},t),\psi({\bf r},t) \rbrace.
+</math>
+
+The first relation defines the non-interacting groundstate <math>|\Psi_0\rangle </math> as the Fermi vacuum (the groundstate in the absence of any fluctuations), while the second and third anti-commutator relations are a consequence of the Pauli principle. In fact, all operators that describe measurable quantities of a system of interacting electrons can be represented in terms of <math>\psi^\dagger({\bf r},t)</math> and <math>\psi({\bf r},t)</math> alone; additional objects are not necessary.
+
+However, the time-ordering operator
+
+<math>
+\hat T \hat A(t)\hat B(t') = \Theta(t-t') \hat A(t)\hat B(t') - \Theta(t'-t)\hat B(t')\hat A(t),
+</math>
+
+where <math>\Theta(t)</math> is the unit step function, and the time-evolution operator
+
+<math>
+\hat S(t,t_0)=\hat T e^{-i\int_{t_0}^t \hat V(t'){\rm d}t'}
+</math>
+
+are helpful quantities, since they allow to formulate the Gell-Mann and Low theorem as follows. 
+
+=== Gell-Mann and Low theorem === 
+
+Using adiabatic coupling of the interaction <math>\hat V(t) \to \hat V_\eta(t) = e^{-\eta|t|} \hat V</math>, Gell-Mann and Low proved that the vectors
+
+<math>
+\frac{|\Omega_\nu\rangle}{\langle \Omega_\nu|\Psi_\nu\rangle} =\lim_{\eta\to0}\frac{\hat S_\eta(0,-\infty)|\Psi_\nu\rangle}{\langle \Omega_\nu|\Psi_\nu\rangle}
+</math>
+
+are the eigenstates of the interacting Hamiltonian.{{cite|gell-mann:pr:84}}
+
+We follow the common literature and suppress the infinitesimal <math>\eta </math> in the following bearing in mind that the limit <math>\eta \to 0 </math> is performed at the very end of the calculation.{{cite|negele:1988}}{{cite|fetter:2003}}
+
+=== Diagrammatic perturbation theory === 
+A consequence of the Gell-Mann and Low theorem, is the following form of the interacting groundstate energy{{cite|fetter:2003}}
+
+<math>
+E_{tot}=E_0 = \langle \Omega_0|\hat H|\Omega_0\rangle = \frac{\langle\Psi_0| \hat S(\infty,-\infty)\hat H|\Psi_0\rangle}{\langle \Psi_0|\hat S(\infty,-\infty)|\Psi_0\rangle},
+</math>
+
+which can be seen as starting point of diagrammatic perturbation theory. The expression above is used to derive all possible approximations by expanding the time-evolution operator <math>\hat S</math> into a series. The resulting matrix-elements of creation and annihilation operators are evaluated term by term using the canonical anti-commutator relations defined above (Wick's theorem{{cite|wick:1950}}). It follows that all terms in perturbation theory are expressed by only two quantities, the non-interacting Feynman propagator 
+
+<math>
+G_0(1,2) = -i
+\sum_{n{\bf k}} \phi({\bf r}_2)\phi^*({\bf r}_1) e^{-i(\epsilon_{n \bf k}-\epsilon_F)(t_2-t_1)}\left[ f_{n\bf k}\Theta(t_2-t_1) - (1-f_{n\bf k})\Theta(t_1-t_2)\right],
+\quad 1 = ({\bf r}_1,t_1), 2 = ({\bf r}_2,t_2)
+</math>
+
+and the Coulomb interaction
+
+<math>
+V(1,2) = \frac{\delta( t_1-t_2)}{|{\bf r}_1-{\bf r}_2|}.
+</math>
+
+Then, each term in the series corresponds to an integral over space-time coordinates <math>({\bf r},t)</math>. 
+
+Feynman diagrams are used to illustrate which terms are considered in the perturbation series. The illustration is usually achieved with so-called Feynman rules that map a specific diagram to an integral (and vice versa). For instance the second order diagram 
+
+[[file:DMP2.png|100px]]
+ 
+is also known as the direct Møller-Plessett term and stands for following integral
+
+<math>
+E^{(2)}_{\rm dMP}=\int{\rm d}(1,2,3,4) G_0(1,2)G_0(2,1) V(1,3)V(2,4) G_0(3,4)G_0(4,3), \quad {\rm d}(1,\cdots,4) = {\rm d}{\bf r}_1{\rm d}t_1\cdots {\rm d}{\bf r}_4{\rm d}t_4
+</math>
+
+All Feynman rules can be found in the book of Negele and Orland or elsewhere.{{cite|negele:1988}}{{cite|fetter:2003}}
+
+== The random-phase approximation ==
+The RPA is obtained from neglecting all second and higher order terms in the perturbation series of the groundstate energy, except of those which can be expressed soley in terms of the independent particle polarizability 
+
+<math>
+\chi_0(1,2) = -i G_0(1,2) G_0(2,1) 
+</math>
+
+corresponding to the "bubble" diagram 
+
+[[file:Chi.png|50px]]
+
+Because of the symmetric time property <math>\chi_0(t_2-t_1)=\chi_0(t_1-t_2)</math>, the independent particle polarizability is of bosonic character. Because the RPA neglects all non-bosonic terms in the perturbation series, it corresponds essentially to a "bosonization" of the many-body problem for which the n-th order term can be written analytically as{{cite|negele:1988}}
+
+<math>
+E^{(n)}_{\rm dMP} = \frac1{2n}\int_{-\infty}^\infty\frac{{\rm d}\omega}{2\pi} {\rm Tr}\left[ \tilde \chi_0(\omega) \cdot V \right]^n.
+</math>
+
+Here, the trace of the matrix product is most effectively done in  reciprocal space <math>\left[\tilde \chi_0(\omega) \cdot V\right]({\bf q+G}_1,{\bf q+G}_2) = \sum_{\bf G} \tilde \chi_0({\bf q+G}_1,{\bf G},\omega)V({\bf q+G},{\bf q+G}_2)</math> using the Fourier transformed polarizability <math>\tilde \chi_0({\bf q+G}_1,{\bf q+G}_2,\omega)</math>, the diagonal Coulomb potential <math>V({\bf q+G}_1,{\bf q+G}_2)=\frac{ \delta_{ {\bf G}_1 {\bf G}_2 } }{|{\bf q+G}_1|}</math> and the conserved crystal momentum <math> {\bf q} </math> in the first Brillouin zone. 
+
+All bubble terms of order <math>n \ge 2</math> can be written in a closed form using the series for the logarithm <math>\ln(1-x)+x=-\sum_{n=2}^\infty \frac{x^n}{n} </math> and define the correlation part of the RPA energy
+
+<math>
+E_c^{\rm RPA} = \int\frac{ {\rm d}\omega}{2\pi} {\rm Tr}\left\lbrace \ln\left[ 1-\tilde \chi_0(\omega)\cdot V \right]  + \tilde \chi_0(\omega)\cdot V \right\rbrace.
+</math>
+
+There are two first order contributions to the total energy that yield the exact exchange energy <math>E_x=T+V_{ext}+V_h+V_x</math>, which is usually determined separately.
+
+== Computational Complexity == 
+The calculation of the RPA integral requires the determination of the independent particle polarizability matrix <math>\tilde \chi^0_{\bf GG'}({\bf q},\omega_n)=\tilde \chi_0({\bf q+G},{\bf q+G}',\omega_n)</math> on each of the <math> N_{\bf q}</math> sampling points of the first Brillouin zone for <math>N_{\omega}</math> frequency points. The number of frequency points is reduced drastically, by performing the integration over the imaginary frequency axis <math>\omega\to i\omega</math>.{{cite|kaltak:2014}}
+
+The independent particle polarizability on the imaginary axis can be determined with two alternative methods. 
+
+=== Quartic scaling RPA: Direct calculation === 
+Direct calculation of <math>\tilde\chi^0</math> using the formula of Adler and Wiser{{cite|adler:1962}}
+{{cite|wiser:1963}}
+
+<math>
+\tilde\chi^0_{{\bf GG}'}({\bf q},i\omega) = \sum\limits_{{\bf k}\in BZ}\sum\limits_{n,n'} 
+\frac{  
+f_{n{\bf k}}(1 - f_{n{\bf k-q}})
+}{
+ \epsilon_{n{\bf k-q}}-\epsilon_{n{\bf k}} -i \omega 
+}
+\langle \phi_{n {\bf k-q}} | e^{i{\bf Gr}} | \phi_{n'{\bf k}} \rangle 
+\langle \phi_{n' {\bf k}} | e^{-i{\bf G'r'}} | \phi_{n'{\bf k-q}} \rangle 
+</math>
+
+yields an RPA algorithm that has a computational cost of <math> N_\omega N_{\bf k}^2 N_{\bf G}^4 </math>. Because the number of plane waves <math>N_{\bf G}</math> scales linearly with the system size (number of electrons in the unit cell), the direct calculation of the polarizability is unfavourable for large system sizes, e.g. for more than ~20 atoms in the unit cell. 
+
+=== Cubic scaling RPA: Contraction of imaginary time Green's functions === 
+An alternative way to determine <math>\tilde\chi^0</math> is to frist determine imaginary time Green's functions of the form{{cite|rojas:prl:1995}}
+
+<math>
+G_0({\bf r,r'},i\tau) = \sum\limits_{{\bf k}\in BZ}\sum\limits_{n} 
+\phi_{n{\bf k}}({\bf r})\phi_{n \bf k}^*({\bf r'}) e^{-(\epsilon_{n\bf k}-\epsilon_{F})\tau}\left[
+\Theta(-\tau)f_{n\bf k}-\Theta(\tau)(1-f_{n\bf k})
+\right]
+</math>
+
+and to perform afterwards a Fourier transformation into reciprocal and imaginary frequency space of 
+
+<math>
+\chi_0({\bf r,r'},i\tau) = -G_0({\bf r,r'},i\tau) G_0({\bf r',r},-i\tau).
+</math>
+
+Although more evolved, this approach has the advantage that the computational cost for the determination of <math>\tilde \chi_0</math> scales with <math> N_\omega N_{\bf k} N_{\bf G}^3 </math> and is essentially only cubic in system size. The space-time method allows to study relatively large systems with the RPA.{{cite|kaltak:prb:2014}}
+
+== Basis set convergence of RPA-ACFDT calculations == 
+{{:Basis set convergence of RPA-ACFDT calculations}}
+
+== Matsubara Formalism: Metallic systems at finite Temperature ==
+{{:Matsubara Formalism}}
+
+== Related tags and articles ==
+
+* [[ACFDT/RPA calculations]] — practical step-by-step guide
+* [[Many-body perturbation theory]] — parent topic (RPA, GW, BSE, MP2)
+* [[:Category:Low-scaling GW and RPA|Low-scaling GW and RPA]] — low-scaling algorithms
+* {{TAG|ALGO}} for response functions and ACFDT calculations
+* {{TAG|ENCUTGW}}, to set cutoff for response functions
+* {{TAG|NOMEGA}}, number of frequency points
+* {{TAG|LFINITE_TEMPERATURE}} switches on Matsubara (finite temperature) formalism
+
+== References == 
+<references/>
+
+[[Category:Theory]][[Category:Low-scaling GW and RPA]][[Category:Many-body perturbation theory]][[Category:ACFDT]]

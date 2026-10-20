@@ -1,0 +1,476 @@
+For those of you first coming into VASP from outside of solid-state physics, many will be familiar with performing calculations using atom-centered, localized Gaussian-type orbitals (GTOs) as a basis. You may, however, be unaware of using delocalized, plane waves (PW) as a basis. This article will provide a brief introduction to plane-wave calculations, specifically those performed in VASP, with a comparison to GTO calculations. 
+
+== Introduction ==
+In electronic structure calculations, GTO bases are typically used for molecules and plane waves for solid-state calculations. There are exceptions, most distinctly in surface and material science, but often these two branches stay separate. Though there are many differences introduced by the choice of basis and periodicity, there are more similarities between GTO and plane-wave calculations than may at first be apparent {{Cite|robinson:lee:2025}}, largely differing only in the choice of terminology. They both use the same basic methods, e.g. Hartree-Fock {{cite|paier:jcp:05}}, Density Functional Theory (DFT) {{Cite|hafner:2008}}, and use the same algorithms both [[:Category:Electronic minimization|electronic]] (e.g. [[RMM-DIIS]]) and [[Structure optimization|structural]] (e.g., [[Structure_optimization#RMM-DIIS|quasi-Newton]] optimization, [[Structure_optimization#Conjugate_gradient|conjugate gradient]]). This is because they are simply different basis sets for expressing the orbitals; the Hamiltonian remains the same {{Cite|martin:book:2004}}, though it is diagonalised iteratively in VASP, compared to being explicitly calculated in GTO codes. Sometimes the same algorithm is used for seemingly very different problems, e.g., the Davidson algorithm is used in the form of [[Blocked-Davidson algorithm|blocked-Davidson]] for diagonalizing the Hamiltonian in VASP (i.e., electronic structure), while in GTO codes, it can be used to diagonalize the configuration interaction (CI) matrices (i.e., excited state calculations), such as the CI singles (CIS) matrix {{Cite|head-gordon:pople:1992}}. In each case, the problem is an eigenvalue problem for large, real-symmetric, sparse matrices where only the first few eigenvalues and eigenvectors are of interest, i.e., orbitals and low-lying excited states {{Cite|davidson:1975}}.
+
+=== Hartree-Fock ===
+Assuming the Born-Oppenheimer approximation, the Hamiltonian <math>\hat{H}</math> for electrons ''p'' and nuclei ''A'' takes the form {{Cite|szabo:ostlund:book:2004}}{{Cite|cramer:book:2004}}:
+
+::<math>\hat{H} = \hat{T} + \hat{V}_{ne} + \hat{V}_{ee} + E_{nn} </math>
+
+where <math>\hat{T}</math> is the kinetic energy operator for the electrons:
+
+::<math>\hat{T} =  - \frac{1}{2} \sum_{p} \nabla_p^2</math> (atomic units, a.u.) <math> = - \frac{\hbar^2}{2m} \sum_{p} \nabla_p^2</math> (SI units)
+
+<math> \hat{V}_{ne} </math> is the potential acting on the electrons due to the nuclei:
+
+::<math>\hat{V}_{ne} = \sum_{p, A} V_A (|r_p - R_A|) = \frac{Z_A}{|r_p - R_A|} </math> (a.u.) <math> = \frac{1}{4 \pi \epsilon_0} \frac{Z_A e^2}{|r_p - R_A|} </math> (SI)
+
+where ''r<sub>p</sub>'' and ''R<sub>A</sub>'' are the electron and nuclear spatial coordinates, respectively.  
+
+<math>\hat{V}_{ee}</math> is the electron-electron interaction (between electrons ''p'' and ''q'', or 1 and 2, alternatively):
+
+::<math>\hat{V}_{ee} = \sum_{p \neq q} \frac{1}{|r_p - r_q|} = r_{12}^{-1}</math> (a.u.) <math> = \frac{1}{4 \pi \epsilon_0} \sum_{p \neq q} \frac{e^2}{|r_p - r_q|} </math> (SI)
+
+and <math>E_{nn}</math> is the classical nuclear interaction. 
+
+The Hartree-Fock energy is then the expectation value of this Hamiltonian for a single Slater determinant:
+
+::<math>E_{HF} = \frac{\langle  \Psi| \hat{H}  | \Psi\rangle}{\langle \Psi|\Psi \rangle}  \equiv \langle \hat{H} \rangle = \langle \hat{T} \rangle + \int d^3r \, V_{ne}(r) n(r) + \langle \hat{V}_{ee} \rangle  + E_{nuc} </math> 
+
+where ''n(r)'' is the electron density.
+
+In the Hartree-Fock equations for a closed-shell ground state, the energy is expressed in terms of one-electron and two-electron integrals over spatial orbitals (in a.u.) in chemist's notation, physicist's notation, and matrix form, respectively over occupied states ''i'', ''j'':
+
+::<math>E_{HF} = 2\, \sum_i (i|h|i) + \sum_{i,j} [2 (ii|jj) - (ij|ij)] + E_{nuc} = 2\, \sum_i \langle i | h | i \rangle + \sum_{i,j} [2 \langle ij | ij \rangle - \langle ij | ji \rangle ] + E_{nuc} = 2\, \sum_i h_{ii} + \sum_{i,j} [2 J_{ij} - K_{ij} ] + E_{nuc} </math>
+
+where <math>(i|h|i)</math> are the one-electron terms about nucleus I:
+
+::<math>(i|h|i) = \langle i | h | i \rangle = h_{ii} = \int dr_1 \,\psi_{i}^*(r_1) (- \frac{1}{2} \nabla_{i}^2 - \sum_{i, I} \frac{Z_I}{|r_i - R_I|}) \psi_{i}(r_1) = \langle \hat{T} \rangle + \int d^3r \, V_{ne}(r) n(r) </math>
+
+The two-electron <math>\langle \hat{V}_{ee} \rangle = \sum_{i,j} [2 J_{ij} - K_{ij} ]</math> is expressed in terms of <math>(ii|jj)</math> and <math>(ij|ji)</math>, the Coulomb <i>J<sub>ij</sub></i> and exchange <i>K<sub>ij</sub></i> terms, respectively:
+
+::<math>(ii|jj) = \langle ij|ij \rangle = J_{ij} = \int dr_1 dr_2 \, \psi_i^*(r_1) \psi_i(r_1)  r_{12}^{-1}  \psi_j^*(r_2) \psi_j(r_2) </math> and <math>(ij|ji) = \langle ij|ji \rangle = K_{ij} = \int dr_1 dr_2 \, \psi_i^*(r_1) \psi_j(r_1)  r_{12}^{-1}  \psi_j^*(r_2) \psi_i(r_2) </math>
+
+In the HF energy expression above, these integrals are over occupied molecular orbitals MO (or Bloch functions in solid-state). Expressing the orbital ''&psi;'' in terms of the basis functions ''&phi;'' and expansion coefficients ''C<sub>&mu;i</sub>'', where ''&mu;'' is the basis function:
+
+::<math> \psi_i = \sum_{\mu} C_{\mu i} \phi_{\mu} </math>,
+
+the one-electron integrals becomes <math> (\mu|h|\nu) </math> and the two-electron integrals become <math> (\mu\nu|\lambda\sigma) </math>, where ''&mu;&nu;&lambda;&sigma;'' are basis functions. It is primarily in the evaluation of these integrals where the plane-wave and GTO approaches differ. A secondary difference is the use of pseudopotentials, which are important for plane-wave calculations but infrequent when using GTOs; they will be discussed in more detail below.
+
+=== Kohn-Sham equations ===
+Another key difference is that, in solid-state calculations, it is far more common to use DFT to express the exchange and correlation terms as a density functional, instead of Hartree-Fock (HF) and the post-HF methods (e.g., MP2, CCSD). The Kohn-Sham (KS) energy ''E<sub>KS</sub>'' equation differs from the HF to include the exchange-correlation energy ''E<sub>xc</sub>'' (in a.u.) {{Cite|kohn:pr:1965}}{{Cite|payne:1992}}:
+
+::<math>E_{KS} = \langle \hat{T} \rangle + \int d^3r \, \hat{V}_{ion}(r) n(r) + E_{H} + E_{xc} + E_{nn} </math>,
+
+where <math>\hat{T} = \hat{T}_{s}</math>, <math>\hat{V}_{ion}(r) = \hat{V}_{ne}(r)</math>, and <math>E_{H}</math> is the Hartree energy, also referred to as the Coulomb energy ''J<sub>ab</sub>''.
+
+The corresponding Hamiltonian <math>\hat{H}_{KS}</math> is therefore:
+
+::<math>\hat{H}_{KS} = \hat{T} + \hat{V}_{ion} + \hat{V}_{H} + \hat{V}_{xc} + E_{nn} </math>
+
+where the exchange-correlation potential <math>\hat{V}_{xc}</math>:
+
+::<math>\hat{V}_{xc} = \frac{\delta E_{xc}[n]}{\delta n(r)}</math>
+
+The integral evaluation of each of these terms will be discussed for the PW and GTO bases.
+
+=== Periodic boundary conditions ===
+Before tackling the integral evaluation, it is key to consider another common difference between plane-wave and GTO approaches. Typically, GTOs are used for non-periodic and plane waves for periodic systems. There are exceptions to this where only Gaussians are used in periodic systems {{Cite|pisani:dovesi:roetti:1988}}, and where the two are combined, i.e., in the Gaussian Plane Waves (GPW) method {{Cite|hutter:parrinello:2010}}. 
+Periodic codes can also be used to model non-periodic systems through the use of a vacuum and a large unit cell. It is possible to mimic small unit cells with local basis sets in a cluster approximation. These approaches are typically used for systems that have periodic and local parts, e.g., molecules adsorbed on a surface. 
+
+Returning to plane waves, Bloch's theorem states that {{Cite|ashcroft:mermin:1976}}, for electrons in a perfect crystal (i.e., Bravais lattice), a basis can be chosen such that the wavefunction is a product of a cell-periodic part ''u<sub>n'''k'''</sub>('''r''')'' and a wavelike part ''e<sup>i'''k'''⋅'''r'''</sup>'' {{Cite|ashcroft:mermin:1976}}{{Cite|payne:1992}}:
+
+::<math>\psi_{n \textbf{k}}(\textbf{r}) = e^{i\textbf{k}\cdot\textbf{r}} u_{n \textbf{k}}(\textbf{r})</math>,
+
+where <math> u_{n \textbf{k}}(\textbf{r} + \textbf{R}) = u_{n \textbf{k}}(\textbf{r})</math>; '''R''' is a translation vector in the Bravais lattice.
+
+It can be alternatively expressed so that each eigenstates ''&#968;'' is associated with a plane wave with wavevector '''k''', such that:
+
+::<math>\psi_{n \textbf{k}}(\textbf{r} + \textbf{R}) = e^{i\textbf{k}\cdot\textbf{R}} \psi_{n \textbf{k}}(\textbf{r})</math>
+<div style="clear:both;"></div>
+<br>
+[[File:Real_to_reciprocal_space.png|800px|thumb|center|Real space 11x11 grid inside the <font color='#89ad01'>unit cell</font> (UC) with <font color='#8342A4'>repeating cells</font> (RC) surrounding it. The corresponding grid in reciprocal space lies outside of the first Brillouin zone (BZ) ('''black square'''), except for at the &Gamma;-point (center of the BZ). There is no one-to-one correspondence of points, each real space point is related to each reciprocal space point and vice versa. In reciprocal space, the contributions of distant RC are described <font color='#8342A4'>within the BZ</font>, while the contributions of the UC are described <font color='#89ad01'>outside the BZ</font>.]]
+
+====Plane waves====
+Since ''u<sub>n'''k'''</sub>('''r''')'' has the same periodicity as the lattice, it can be expanded as a Fourier series (e.g., plane waves) in reciprocal (or k-) space {{Cite|reciprocal:web}}:
+
+::<math> u_{n \textbf{k}}(\textbf{r}) = \sum_\textbf{G} c_{\textbf{G},n}(\textbf{k}) e^{i\textbf{G}\cdot\textbf{r}} </math>,
+
+where '''''G''''' are the reciprocal lattice vectors and ''c''<sub>'''''G''',n''</sub>('''k''') are Fourier coefficients.
+
+The orbital ''&#968;'' can then be expressed as a sum of plane waves:
+
+::<math>\psi_{n \textbf{k}}(\textbf{r}) = \sum_\textbf{G} c_{\textbf{G},n}(\textbf{k}) e^{i ( \textbf{G} + \textbf{k} ) \cdot\textbf{r}} </math>.
+
+The orbital is evaluated over reciprocal (or momentum) space {{Cite|reciprocal:web}}, where the entire periodic system may be efficiently described within a small part of reciprocal space, the first Brillouin zone (BZ). The BZ is uniquely defined such that everything in reciprocal space can be folded back into it. The whole of real space can be efficiently described within the BZ by integrating over it using a [[K-point_integration|k-point grid]]. In general calculations, k-point integration means setting a {{TAG|KPOINTS}} file to describe the k-point mesh. These wavefunctions are those of the electronic bands, the band structure being the periodic analogue of molecular orbitals (MOs) seen in GTO calculations {{Cite|MO:web}}{{Cite|bands:web}}.
+<div style="clear:both;"></div>
+[[File:Plane_wave_image.png|800px|thumb|center|[https://en.wikipedia.org/wiki/Plane_wave Plane waves] are composed of sine and cosines. The three different plane waves in 1D (<font color='#A82C35'>red</font>, <font color='#8342A4'>purple</font>, and <font color='#3E70EA'>blue</font>) sum to a regular pattern (Figure a). When this is [https://en.wikipedia.org/wiki/Fourier_transform Fourier transformed], each of these plane waves corresponds to a specific momentum (or kinetic energy), which is shown in reciprocal (or inverse) space (cf. X-ray diffraction patterns). The momentum associated with each plane wave corresponds to a point on the reciprocal space grid (see [[VASP_from_a_Gaussian-type_orbitals_perspective#Selecting_the_basis | selecting the basis]]), and is therefore a vector. When many <font color='#3E70EA'>plane waves</font> are used together (Figure b) and are separated in <font color='#8342A4'>momenta</font> using Fast Fourier Transformation (FFT), this spectrum becomes nearly continuous. Plane waves in VASP are used up to a cutoff, the [[ENCUT | <font color='#A82C35'>energy cutoff</font>]], which excludes plane waves of high momentum (and therefore kinetic energy and frequency), shown in <font color='#424242'>grey</font>. Lots of plane waves are used to model the electronic structure, such as a crystal (Bravais) lattice. A 2D Bravais lattice modeled with <font color='#3E70EA'>plane waves</font> transforms into a 2D reciprocal lattice of corresponding <font color='#8342A4'>momenta</font> (Figure c), each expressed as a vector. An equivalent step can be taken to 3D space, which is how the 3D electronic structure in crystals is modeled.]]
+
+=== Atom-centered basis ===
+In contrast to the delocalized plane-wave approach, in the atom-centered approach, the MOs ''&#968;''<sub>i</sub> are expanded in terms of atomic basis functions ''&#632;''<sub>''&mu;''</sub> and corresponding expansion coefficients ''C''<sub>''&mu;i''</sub> {{Cite|szabo:ostlund:book:2004}}:
+
+::<math> \psi_i = \sum_{\mu = 1} C_{\mu i} \phi_{\mu} </math>.
+
+Slater-type (exponential) functions or Gaussian-type functions can then be chosen. The advantage of Gaussian-type functions is that the electron integrals can be evaluated analytically. Using a Gaussian basis, the MOs can be expanded in terms of ''primitive'' Gaussians {{Cite|robinson:lee:2025}}:
+
+::<math> \phi_{\mu}(\textbf{r},\alpha,\textbf{I}) = e^{-\alpha |\textbf{r}_\textbf{I}|^2}
+</math>,
+
+where ''&alpha;'' is an exponent controlling the Gaussian's width, <math>\mathbf{r_I} = \mathbf{r} - \mathbf{I}</math>, '''r''' is the electron spatial coordinate, and '''I''' is the position of a nucleus I. 
+
+Usually, multiple primitive Gaussians are combined into a single function, known as a ''contracted'' Gaussian function <math>\phi^{CGF}_{\mu}</math>: 
+
+::<math> \phi^{CGF}_{\mu} = \sum_j d_j \phi_{j \mu} </math>,
+
+where ''d<sub>i</sub>'' are contraction coefficients.
+
+The MO can therefore be expressed in terms of contracted Gaussians as:
+
+::<math> \psi_i = \sum_{\mu} C_{\mu i} \phi_{i}^{CGF} = \sum_{\mu} C_{\mu i}  \sum_j d_j e^{-\alpha_j |\mathbf{r_I}|^2} </math>.
+
+analogous to the final equation in the periodic boundary conditions section, summing over contracted Gaussians rather than plane waves.
+
+== Integral evaluation ==
+Any property of a system, whether molecular or crystalline, is usually expressed in terms of energy or a related derivative. Focusing on the energy, the equations given in the introduction require evaluation of one- and two-electron intervals. Evaluating these integrals is where Gaussian and plane-wave approaches significantly differ. We will first go through the recursion relations for generating the Gaussian integrals, before expressing the equivalent plane-wave integrals. 
+{{NB|mind|You do not need to fully understand the integral evaluation to compare the two approaches; the key message here is that evaluating integrals is much simpler using plane waves than GTOs.}}
+
+=== Gaussian basis ===
+Slater (exponential) functions more accurately model atomic orbitals, but the resulting electron integrals can only be evaluated numerically {{Cite|nagy:jensen:2017}}. However, Gaussian integrals can be evaluated analytically, significantly reducing computational cost. First, we define Cartesian Gaussians ''G<sub>ijk</sub>'' {{Cite|helgaker:2000}}:
+
+::<math>G_{ijk}(\textbf{r},\alpha,\textbf{I}) = x_I^i y_I^j z_I^k e^{- \alpha \mathbf{r_I}^2} </math>,
+
+where the orbital angular momentum quantum number <math>l = i + j + k</math>, <math>\textbf{I}</math> is the atom-center of interest, and <math> \mathbf{r_I} = \textbf{r} - \textbf{I} </math>.
+
+The Cartesian Gaussians can be split into x-, y-, and z-components:
+
+::<math>G_{ijk}(\textbf{r},\alpha,\textbf{I}) = G_{i}(x,\alpha, I_x)G_{j}(y,\alpha, I_y)G_{k}(z,\alpha, I_z) </math>,
+
+where <math>G_{i}(x,\alpha,I_x) = x_I^i e^{- \alpha x_I^2} </math>,
+
+Next, we will require spherical-harmonic Gaussians ''G<sub>lm</sub>'':
+
+<math> G_{lm}(\textbf{r},\alpha,\textbf{I}) = S_{lm}(x_I, y_I, z_I) e^{- \alpha \mathbf{r_I}^2}  </math>
+
+where ''l'' and ''m'' are the orbital angular momentum and magnetic quantum numbers, and <math>S_{lm}(\textbf{r}_A)</math> are real solid harmonics {{Cite|solid:harmonics:web}}. 
+
+==== Gaussian product rule ====
+We include an important definition for subsequently evaluating integrals, the ''Gaussian product rule'' (i.e., the product of two Gaussians is also a Gaussian) {{Cite|boys:1950}}. 
+
+<div class="toccolours mw-customtoggle-script">'''Click to reveal the Gaussian product rule'''</div>
+<div class="mw-collapsible mw-collapsed" id="mw-customcollapsible-script">
+
+Using this rule, the Gaussian overlap distribution ''&Omega;<sub>ab</sub>''('''r''') can be defined as:
+
+::<math>\Omega_{ab}(\textbf{r}) = G_a(\textbf{r})G_b(\textbf{r})</math>,
+
+where <math>G_a(\mathbf{r}) = G_{ijk}(\textbf{r},a,\textbf{A})</math>.
+
+The overlap distribution between two Gaussians on a line along x is itself a Gaussian:
+
+::<math> \Omega_{ab}^x = e^{-a x_A^2} e^{-b x_B^2} = e^{-\mu X_{AB}^2} e^{-p x_P^2} = K_{ab}^x e^{-p x_P^2} </math>,
+
+where the ''total exponent'' <math>p = a + b</math>, the ''reduced exponent'' <math>\mu = \frac{ab}{a + b} </math>, the ''center-of-charge coordinate'' <math> P_x = \frac{aA_x + bB_x}{p} </math> (recalling that <math> \textbf{r}_P = \textbf{r} - \textbf{P} </math>), the ''relative coordinate'' <math> X_{AB} = A_x - B_x </math> (or <math> \mathbf{R}_{AB} = \mathbf{A} - \mathbf{B} </math>), and the first factor is the ''pre-exponential factor'' <math> K_{ab}^x = e^{-\mu X_{AB}^2} </math>
+</div>
+
+==== Overlap integral ====
+The Gaussian product rule simplifies the evaluation of integrals. We will use the Obara-Saika scheme to present recurrence relations for the various integrals without including the derivations; those interested can refer to the referenced books and papers {{Cite|helgaker:2000}}{{Cite|obara:saika:1986}}{{Cite|obara:saika:1988}}. 
+
+<div class="toccolours mw-customtoggle-script">'''Click to reveal the overlap integral evaluation using a Gaussian basis'''</div>
+<div class="mw-collapsible mw-collapsed" id="mw-customcollapsible-script">
+
+The overlap integrals ''S<sub>ab</sub>'' are expressed in this scheme as:
+
+::<math>S_{ab} = \langle G_a | G_b \rangle = S_{ij}S_{kl}S_{mn} </math>,
+
+where ''i,j,k'' and ''l,m,n'' are the orbital angular momentum quantum numbers about each Cartesian axis for ''G<sub>a</sub>'' and ''G<sub>b</sub>'', respectively, 
+
+e.g., the integral of the overlap matrix about the x-axis <math> \Omega_{ij}^x </math> is:
+
+::<math>S_{ij} = \int_{-\infty}^{\infty} \Omega_{ij}^x dx </math>.
+
+The Obara-Saika recurrence relations for ''S'' are then defined as:
+
+::<math> S_{i+1,j} = X_{PA}S_{ij} +\frac{1}{2p}(iS_{i-1,j} + jS_{i,j-1}) </math>
+::<math> S_{i,j+1} = X_{PB}S_{ij} +\frac{1}{2p}(iS_{i-1,j} + jS_{i,j-1}) </math>
+
+and the recurrence is begun from the overlap integral for the spherical Gaussian:
+
+::<math> S_{00} = \sqrt{\frac{\pi}{p}}e^{-\mu X_{ab}^2} </math>
+
+Utilising the recurrence relations, the overlap integrals for arbitrary quantum numbers can be obtained. The relatively 'simple' overlap integral ''S<sub>ab</sub>'' is then used to evaluate the remaining integrals. Equivalent recurrence relations exist for y and z that we omit here for brevity's sake.
+</div>
+
+==== Kinetic energy integral ====
+The kinetic energy integral ''T<sub>ab</sub>'':
+
+::<math> \langle \phi_a | \hat{T} | \phi_b \rangle = T_{ab} = -\frac{1}{2} \langle G_a | \nabla ^2 | G_b \rangle</math>
+
+can be evaluated for the one-dimensional kinetic energy integrals as:
+
+::<math>T_{i+1,j} = X_{PA} T_{ij} + \frac{1}{2p}(iT_{i-1,j} + jT_{i,j-1}) + \frac{b}{p}(2aS_{i+1,j} - iS_{i-1,j}) </math>
+::<math>T_{i,j+1} = X_{PB} T_{ij} + \frac{1}{2p}(iT_{i-1,j} + jT_{i,j-1}) + \frac{a}{p}(2bS_{i,j+1} - iS_{i,j-1}) </math>
+::<math>T_{00} = [a - 2a^2(X_{PA}^2 + \frac{1}{2p})]S_{00} </math>
+
+==== One-electron Coulomb integral ====
+The integrals become more complex when evaluating the Coulomb integrals. 
+
+<div class="toccolours mw-customtoggle-script">'''Click to reveal the one-electron Coulomb integral evaluation using a Gaussian basis'''</div>
+<div class="mw-collapsible mw-collapsed" id="mw-customcollapsible-script">
+
+These do not have an analytic representation but one can be found using the ''n''th-order Boys function ''F<sub>n</sub>'' {{Cite|boys:1950}}, which is related to the error function and incomplete gamma function:
+
+<math> F_n(x) = \int_0^1 e^{-xt^2}t^{2n} dt </math>
+
+where <math> x \geq 0 </math>.
+
+We start with the one-electron Coulomb integrals <math>\Theta_{ijklmn}^N </math>, where ''i,j,k'' and ''l,m,n'' are the orbital angular momenta about the Cartesian axes for the basis functions ''a'' and ''b'', respectively, and ''N'' is a non-zero integer, with ''N'' = 0 denoting the final Coulomb integrals {{Cite|helgaker:2000}}. 
+
+The Obara-Saika recurrence relations for the one-electron Coulomb integrals are {{Cite|obara:saika:1986}}{{Cite|obara:saika:1988}}: 
+
+::<math>
+\Theta_{i+1,j,k,l,m,n}^N = X_{PA} \Theta_{ijklmn}^N + \frac{1}{2p}(i\Theta_{i-1,j,k,l,m,n}^N + j\Theta_{i,j-1,k,l,m,n}^N)\\ \hspace{2cm}
+- X_{PC} \Theta_{ijklmn}^{N+1} - \frac{1}{2p}(i\Theta_{i-1,j,k,l,m,n}^{N+1} + j\Theta_{i,j-1,k,l,m,n}^{N+1})
+</math>
+::<math>\Theta_{i+1,j,k,l,m,n}^N = \Theta_{i,j+1,k,l,m,n}^N - X_{AB}\Theta_{ijklmn}^N </math>
+
+beginning from the scaled Boys function:
+
+::<math>\Theta_{000000}^N = \frac{2 \pi}{p} K_{ab}^{xyz} F_N(p R_{PI}^2) </math>,
+
+where ''K'' is the pre-exponential factor previously defined.
+
+and the Coulomb integral:
+
+::<math> \Theta_{ijklmn}^0 = ( a | V_{ne} | b )</math>, 
+
+so for two 1''s'' orbitals {{Cite|szabo:ostlund:book:2004}}:
+
+::<math> \Theta_{000000}^0 = ( a | V_{ne} | b ) = \frac{-2 \pi}{a + b} Z_I e^{-\frac{ab}{a+b}|\mathbf{A}-\mathbf{B}|^2} F_0[(a+b)|\mathbf{P}-\mathbf{I}|^2] </math>.
+
+</div>
+
+==== Two-electron Coulomb integral ====
+The two-electron integrals <math>\Theta_{abcd}^N</math> use a slightly different notation with ''a,b,c,d'' denoting the individual Gaussian functions' angular momenta, which in turn have x-, y-, and z-angular momentum components, and ''N'' which is a non-zero integer, with ''N'' = 0 denoting the final Coulomb integrals. Evaluating these integrals is a significant challenge.
+
+<div class="toccolours mw-customtoggle-script">'''Click to reveal the integral evaluation for a Gaussian basis'''</div>
+<div class="mw-collapsible mw-collapsed" id="mw-customcollapsible-script">
+
+The two-electron integrals are evaluated, starting from:
+
+::<math>\Theta_{0000}^N = \frac{2\pi^{5/2}}{pq \sqrt{p+q}} K_{ab}^{xyz} K_{cd}^{xyz} F_N(\alpha R_{PQ}^2)</math>
+::<math>\Theta_{ijkl}^0 = g_{ijkl} = (ij|kl)</math>
+
+where ''i,j,k,l'' have the corresponding Gaussians ''G<sub>a</sub>,G<sub>b</sub>,G<sub>c</sub>,G<sub>d</sub>'', P is the center between A and B, Q is the center betwen C and D, and <math> \alpha = \frac{pq}{p+q} </math> is the ''reduced exponent''.
+
+So, for four 1s orbitals it would be {{Cite|szabo:ostlund:book:2004}}:
+
+::<math>\Theta_{0000}^0 = g_{0000} = (00|00) = \frac{2\pi^{5/2}}{(a+b)(c+d)(a+b+c+d)^{1/2}} e^{-\frac{ab}{a+b}|\mathbf{A}-\mathbf{B}|^2 - \frac{cd}{c+d}|\mathbf{C} - \mathbf{D}|^2} F_0[\frac{(a+b)(c+d)}{(a+b+c+d)}|\mathbf{P}-\mathbf{Q}|^2] </math>.
+
+A set of two-electron integrals can then be generated using a four-term version of the Obara-Saika recurrence relations {{Cite|obara:saika:1988}}:
+
+::<math>
+\Theta_{i+1,0,0,0}^N = X_{PA}\Theta_{i000}^N - \frac{\alpha}{p}X_{PQ}\Theta_{i000}^{N+1} 
++ \frac{i}{2p}(\Theta_{i-1,0,0,0}^N - \frac{\alpha}{p} \Theta_{i-1,0,0,0}^{N+1})
+</math>
+::<math>
+\Theta_{i,0,k+1,0}^N = -\frac{bX_{AB} +dX_{CD}}{q} \Theta_{i0k0}^N + \frac{i}{2q} \Theta_{i-1,0,k,0}^N + 
+\frac{k}{2q} \Theta_{i,0,k-1,0}^N - \frac{p}{2q} \Theta_{i+1,0,k,0}^N
+</math>
+::<math>\Theta_{i,j+1,k,l}^N = \Theta_{i+1,j,k,l}^N + X_{AB} \Theta_{ijkl}^N</math>
+::<math>\Theta_{i,j,k,l+1}^N = \Theta_{i,j,k+1,l}^N + X_{CD} \Theta_{ijkl}^N</math>
+
+This completes the integral evaluation using GTOs required for calculating the total energy. The following section will evaluate the integrals when using a plane-wave basis.
+
+</div>
+
+=== Plane waves ===
+The Gaussian orbital integral evaluation requires many equations, even though we have omitted the derivations. The plane-wave integral evaluations can be expressed in simpler equations. Since plane waves are non-local, the angular momentum does not need to be explicitly included. 
+{{NB|mind|the equations below are for the potentials - the standard way for plane waves. Each of these integrals needs to be multiplied by the density <math>n(\mathbf{G})</math> to obtain the energy.}}
+Starting with the kinetic energy integral in real space <math>\langle \hat{T} \rangle</math> for a specific k-point <math>\mathbf{k}</math> {{Cite|martin:book:2004}}{{Cite|payne:1992}}{{Cite|ashcroft:mermin:1976}}:
+
+::<math>\langle \mathbf{k}+\mathbf{G'} | \hat{T} | \mathbf{k}+\mathbf{G} \rangle = -\frac{\hbar^2}{2m} \int d^3r e^{-i(\mathbf{k}+\mathbf{G'}) \cdot \mathbf{r}} \nabla^2 e^{-i(\mathbf{k} + \mathbf{G}) \cdot \mathbf{r}} </math>
+
+In reciprocal space, it is easier to express. By taking a Fourier transform, the integral becomes:
+
+::<math>\langle \mathbf{k}+\mathbf{G'} | \hat{T} | \mathbf{k}+\mathbf{G} \rangle = \frac{\hbar^2 |\mathbf{k}+\mathbf{G}|^2}{2m} \delta_{\mathbf{G}, \mathbf{G'}}
+</math>
+
+Skipping over similar derivations for the remaining integrals, the ionic potential integral <math>\langle \hat{V}_{ion} \rangle</math> can be expressed as:
+
+::<math>\langle \mathbf{k}+\mathbf{G'} | \hat{V}_{\text{ion}} | \mathbf{k}+\textbf{G} \rangle = -4 \pi \varepsilon_0 e^2 \frac{ Z }{|\mathbf{G - G'}|^2} S^{\kappa}, (\mathbf{G - G'}) \neq 0
+</math>, 
+
+where <math>S^{\kappa}</math> is the structure factor summed over each species (nucleus) <math>\kappa</math> at position <math>\tau_{\kappa, j}</math> from ''j'' to <math>n^{\kappa}</math>:
+
+::<math>S^{\kappa}(\mathbf{G}) = \sum_{j=1}^{n^{\kappa}} e^{i\mathbf{G} \cdot \tau_{\kappa, j}}</math>.
+
+Finally, we consider the Coulomb, or Hartree, integral <math>\langle \hat{V}_{H} \rangle</math>:
+
+::<math>\langle \mathbf{k}+\mathbf{G'} | \hat{V}_{\text{H}} | \mathbf{k}+\textbf{G} \rangle = 4 \pi \varepsilon_0 e^2\frac{n(\mathbf{G - G'})}{|\mathbf{G - G'}|^2}, (\mathbf{G - G'}) \neq 0 </math>.
+
+where <math>n(\mathbf{G - G'})</math> is the density:
+
+::<math>n_{i,\mathbf{k}}(\mathbf{G}) = \frac{1}{\Omega} \sum_m c_{m,i}^*(\mathbf{k}) c_{m'',i}(\mathbf{k})</math>,
+
+where <math>m''</math> denotes the <math>\mathbf{G}</math> vector for which <math>\mathbf{G}_{m''} \equiv \mathbf{G}_{m} + \mathbf{G}</math>.
+
+The evaluation of the Coulomb interaction using plane waves can be treated "locally" in reciprocal space as the product of the total density, i.e., the each electron interacts collectively with all the other electrons, scaling at <math>O(Nlog(N))</math>, where ''N'' is the number of grid points {{Cite|martin:book:2004}}. This is significantly cheaper than evaluating using GTOs, where the two-center electron repulsion integrals (ERIs) must be evaluated directly, scaling at nominally <math>O(N^4)</math>, where ''N'' is the number of basis functions, though approximations can be made to reduce this to <math>O(N^2)</math> {{Cite|gill:head-gordon:1994}}. GGAs using plane waves are therefore significantly cheaper than using GTOs.  
+
+The exchange-correlation integral <math>\langle \hat{V}_{xc} \rangle</math> is evaluated in real space and then Fourier transformed to reciprocal space. Since it depends on the individual density functional used, we do not show it here. For hybrid functionals, the exchange <math>\langle \hat{V}_{x} \rangle</math> must also be considered:
+
+::<math>
+\langle \mathbf{k}+\mathbf{G}' | \hat{V}_x | \mathbf{k}+\mathbf{G}\rangle =
+-\frac{4\pi e^2}{\Omega} \sum_{\mathbf{G}''} \frac{c_{\mathbf{G}'-\mathbf{G}'',i}^*(\mathbf{k}) c_{\mathbf{G}-\mathbf{G}'',i}(\mathbf{k})}
+{|\mathbf{G}''|^2}
+</math>
+
+A key point of difference between GTOs and plane waves appears when evaluating the exchange interaction, which is non-local, i.e., each electron interacts with every other electron, necessitating all pair-wise interactions to be considered. As a result, it must be expressed in terms of the orbitals, rather than the density. It is a convolution in reciprocal space, rather than a product. This scales at <math>O(N^2)</math> with respect to grid points. In GTOs, evaluating the exchange integral scales at <math>O(N^4)</math>, which can be reduced to <math>O(N^3)</math> with respect to basis functions {{Cite|head-gordon:2015}}. Since GTOs are a local basis, the integrals can be screened such that not all exchange integrals need to be evaluated. As a result, hybrid calculations using GTOs are not significantly more costly than for GGAs, ~1.5 times the cost {{Cite|ulian:tosoni:valdre:2013}}. <!--Plane waves cannot screen integrals in this way, so hybrid calculations using plane waves are more expensive than GGAs.-->
+
+Having expressed all the integrals for both GTOs and plane waves, it is reasonable to conclude that the integral evaluation is, in general, simpler in a plane-wave basis than Gaussian. This difference becomes clear when selecting the basis for a calculation.
+
+== Selecting the basis ==
+Calculations using a GTO basis face several important challenges: first, the basis must be selected, second, convergence to the complete basis is often challenging, and third, basis set superposition errors must be avoided. 
+
+For selecting the basis, there are a plethora of bases to choose from {{Cite|nagy:jensen:2017}}, e.g., Ahlrichs' split-valence (def2-''X''ZVP(PD)) {{Cite|weigend:ahlrichs:2005}}, Dunning's correlation-consistent ((aug-)cc-pV''X''Z) {{Cite|dunning:1989}}, among others shown in the basis set exchange {{Cite|basis:set:exchange:web}}. ''X'' denotes how many basis functions are used to describe a particular atomic orbital, according to the exponential coefficient 'zeta' &zeta;. Choosing the correct basis can be particularly difficult. To reach converged results, it is often necessary to use triple-zeta bases and extrapolate to the complete basis set (CBS) limit {{Cite|dunning:2000}}. For heavier elements, it is common to use effective core potentials (ECPs), pseudopotentials that model the interactions of core electrons using a potential instead of explicitly, resulting in significantly reduced computational cost {{Cite|schwerdtfeger:2011}}. These will be discussed in more detail below.
+
+Besides the difficulty of choosing a basis, even when a basis has been chosen, the incompleteness of the basis can introduce further erroneous interaction energies, the basis-set superposition error (BSSE) {{Cite|boys:bernardi:1970}}, as one molecule uses the orbitals on a neighboring molecule to reduce its own energy, effectively increasing its basis. The BSSE must be corrected, e.g., using the counterpoise correction (CPC) scheme {{Cite|boys:bernardi:1970}}.  
+[[File:Plane_wave_on_grid.png|400px|thumb|right|Plane waves in a 2D 11x11 grid in reciprocal space, with labeled grid intergers <font color='#207A74'>''m<sub>1</sub>''</font> and <font color='#35CABF'>''m<sub>2</sub>''</font>. The <font color='#3E70EA'>blue dot</font> in the center is a k-point, in this case the &Gamma;-point, lying within the first Brillouin zone (BZ), the '''black box''' in the center. Plane waves are show as vectors (<font color='#A82C35'>red arrows</font>) according to their momentum ''G'' in terms of the unit reciprocal lattice vectors (<font color='#207A74'>'''b<sub>1</sub>'''</font> and <font color='#35CABF'>'''b<sub>2</sub>'''</font>), directed to a neighboring grid point. Note that these momenta are exactly the same as the momenta shown in the plane-wave introductory section. The concentric <font color='#A82C35'>(red) circles</font> intersecting grid points are the radii of energetically equivalent plane waves (i.e., those with identical momenta). As the length of the plane-wave vector increases, the radii increase up to the energy cutoff ''G<sub>cut</sub>'' (<font color='#3E70EA'>blue circle</font>). These plane waves constitute the basis for a calculation.]]
+
+Plane waves address some of the problems of a GTO basis:
+
+* '''Selecting the basis'''
+
+Each plane wave has an associated kinetic energy ''E<sub>PW</sub>'' and a momentum ''G'':
+
+::<math> E_{PW} = \frac{\hbar^2}{2m} G^2</math>.
+
+A reciprocal lattice vector '''''G''''' is defined as:
+
+::<math>\mathbf{G} = m_1 \mathbf{b}_1 + m_2 \mathbf{b}_2 + m_3 \mathbf{b}_3</math>,
+
+and ''m'' are integers and '''b''' are the unit reciprocal lattice vectors. 
+
+The <math>m_i \cdot b_i</math> are regular points in reciprocal space, i.e., they define the [[NGX|fast Fourier transform (FFT) grid]] used in plane-wave codes. 
+
+* '''Convergence of the basis'''
+The maximum value of ''m<sub>i</sub>'' is the number of grid points, defined by the [[ENCUT|plane-wave kinetic energy cutoff]] ''E''<sub>cut</sub>:
+
+::<math> E_{cut} = \frac{\hbar^2}{2m} G_{cut}^2</math>,
+
+where ''G<sub>cut</sub>'' is the plane-wave momentum cutoff and sets the maximum value for the grid points, and ''m<sub>1</sub>'' = {{TAG|NGX}}, ''m<sub>2</sub>'' = {{TAG|NGY}}, and ''m<sub>3</sub>'' = {{TAG|NGZ}}.
+
+A single number [[ENCUT|energy cutoff]] defines the plane-wave basis:
+
+::<math> |\mathbf{G} + \mathbf{k}| < G_{cut}</math>,
+
+including plane waves of up to that momentum (or energy) (see figure). 
+
+The number of plane waves <b><i><span>N</span></b><sub>PW</sub></i> (the number of plane waves in VASP can be found using by searching for <code>NPLWV</code> in the {{TAG|OUTCAR}} file) is related to the energy cutoff <b><i><span>E</span></b><sub>cutoff</sub></i> and the size of the cell <span>'''&Omega;'''</span><sub>0</sub>:
+::<math> N_{PW} \propto\ \Omega_0\ E_{cutoff}^{3/2} </math>
+
+The difficulty of selecting a specially polarized, diffuse, or augmented basis necessary when using GTOs is already accounted for by the plane-wave basis, by virtue of it being non-localized. 
+
+* '''Basis set superposition error'''
+Since the basis is not localized, the BSSE does not occur. Additionally, as the basis set is defined by a single number, the CBS limit can be approached systematically. Describing the core electrons using plane waves is costly. Instead, [[:Category:Pseudopotentials|pseudopotential]] are commonly used. The generation of these pseudopotentials introduces is complex. However, many are already available in to select, which reduce the number of plane waves required signficantly.
+
+== Pseudopotentials ==
+It is simple to define the basis using plane waves. However, describing the nodal oscillations in the wavefunction close to the nucleus would require many plane waves, reaching cutoffs of 100-1000 keV (hundreds of thousands to millions of plane waves) for all-electron (AE) calculations even when using a smooth potential {{Cite|gygi:jctc:2023}}. This can be seen in our earlier [[VASP_from_a_Gaussian-type_orbitals_perspective#Plane_waves | plane-wave figure]], where it is clear that much larger plane-wave momenta are required to model the "nuclei" in the Bravais lattice, ~200 (Figure c), compared to ~20 for the periodic function. To solve this, a [[:Category:Pseudopotentials|pseudopotential]] is used to describe close to the nucleus exactly within a core radius ''r<sub>c</sub>'', reducing the number of plane waves required. Several types of pseudopotentials are available, e.g., ultrasoft pseudopotentials (USPPs) and the projector augmented-wave (PAW) approach {{Cite|vanderbilt:prb:1990}}{{Cite|bloechl:prb:94b}}{{Cite|kresse:cms:1996}}{{Cite|kresse:prb:99}}{{Cite|schwerdtfeger:2011}}. Specifically, the PAW approach is used in VASP. In this way, the CBS limit can be more easily reached. The PAW approach is comparable to pseudopotentials, effective core potential (ECP), commonly used for heavy elements in GTO codes.
+
+=== Effective core potentials ===
+The ECP Hamiltonian ''H<sub>ECP</sub>'' can be expressed as {{Cite|andrae:preuss:1990}}{{Cite|figgen:stoll:2009}}:
+
+::<math>H_{\text{ECP}} = -\frac{\hbar^2}{2m} \nabla^2 + V_{H}(\mathbf{r}) + V_{\text{xc}}(\mathbf{r}) + V_{\text{ECP}}(\mathbf{r}) </math>
+
+where the ECP potential <math>V_{\text{ECP}}(\mathbf{r})</math> is defined as:
+
+::<math>V_{\text{ECP}}(\mathbf{r}) = V_{\text{local}}(r) + \sum_l V_{l}(r) P_l </math>
+
+where ''V<sub>local</sub>'' is the electron-core interactions and is a screened form of the electron-nucleus interaction (cf. ''V<sub>ne</sub>'' and ''V<sub>ion</sub>''), ''V<sub>l</sub>'' are the radial components of the potential, and the projector operator ''P<sub>l</sub>'' onto states of angular momentum ''l'' is given by:
+
+::<math>P_l = \sum_m | \chi_{lm} \rangle \langle \chi_{lm} |</math>
+
+where ''&chi;'' are atom-like functions.
+
+=== Projector augmented-wave approach ===
+[[File:PAW pp.png|300px|thumb|right|Sketch of a pseudopotential ''V<sub>pseudo</sub>'' and pseudowavefunction ''&psi;<sub>pseudo</sub>'' in the PAW. The wavefunction ''&psi;'' and the potential ''V'' are described exactly within the core radius ''r<sub>c</sub>'' (<font color=#A82C35>red</font>). Outside, the core wavefunction and the potential are described by the pseudowavefunction and pseudopotential (<font color=#3E70EA>blue</font>). Plane waves then describe the interaction of the valence bands.]]
+
+In VASP, the [[Projector-augmented-wave formalism|projector-augmented wave]] (PAW) approach is used {{Cite|bloechl:prb:94b}}. In the PAW approach, the one-electron wavefunctions <math>\psi_{n\mathbf{k}}</math>, the orbitals, are derived from pseudo-orbitals <math>\widetilde{\psi}_{n\mathbf{k}}</math> by means of a 
+linear transformation:
+
+::<math>
+|\psi_{n\mathbf{k}} \rangle = |\widetilde{\psi}_{n\mathbf{k}} \rangle +
+      \sum_{i}(|\phi_{i} \rangle - |\widetilde{\phi}_{i} \rangle)
+                  \langle \widetilde{p}_{i} |\widetilde{\psi}_{n\mathbf{k}} \rangle.
+</math>
+
+The pseudo-orbitals <math>\widetilde{\psi}_{n\mathbf{k}}</math> (where <math>nk</math> is the band index and k-point index) describes the smooth wavefunction beyond the cutoff radius r<sub>c</sub>, i.e., the interstitial region (outside of the augmentation (PAW) spheres ), where they match the AE orbitals <math>\psi_{n\mathbf{k}}</math>. The <math>\widetilde{\psi}_{n\mathbf{k}}</math> are described by plane waves. 
+
+Inside r<sub>c</sub>, the pseudo- and AE orbitals do not match. This difference is corrected by mapping <math>\widetilde{\psi}_{n\mathbf{k}}</math> onto <math>\psi_{n\mathbf{k}}</math> using pseudo partial waves <math>\widetilde{\phi}_{\alpha}</math> and AE partial waves <math>\phi_{\alpha}</math> (<math>\alpha</math> refers to the atomic site, angular momentum quantum numbers and references energies). The partial waves are local to each ion, i.e., onsite, and so are calculated on a radial grid. They are described by each [[Projector-augmented-wave formalism|PAW pseudopotential]] and derived from the solutions of the radial Schrödinger equation for a non-spinpolarized for a reference atom. The pseudo- and AE partial waves are related to one another by projector functions <math>\widetilde{p}_i</math>, which are dual to the partial waves. 
+
+[[File:Paw.png|400px|thumb|right|The PAW method expresses the all-electron (AE) wavefunction (<font color=#A82C35>red</font>). The pseudo-wavefunction (<font color=#3E70EA>blue</font>) is described in plane waves, with the difference between the AE and pseudo-wavefunction made within the core radius ('''black''' circles) about the nuclei ('''black''' dots) on the radial grid.]]
+
+The PAW method implemented in VASP exploits the commonly-used [[:Category:Pseudopotentials|frozen core]] (FC) approximation. The core electrons are kept frozen in the configuration for which the PAW dataset was generated. In the PAW approach, the interaction of core electrons with the valence electrons are included, via the core electron's density and pseudo-density. When required, the core states can be reconstructed, e.g., for [[:Category:NMR|NMR calculations]]. 
+
+The PAW Hamiltonian ''H<sub>PAW</sub>'' can be expressed as {{Cite|kresse:prb:99}}:
+
+::<math>H_{\text{PAW}} = -\frac{\hbar^2}{2m} \nabla^2 + \tilde{V}_{\text{ion}}(\mathbf{r}) + \tilde{V}_H(\mathbf{r}) + \tilde{V}_{\text{xc}}(\mathbf{r})
++ \sum_{ij} | \tilde{p}_i \rangle D_{ij} \langle \tilde{p}_j |
+</math>
+
+where V&#771; are the operators for the PAW method (specifically the pseudo-wavefunction), ''D<sub>ij</sub>'' accounts for the difference between the all-electron (AE) wavefunction and pseudowavefunction (<math>D_{ij} = \hat{D}_{ij} + D_{ij}^1 - \tilde{D}_{ij}^1 </math> which are the compensation charge (ensures the the correct density within the augmentation sphere), onsite, and pseudo-onsite terms for ''D'', respectively), and <math>| p_i \rangle \langle p_j |</math> are the projector functions, analogous to <math>P_l</math> for the ECP, and relate the pseudowavefunction to the AE wavefunction within the core radius ''r<sub>c</sub>''.
+
+=== Comparing ECP and PAW ===
+The choice of basis set is difficult when using GTOs, with many different GTO bases available, all generated according to different preferences. The same is true of ECPs, though these are more easily defined for using GTOs, by only a few coefficients and exponents {{Cite|andrae:preuss:1990}}{{Cite|figgen:stoll:2009}}. The respective equations for the Hamiltonians are analogous, with the selection of projectors being one of the key differences. For a plane-wave basis, the choice of basis is simple, it is the generation of the pseudopotential that is difficult, which requires specialist care. VASP uses its own set of optimized PAW pseudopotentials: the {{FILE|POTCAR}} files. The standard {{FILE|POTCAR}} when used with the default energy cutoff (cf. {{TAG|ENMAX}} in {{FILE|POTCAR}}) are close to the CBS limit, though this needs to be tested in each case. For more difficult problems, ''harder'' {{FILE|POTCAR}}s with smaller core radii are available. 
+
+The treatment of core electrons is a another key difference between the ECP and PAW approaches, besides using GTO and plane-wave bases. In an ECP, the core electrons are completely removed and replaced by a potential, only the wavefunctions of the valence electrons are treated.
+{{NB|mind|There is no standardized repository of pseudopotentials that all plane-wave codes use. Therefore the absolute energies do not agree between different codes and depend on the pseudopotential. Only energy differences (e.g., adsorption energies, atomization energies) are comparable between different plane-wave codes.}}
+
+== Methods ==
+When using a GTO basis, it is typical to use density functional theory (DFT) to solve many molecular problems. The Hartree-Fock (HF) is typically only used to generate orbitals for use with post-HF methods such as Møller-Plesset perturbation theory (e.g., MP2), the coupled cluster (CC) approach, etc. 
+
+In a plane-wave basis, [[LHFCALC|HF]] is rarely used, with DFT being predominant. Typically, the [[GGA|local density approximation]] (LDA), [[GGA|generalized gradient approximation]] (GGA), [[METAGGA|meta-GGAs]] (mGGA), and [[:Category:Hybrid functionals|hybrid functionals]] are used, as well as non-local [[:Category:Van der Waals functionals|van der Waals functional]]. Occasionally, post-HF calculations are done, though these are based on DFT, rather than HF. 
+
+===Post-Hartree-Fock===
+One reason for the limited use of post-HF calculations in plane-wave codes, and solid-state more generally, is the large prefactor required to perform a calculation, resulting in an initial high cost. When using GTOs by comparison, the prefactor is small, so small- to medium-sized molecules are readily calculable. However, the scaling of methods in GTO codes is a significant limiting factor, e.g., for system size N, O(N<sup>5</sup>) for MP2, O(N<sup>6</sup>) for CCSD, and O(N<sup>7</sup>) for CCSD(T), making large molecules infeasible. For plane-wave codes, the initial cost is high due the number of k-points required. However, the scaling is much lower, with FFT of orbitals between real and reciprocal space scaling at O(N<sup>2</sup>log(N)) for DFT, O(N<sup>4</sup>) for the random-phase approximation (RPA) (a sort of CCSD) compared to O(N<sup>6</sup>) in GTOs, and O(N<sup>3</sup>) or O(N<sup>4</sup>) for quantum Monte Carlo (QMC) {{Cite|taheridehkordi:jcp:2023}}. {{NB|important|Note that lower scaling implementations of RPA, e.g., O(N<sup>3</sup>) in [[:Category:Low-scaling GW and RPA|plane wave]], and O(N<sup>4</sup>log(N)) in GTO exist {{Cite|eshuis:furche:2010}}).}} 
+
+Using GTOs, a cluster can be used to model a surface or solid. With increasing cluster size, this will gradually approach the periodic limit. For small to medium clusters, GTOs will be more cost-effective due to the small prefactor. However, as increasingly large clusters are used, there comes a cross-over point where the high scaling of GTO methods is greater than the large prefactor for plane waves, so the lower scaling of plane waves gives them the edge. The downside is that there are many virtual orbitals (conduction states) when using plane waves and it is necessary to include many of these. 
+{{NB|mind|The plane waves are inherently delocalized. Bands can be localized to molecular orbitals using Wannier functions. However, applying post-HF methods using Wannier functions is not routinely done. There are specialist techniques where the conduction bands are projected onto atomic orbitals to create a smaller basis for performing coupled cluster calculations {{Cite|gruber:prx:2018}}{{Cite|zhang:grueneis:2019}}.}}
+<!--
+ADD A PARAGRAPH ABOUT SCALING OF METHODS VS PREFACTOR - very important difference between GTO and PW
+- PW have an initially high cost, due to the prefactor - FFTs are very expensive - but, if you can do a small cell, then you can afford a much larger cell
+- GTO are initially very cheap - prefactor small - but the rate limiting step is the Hamiltonian? Need to do it several times - hence very bad scaling. Can do a small molecule, maybe a medium but definitely not a large one - PW might not be able to do a small system but can do a large one if the small is feasible
+- going from cluster to PBC - eventually the scaling becomes the problem, so PW becomes the preferred option - which makes more methods accessible.
+clustes - feibelman or ealry 2000s paper - GTO cluster approach gradually gives way to PW
+-->
+
+Several post-HF methods are available, for example, the familiar [[:Category:Many-body_perturbation_theory#Second-order_Møller-Plesset_perturbation_theory_(MP2)|MP2]]. An alternative method is the [[ACFDT/RPA calculations|RPA]], which can be used to calculate the [[RPA/ACFDT: Correlation energy in the Random Phase Approximation|correlation energy]]. The RPA can be considered from a few different directions, the most familiar of which to those coming from a GTO basis, is coupled cluster. The RPA is coupled cluster doubles (CCD) with only the ring diagrams included (rCCD) {{Cite|scuseria:jcp:2008}}{{Cite|henderson:molphys:2010}}; additionally, in the exchange diagrams are typically excluded, making it direct ring CCD (drCCD) {{Cite|ren:scheffler:2012}}. The bands do not need to be converted to localized orbitals, as the correlation energy is calculated via the response function in the adiabatic-correction-fluctuation-dissipation theorem ([[ACFDT/RPA calculations|ACFDT]]) {{Cite|harl:2008}}{{Cite|harl:prl:2009}}{{Cite|harl:2010}}. Using finite-order perturbation theory (e.g., MP2), the correlation energy diverges for metals, due to their zero-band gap. RPA is an exception to this, allowing the application of post-HF methods to metals. 
+
+Additionally, there has been some use of coupled cluster (e.g., CCSD(T)) in solid-state physics {{Cite|gruber:prx:2018}}{{Cite|zhang:grueneis:2019}}. This is an area of active research {{Cite|shi:jacs:2023}}. An alternative method that can more accurately describe the system is quantum Monte Carlo (QMC) {{Cite|foulkes:rmp:2001}}. This is not typically done within the PAW approach, though implementations do exist {{Cite|taheridehkordi:jcp:2023}}. Both coupled cluster and QMC are computationally costly and are still developing areas.
+
+===Excited states===
+A final difference is in how excitations are treated. While multi-reference calculations are commonly used in GTO codes {{Cite|lischka:cr:2018}}, multi-reference is never used in PW codes, QMC excepted, with only a single Slater determinant being used, which is sufficient for most solid-state systems. Modeling [[:Category:Dielectric properties|optical properties]] is commonly utilising [[Time-dependent density-functional theory calculations|time-dependent density functional theory]] (TDDFT), [[:Category:Many-body perturbation theory|RPA]], the [[GW approximation of Hedin's equations|GW approximation]], and the [[:Category:Bethe-Salpeter equations|Bethe-Saltpeter equation]] (BSE).
+
+== Going from local to periodic calculations ==
+Besides the theoretical differences, there are also a few practical differences when using a periodic code, instead of a local one. 
+
+===k-points===
+[[File:Second_kpoint_on_grid_cropped.png|500px|thumb|right|Plane waves in a 2D 11x11 grid in reciprocal space with a second k-point k' (<font color='#8342A4'>purple dot</font>) added, showing the plane waves (<font color='#89ad01'>green arrows</font>) from k'. Plane waves expanding from k' are show in <font color='#89ad01'>green circles </font> of momentum ''G'', up to the energy cutoff ''G<sub>cut</sub>'' (<font color='#8342A4'>purple circle</font>). Inside the BZ, an equivalent point to k' is shown as a hollow, <font color='#8342A4'>purple circle</font>. The previous plane-wave expansion image is shown in greyscale.]]
+For example, the k-point mesh that is used is very important. The first Brillouin zone (BZ) is the uniquely defined primitive cell in reciprocal space and, according to Bloch's theorem, [[Integrating over all orbitals|integration over the BZ]] is sufficient to describe the entire wavefunction. However, analytic integration over the BZ is not feasible, so instead a selection of well-placed points inside the BZ is chosen until the [[Integrating_over_all_orbitals#Integrating_over_k_points|integral is converged]]. These points are in reciprocal (or momentum, k) space, also known as k-space, so these points are referred to as k-points. A k-point mesh is defined, e.g., using a {{FILE|KPOINTS}} file, and must be incrementally increased to obtain converged results. The k-point mesh must be tested, equivalent to ensuring that a sufficiently large basis is used (e.g., increasing the plane-wave energy cutoff or going from a double zeta to triple zeta GTO basis).
+
+For plane waves, the number of plane waves used is increased to achieve convergence within the unit cell, equivalent to using a larger GTO basis, approaching the CBS. With more k-points in reciprocal space, the effective size of supercell used in real space is increased. By using more k-points, you effectively use a larger supercell, improving the description, analogous to using a larger cluster to model a surface.
+
+<div style="clear:both;"></div>
+
+===Smearing===
+The smearing of the orbital occupation is also important. With GTOs, you tend to look at molecules, and with plane waves, solids. Typically the HOMO-LUMO gap (band gap in solids) is smaller in solids than in molecules (insulators are an important exception in solids; degenerate or closely-lying states requiring multi-reference calculations for molecules). When the gap is small, e.g., in metals and semi-conductors, smearing becomes important to aid convergence. Smearing is used to create a gradual distribution of electron occupation between valence (occupied) and conduction (unoccupied) bands, avoiding unphysical oscillations in the density that are created when the population varies in a step-like way. There are several different [[Smearing technique|smearing options]] available in VASP.
+
+===Vacuum===
+A third point is in the treatment of the vacuum. In a GTO basis, the system is isolated and surrounded by a vacuum without additional cost. In a plane-wave basis, it is the periodic cell that is described, so any vacuum (e.g., surrounding an isolated molecule, above a surface) increases the cost of the calculation. The vacuum is, therefore, something that should be tested for your system. Minimizing the vacuum while achieving convergence is important to test to reduce the cell size and thereby the cost of calculation. The vacuum can also be reduced by [[KERNEL TRUNCATION/LTRUNCATE|truncating the Coulomb kernel]] to remove electrostatic interactions with periodic replicas in non-periodic directions.
+
+===Pulay stress===
+A final factor to be considered in periodic calculations is the [[Pulay stress]] {{cite|payne:francis:1990}}. This is the plane-wave analogue of the basis-set superposition error (BSSE). With BSSE,  one molecule can reduce its own energy using a neighboring molecule's basis; it is an issue of an incomplete Gaussian basis, resulting in overestimating binding energies and, therefore, decreasing the distance between molecules. With Pulay stress, the plane-wave basis is incomplete (recall that it is related to the cell volume), and so, when the cell changes size, i.e., during a structure relaxation, the basis changes. This results in an improved basis for smaller cells, and hence, a non-physical stress is felt by the periodic cell, Pulay stress. The Pulay stress erroneously decreases the equilibrium unit cell parameter and creates improper [[Volume relaxation|volume-energy curves]]. In each case, using a more complete basis is the solution to this. BSSE uses the CPC scheme and a larger zeta-basis, while Pulay stress can be solved by using a higher energy cutoff and a denser k-point mesh.
+
+== Comparing Gaussian and plane-wave approaches ==
+A large distinction is seen between Gaussian and plane waves when it comes to the types of methods used. Plane-wave codes most often use DFT, while post-HF methods are less frequently used. GTOs can be readily applied to perturbation methods, coupled cluster, and other post-HF methods, including multireference methods. Regardless of basis, post-HF methods are expensive are limited to relatively small systems. Small- to mid-sized molecules can be readily studied using post-HF methods using a Gaussian basis, while larger ones become quickly infeasible. In contrast, even small systems are a challenge for post-HF using plane waves, but if they are computationally feasible, then larger ones are likely accessible.
+
+Moving on to the basis, many basis sets are available for GTOs. However, reaching the basis set limit is difficult, resulting in basis set incompleteness errors (BSIE) and basis set superposition errors (BSSE). The basis set is more easily selected using plane waves, defined by a single number, the energy cutoff. Plane waves struggle to describe the rapid oscillations of the orbitals close to the nucleus. Using PAW potentials can solve this, allowing the basis set limit to be systematically reached by changing the energy cutoff. Selecting the basis using a plane-wave basis is easy, in contrast to the difficulty of generating suitable pseudopotentials. In VASP, good PAW pseudopotentials have already been generated, so this does not generally need to be considered. The evaluation of integrals is far easier using plane waves than it is with GTOs, where it can create significant issues.
+
+Plane waves and GTOs are complementary approaches to modeling electronic structure. GTOs are often better for calculating small- to medium-sized molecules, while plane waves are better suited to periodic systems and molecules (with a large vacuum). For intermediate systems, e.g., molecules on surfaces, both methods can be used, with cluster models for GTOs and the periodic slab approach for plane waves. In recent years, the cluster model has been largely superseded by the periodic slab approach. Whether plane waves or GTOs are better depends on the individual problem being investigated, with each approach bringing its own challenges. VASP can be used to model periodic systems such as bulk systems [https://www.vasp.at/tutorials/latest/bulk/] and surfaces [https://www.vasp.at/tutorials/latest/surface/], and molecules [https://www.vasp.at/tutorials/latest/molecules/] using a variety of methods, which are introduced in our tutorials [https://www.vasp.at/tutorials/latest/].
+
+==Acknowledgments==
+Thank you to Dr. Daria Galimberti (Radboud University) and Dr. Denis Usvyat (HU Berlin) for useful discussions and reading through drafts.
+
+==References==
+
+[[Category:Theory]]

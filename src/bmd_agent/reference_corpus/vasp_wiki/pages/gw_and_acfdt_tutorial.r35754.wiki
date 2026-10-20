@@ -1,0 +1,12 @@
+{{Template:GW - Tutorial}}
+
+The tutorial is made of the following parts:
+<div style="background:var(--vdefault-bg); border:solid 1px var(--vlines); padding:0.5em 1em; margin-right:14em;">
+# [[bandgap of Si in GW|bandgap of Si in GW]]
+# [[bandstructure of Si in GW (VASP2WANNIER90)|bandstructure of Si in GW (VASP2WANNIER90)]]
+# [[bandstructure of SrVO3 in GW|bandstructure of SrVO3 in GW]]
+# [[cRPA of SrVO3|cRPA of SrVO3]]
+# [[Equilibrium volume of Si in the RPA|Equilibrium volume of Si in the RPA]]
+</div>
+
+[[Category:Tutorials]]

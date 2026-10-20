@@ -1,0 +1,130 @@
+The [[LCHIMAG|magnetic susceptibility]] <math>\chi</math> is the degree of magnetization of a material in response to an applied magnetic field. It is a bulk property, in contrast to the chemical shielding, which is for each nucleus. Like the chemical shielding, the magnetic susceptibility is calculated by linear response using {{TAG|LCHIMAG}} {{Cite|pickard:prb:2001}}{{Cite|yates:prb:2007}}, so they will both be shown in the same {{FILE|OUTCAR}} file. The magnetic susceptibility is measured using the Guoy balance (or method); alternatively, an Evans or Faraday balance can be used. The theory is covered in the [[:Category:NMR|NMR category page]] and {{TAG|LCHIMAG}} page.
+
+==Step-by-step instructions==
+
+The magnetic susceptibility is calculated post-self-consistent field (post-SCF) using {{TAG|LCHIMAG}}. A well-converged SCF calculation is therefore crucial. The magnetic susceptibility can be sensitive to several input parameters that must all be independently tested. 
+
+'''Step 1 (optional):''' Calculate the magnetic susceptibility using a previously converged calculation
+
+Since the magnetic susceptibility is calculated post-SCF, you can use a previously converged {{FILE|WAVECAR}} with {{TAG|ISTART}} = 1 and {{TAG|NELM}} = 1. The corresponding density, {{TAG|CHGCAR}} is calculated from the {{FILE|WAVECAR}} file before the first elementary step so it need not be included. 
+
+'''Step 2 (optional):''' Determine a suitable energetic break value
+
+The break condition for the self-consistency step {{TAG|EDIFF}} strongly influences the magnetic susceptibility. A setting of {{TAG|EDIFF}} = <code>1E-8</code> eV is generally recommended. Convergence is taken to be within 0.01 (dimensionless units).
+
+'''Step 3:''' Converge the plane-wave basis
+
+A larger than standard plane-wave energy cutoff is required to fully converge the magnetic susceptibility. Perform multiple calculations while increasing the basis set size, as defined in {{TAG|ENCUT}}, incrementally (e.g., by 100 eV intervals). Convergence should be aimed to be within 0.01 (dimensionless units). The magnetic susceptibility is less dependent on the energy cutoff than the chemical shielding is.
+
+'''Step 4:''' Converge the '''k''' point mesh
+
+Similar to the basis, the '''k''' point mesh can strongly influence the magnetic susceptibility. The '''k''' point mesh should be increased incrementally, i.e., 1x1x1, 2x2x2, 3x3x3, until convergence within 0.01 (dimensionless units) is achieved. It is slightly more dependent on '''k''' point mesh than the chemical shieldings are.
+
+'''Step 5:''' Compare to experiment
+
+The purpose of these calculations is to compare to the experiment. The computed magnetic susceptibilities can be directly compared to the measured magnetic susceptibility, in contrast to the chemical shielding {{Cite|mauri:louie:1996}}.
+
+==Recommendations and advice==
+Calculating the magnetic susceptibilities requires tightly converged settings. As described in the step-wise introduction above, converging with respect to {{TAG|EDIFF}}, {{TAG|ENCUT}}, and the '''k''' point mesh is very important. There are a few additional settings that should be considered. Since the same tag is used, much of the advice for chemical shieldings is applicable for the magnetic susceptibility.
+
+===PAW pseudopotentials===
+The standard [[:Category:Pseudopotentials|PAW pseudopotentials]] {{FILE|POTCAR}} used are sufficient for calculating the magnetic susceptibility. Small differences on the order of 0.1 (dimensionless units) are seen when using slightly different types of {{FILE|POTCAR}}, e.g., GW (''*_GW'').
+
+===Additional tags===
+To ensure tight precision, the precision should be set to <code>{{TAGBL|PREC}} = Accurate</code>, rather than <code>Normal</code>. There is one additional tag, {{TAG|ICHIBARE}} that can be used, though the default is usually sufficient and increases the computational load significantly.
+
+=Example scripts for convergence tests=
+Several tests are necessary to obtain various NMR parameters. Make sure to change the example {{FILE|INCAR}} files to include the tags for your desired calculation. We provide some example scripts below:
+
+==Energetic break criterion tests==
+For converging the energetic break criterion for a single ionic step ({{TAG|EDIFF}}), start with the 1E-4 and then increase by orders of magnitude:
+
+Energetic break criterion:
+'''INCAR.nmr'''
+ {{TAGBL|PREC}} = Accurate        
+ {{TAGBL|ENCUT}} = 400.0          
+ {{TAGBL|EDIFF}} = 1E-4          
+ {{TAGBL|ISMEAR}} = 0; {{TAGBL|SIGMA}} = 0.1 
+ {{TAGBL|LREAL}} = A              
+ {{TAGBL|LCHIMAG}} = .TRUE.       
+ {{TAGBL|DQ}} = 0.001             
+ {{TAGBL|ICHIBARE}} = 1           
+ {{TAGBL|LNMR_SYM_RED}} = .TRUE.  
+ {{TAGBL|NLSPLINE}} = .TRUE.    
+
+Script to loop through {{TAG|EDIFF}} from 1E-4 eV to 1E-8 eV:
+<pre>
+for a in 4 5 6 7 8
+do
+cp INCAR.nmr INCAR
+sed -i "s/1E-4/1E-$a/g" INCAR
+
+mpirun -np 4 $PATH_TO_EXECUTABLE/vasp_std
+
+cp OUTCAR OUTCAR.$a
+done
+</pre>
+
+=='''k'''-points tests==
+For converging '''k''' points, start with the &Gamma;-point and increase the '''k'''-point mesh incrementally:
+
+Initial &Gamma;-only mesh:
+'''KPOINTS.nmr'''
+<pre>
+C
+0
+G
+ 1 1 1
+ 0 0 0
+</pre>
+
+Script to go through '''k'''-point meshes from &Gamma;-only to 8x8x8:
+<pre>
+for a in 1 2 4 6 8
+do
+cp KPOINTS.nmr KPOINTS
+sed -i "s/1 1 1/$a $a $a/g" KPOINTS
+
+mpirun -np 4 $PATH_TO_EXECUTABLE/vasp_std
+
+cp OUTCAR OUTCAR.$a
+done
+</pre>
+
+==Energy cutoff tests==
+For converging the energy cutoff, start from at least the value of ENMAX given in the {{FILE|POTCAR}} file and then increase incrementally in steps of 100 eV:
+
+Initial {{TAGBL|INCAR}}:
+'''INCAR.nmr'''
+ {{TAGBL|PREC}} = Accurate        
+ {{TAGBL|ENCUT}} = 400.0          
+ {{TAGBL|EDIFF}} = 1E-8          
+ {{TAGBL|ISMEAR}} = 0; {{TAGBL|SIGMA}} = 0.1 
+ {{TAGBL|LREAL}} = A              
+ {{TAGBL|LCHIMAG}} = .TRUE.       
+ {{TAGBL|DQ}} = 0.001             
+ {{TAGBL|ICHIBARE}} = 1           
+ {{TAGBL|LNMR_SYM_RED}} = .TRUE.  
+ {{TAGBL|NLSPLINE}} = .TRUE.    
+
+Script to loop through {{TAG|ENCUT}} from 400 eV to 800 eV:
+<pre>
+for a in 400 500 600 700 800
+do
+cp INCAR.nmr INCAR
+sed -i "s/400/$a/g" INCAR
+
+mpirun -np 4 $PATH_TO_EXECUTABLE/vasp_std
+
+cp OUTCAR OUTCAR.$a
+done
+</pre>
+
+== Related tags and articles ==
+{{TAG|LCHIMAG}},
+{{TAG|LVGVCALC}},
+{{TAG|LVGVAPPL}}
+
+==References==
+
+[[Category:Howto]][[Category:NMR]][[Category:Linear response]]

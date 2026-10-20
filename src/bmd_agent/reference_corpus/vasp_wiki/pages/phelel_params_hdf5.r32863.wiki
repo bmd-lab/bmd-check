@@ -1,0 +1,14 @@
+{{DISPLAYTITLE:phelel_params.hdf5}}
+
+The [[phelel_params.hdf5]] file is used to calculate electron-phonon interactions via {{TAG|ELPH_RUN|True}}.
+It contains information related to the [[Forces#Force constants and phonons|interatomic force constants]] and the [[Electron-phonon potential from supercells|derivative of the Kohn-Sham potential]].
+
+To generate the [[phelel_params.hdf5]] file, you can either use the [[Electron-phonon potential from supercells#VASP internal driver|VASP internal driver]] via {{TAG|ELPH_POT_GENERATE|True}} or use VASP in combination with [https://github.com/phonopy/phelel phelel].
+
+== Related tags and articles ==
+* {{TAG|ELPH_POT_GENERATE}}
+* {{TAG|ELPH_RUN}}
+* [[Electron-phonon potential from supercells]]
+* [[:Category:HDF5 support | HDF5 support]]
+
+[[Category:Files]][[Category:Input files]][[Category:Output files]][[Category:Electron-phonon interactions]]

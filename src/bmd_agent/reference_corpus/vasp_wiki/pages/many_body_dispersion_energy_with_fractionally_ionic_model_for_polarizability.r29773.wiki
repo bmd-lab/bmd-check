@@ -1,0 +1,57 @@
+A variant of {{TAG|Many-body dispersion energy}} method based on fractionally ionic model for polarizability of Gould{{cite|gould:jctc:2016_a}}, hereafter dubbed MBD@rsSCS/FI, has been introduced in Ref.{{cite|gould:jctc:2016_b}}
+Just like in the original MBD@rsSCS, dispersion energy in MBD@rsSCS/FI is computed using
+
+:<math>E_{\mathrm{disp}} = -\int_{\mathrm{FBZ}}\frac{d{\mathbf{k}}}{v_{\mathrm{FBZ}}} \int_0^{\infty} {\frac{d\omega}{2\pi}} \, {\mathrm{Tr}}\left \{ \mathrm{ln} \left ({\mathbf{1}}-{\mathbf{A}}^{(0)}_{LR}(\omega) {\mathbf{T}}_{LR}({\mathbf{k}}) \right ) \right \} </math>.
+
+However, the two methods differ in the model used to approximate the atomic polarizabilities (<math>\alpha_p^{\text{AIM}} </math>) needed to define tensor<math>\mathbf{A}^{(0)}(\omega)({\mathbf{k}}) </math>. The MBD@rsSCS makes use of the pre-computed static polarizabilities of neutral atoms (<math> \alpha_p^{\text{atom}} </math>)
+
+:<math>\alpha_p^{\text{AIM}} = \alpha_p^{\text{atom}} 
+ \frac{V^{\text{eff}}_p}{V^{\text{atom}}_p}</math>,
+
+whereby the volume ratios between interacting and non-interacting atoms (<math> \frac{V^{\text{eff}}_p}{V^{\text{atom}}_p} </math>) is obtained using conventional Hirshfeld partitioning{{cite|hirshfeld:tca:1977}}. Although the MBD@rsSCS/FI employs a similar scaling relation:
+
+:<math>\alpha_p^{\text{AIM}}(\omega) = \alpha_p^{\text{FI}}(\omega) 
+ \frac{V^{\text{eff}}_p}{V^{\text{FI}}_p} </math>,
+
+it relies on Gould's model{{cite|gould:jctc:2016_a}} of frequency-dependent polarizabilities (<math> \alpha_p^{\text{FI}}(\omega) </math>) and charge densities of non-interacting fractional ions combined with iterative Hirshfeld partitioning{{cite|bultinck:jcp:07}}. Obviously, the MBD@rsSCS and the MBD@rsSCS/FI are equivalent for non-polar systems, such as graphite, but typically yield distinctly different results for polar and ionic materials{{cite|gould:jctc:2016_b}}. 
+
+== Usage ==
+
+The MBD@rsSCS/FI method is invoked by setting {{TAG|IVDW}}=263. Optionally, the following parameters can be user-defined (the given values are the default ones):
+
+*{{TAG|VDW_SR}}=0.83 : scaling parameter <math>\beta</math>
+*{{TAG|LVDWEXPANSION}}=.FALSE. : writes the two- to six- body contributions to the  MBD dispersion energy in the {{TAG|OUTCAR}} ({{TAG|LVDWEXPANSION}}=''.TRUE.'')
+*{{TAG|LSCSGRAD}}=.TRUE. : compute gradients (or not)
+*{{TAG|VDW_R0}} : radii for atomic reference (see also {{TAG|Tkatchenko-Scheffler method}})
+*{{TAG|ITIM}}=1: if set to +1, apply eigenvalue remapping to avoid unphysical cases where the eigenvalues of the matrix <math>\left(1-\mathbf{A}^{(0)}_{LR}(\omega) {\mathbf{T}}_{LR}({\mathbf{k}})\right) </math> are non-positive, see reference{{cite|gould:jctc:2016_b}} for details
+
+{{NB|mind|
+*This method requires the use of {{TAG|POTCAR}} files from the PAW dataset version 52 or later.
+*The parametrization of reference data is available only for elements of the first six rows of the periodic table except of the lanthanides.
+*The charge-density dependence of gradients is neglected.
+*This method is incompatible with the setting {{TAG|ADDGRID}}{{=}}''.TRUE.''.
+*It is essential that a sufficiently dense FFT grid (controlled via {{TAG|NGXF}}, {{TAG|NGYF}} and {{TAG|NGZF}} ) is used. We strongly recommend to use {{TAG|PREC}}{{=}}''Accurate'' for this type of calculations (in any case, avoid using {{TAG|PREC}}{{=}}''Low''}).
+*The method has sometimes numerical problems if highly polarizable atoms are located at short distances. In such a case the calculation terminates with an error message ''Error(vdw\_tsscs\_range\_separated\_k): d\_lr(pp)<{{=}}0''. Note that this problem is not caused by a bug, but rather it is due to a limitation of the underlying physical model.
+*Analytical gradients of the energy are implemented (fore details see reference {{cite|bucko:jpcm:16}}) and hence the atomic and lattice relaxations can be performed.
+*Due to the long-range nature of dispersion interactions, the convergence of energy with respect to the number of k-points should be carefully examined.
+*A default value for the free-parameter of this method is available only for the PBE ({{TAG|VDW_SR}}{{=}}0.83) and SCAN ({{TAG|VDW_SR}}{{=}}1.12) functionals. If any other functional is used, the value of {{TAG|VDW_SR}} must be specified in the {{TAG|INCAR}} file.}}
+
+== Related tags and articles ==
+{{TAG|VDW_ALPHA}},
+{{TAG|VDW_C6}},
+{{TAG|VDW_R0}},
+{{TAG|VDW_SR}},
+{{TAG|LVDWEXPANSION}},
+{{TAG|LSCSGRAD}},
+{{TAG|IVDW}},
+{{TAG|Tkatchenko-Scheffler method}},
+{{TAG|Self-consistent screening in Tkatchenko-Scheffler method}},
+{{TAG|Tkatchenko-Scheffler method with iterative Hirshfeld partitioning}},
+{{TAG|Many-body dispersion energy}}
+
+== References ==
+<references/>
+
+----
+
+[[Category:Exchange-correlation functionals]][[Category:van der Waals functionals]][[Category:Theory]][[Category:Howto]]

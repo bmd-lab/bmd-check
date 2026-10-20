@@ -1,0 +1,111 @@
+== How to ==
+*First one needs to setup a [[:Category:Molecular dynamics|standard molecular dynamics]] run. The bias potentials are supported in both the [[NVT ensemble|NVT]] and [[NpT ensemble|NpT]] MD simulations, regardless of the particular [[:Category:Thermostats|thermostat]] and/or [[PSTRESS|barostat]] setting.
+{{NB|mind|Mind that for VASP 5.x the biased molecular dynamics runs have to be chosen by adding 10 to the chosen value of {{TAG|MDALGO}}. E.g. {{TAG|MDALGO}}{{=}}12 instead of {{TAG|MDALGO}}{{=}}2 has to be chosen for Nose-Hoover thermostat.|:}} 
+*Then one needs to set the geometric parameters and bias potential types. The geometric parameters &xi;, also called collective variables, that are controlled via the potentials are defined in the {{FILE|ICONST}} file. The type of bias potential is also set in this file. The format of this file follows this layout:
+ flag item(1) ... item(N) status
+Here <code>flag</code> specifies the type of geometric parameters (bond lengths, angles, etc.), <code>item(1) ... item(N)</code> the actual geometric items (atom numbers, etc.) and  the <code>status</code> sets the type of used bias potential. [[ICONST|Here]] we advise the user to also look into the description of the full capabilities of the geometric parameters. 
+*To avoid the update of the bias potential {{TAG|HILLS_BIN}}={{TAG|NSW}} is set by default.
+*Next one needs to set the parameters of the potential in the [[INCAR|INCAR]] (harmonic and step function) file or in the [[PENALTYPOT|PENALTYPOT]] file (Gaussian). The following table summarizes the available potentials with their corresponding parameters: 
+:{| cellpadding="3" cellspacing="0" border="1"
+|colspan="1" style="text-align: center;"|Potential type ||colspan="1" style="text-align: center;"| <code>status</code> in [[ICONST|ICONST]] || colspan="1" style="text-align: center;"| [[INCAR|INCAR]] parameters
+|-
+|colspan="1" style="text-align: center;"|Harmonic potential || colspan="1" style="text-align: center;"| 8 || colspan="1" style="text-align: center;"|{{TAG|SPRING_K}}, {{TAG|SPRING_R0}}, optional {{TAG|SPRING_V0}}
+|-
+|colspan="1" style="text-align: center;"|Step function || colspan="1" style="text-align: center;"| 4 || {{TAG|FBIAS_A}}, {{TAG|FBIAS_D}}, and {{TAG|FBIAS_R0}}
+|-
+|colspan="1" style="text-align: center;"|Gaussian potential || colspan="1" style="text-align: center;"| 5 || parameters set in [[PENALTYPOT|PENALTYPOT]] file
+|}
+
+=== Available potentials ===
+[[File:Bias potentials.png|thumb| Fig.1) Graphical representation of (a) harmonic, (b) Fermi function-shaped, and (c) and Gauss function-shaped bias potentials.  ]]
+In the following details are given on how to control the available bias potentials in VASP that are plotted in Fig.1.
+
+==== Harmonic potentials ====
+
+:A sum of Harmonic potentials (curve (a) in Fig.1)
+::<math>
+\tilde{V}(\xi_1,\dots,\xi_{M_8}) = \sum_{\mu=1}^{M}\frac{1}{2}\kappa_{\mu} (\xi_{\mu}(q)-\xi_{0\mu})^2 \;
+</math>
+:where the sum runs over all (<math>M_8</math>) coordinates the potential acts upon. The potential is chosen in the {{FILE|ICONST}} file by setting the <code>status</code> to 8. The parameters of the potential are the force constant <math>\kappa_{\mu}</math> ({{TAG|SPRING_K}}) and the minimum or the potential <math>\xi_{0\mu}</math> {{TAG|SPRING_R0}}. These must be set in the {{FILE|INCAR}} file. Optionally, it is possible to change the value of <math>\xi_{0\mu}</math> every MD step at a constant rate defined via the {{FILE|INCAR}} tag {{TAG|SPRING_V0}}. 
+{{NB|mind|The number of items defined via {{TAG|SPRING_K}}, {{TAG|SPRING_R0}}, and {{TAG|SPRING_V0}} must be equal to <math>M_8</math>. Otherwise, the calculation terminates with an error message.|:}} 
+:This form of bias potential is employed in several simulation protocols, such as the umbrella sampling{{cite|torrie:jcp:1977}}, umbrella integration, or steered MD, and is useful also in cases where the <math>\xi_{\mu}</math> values need to be restrained.
+
+==== Step function ====
+
+:A sum of Fermi-like step functions (curve (b) in Fig.1)
+::<math>
+\tilde{V}(\xi_1,\dots,\xi_{M_4}) = \sum_{\mu=1}^{M_4}\frac{A_{\mu}}{1+\text{exp}\left [-D_{\mu}(\frac{\xi(q)}{\xi_{0\mu}} -1) \right ]} \;
+</math>
+:where the sum runs over all (<math>M_4</math>) coordinates the potential acts upon. The potential is chosen in the {{FILE|ICONST}} file by setting the <code>status</code> to 4. The parameters of the potential are the height of the step (<math>A_{\mu}</math> set by {{TAG|FBIAS_A}}), the slope around the point <math>\xi_{0\mu}</math> (<math>D_{\mu}</math> set by {{TAG|FBIAS_D}}), and the position of the step (<math>\xi_{0\mu}</math> set by {{TAG|FBIAS_R0}}). These must be set in the {{FILE|INCAR}} file. 
+{{NB|mind|The number of items defined via {{TAG|FBIAS_A}}, {{TAG|FBIAS_D}}, and {{TAG|FBIAS_R0}} must be equal to <math>M_4</math>. Otherwise, the calculation terminates with an error message.|:}} 
+:This form of potential is suitable especially for imposing restrictions on the upper (or lower) limit of the value of <math>\xi</math>.
+
+==== Gaussian potential ====
+
+:A sum of Gauss functions (curve (b) in Fig.1)
+::<math>
+\tilde{V}(\xi_1,\dots,\xi_{M})  = \sum_{\nu=1}^{N_5}h_{\nu}\text{exp}\left [-\frac{\sum_{\mu=1}^{M_5}(\xi_{\mu}(q)-\xi_{0\nu,\mu})^2}{2w_{\nu}^2}  \right ], \;
+</math>
+:where <math>N_5</math> is the number of Gaussian functions and <math>M_5</math> is the number of coordinates the potential acts upon. The potential is chosen in the {{FILE|ICONST}} file by setting the <code>status</code> to 5. The parameters of the potentials, <math>h_{\nu}</math>, <math>w_{\nu}</math>, and <math>\xi_{0\nu,\mu}</math> are defined in the {{FILE|PENALTYPOT}} file. 
+
+:This type of bias potential is primarily intended for use in metadynamics, but since Gaussians can be used as basis functions for more general shapes, they can also be used to prepare various atypically shaped bias potentials.
+
+=== Output ===
+:The values of all collective variables defined in the {{FILE|ICONST}} file for each MD step are listed in the {{FILE|REPORT}} file. Check the lines after the string <tt>Metadynamics</tt>.
+
+== Examples of usage ==
+Let us consider the nucleophile substitution reaction of CH<math>_3</math>Cl with Cl<math>^-</math>. The reactant is a weak van-der-Waals complex. The corresponding {{FILE|POSCAR}} file reads  
+
+ vdW complex CH3Cl...Cl 
+ 1.00000000000000
+ 12.0000000000000000    0.0000000000000000    0.0000000000000000
+ 0.0000000000000000    12.0000000000000000    0.0000000000000000
+ 0.0000000000000000    0.0000000000000000    12.0000000000000000
+ C H Cl
+ 1 3 2
+ cart
+ 5.91331371  7.11364924  5.78037960
+ 5.81982231  8.15982106  5.46969017
+ 4.92222130  6.65954232  5.88978969
+ 6.47810398  7.03808479  6.71586385
+ 4.32824726  8.75151396  7.80743202
+ 6.84157897  6.18713289  4.46842049
+
+Due to the weak interactions between CH<math>_3</math>Cl and Cl<math>^-</math>, the complex can collapse at high temperatures. This can be avoided by setting an upper bound for the length of the non-bonding Cl...C interactions. 
+This can be conveniently achieved by using a Fermi-like step-shaped bias potential. To this end, we need to define the Cl...C distance, i.e., the distance between the atoms 1 and 5, as a coordinate with status 4 in the {{FILE|ICONST}} file:
+
+ R 1 5 4   
+
+Next, we need to set the molecular dynamics parameters and specify the bias potential parameters {{TAG|FBIAS_A}}, {{TAG|FBIAS_D}}, and {{TAG|FBIAS_R0}} in the {{FILE|INCAR}} file: 
+ 
+ # Molecular dynamics part
+ {{TAGBL|IBRION}} = 0
+ {{TAGBL|TEBEG}} = 300
+ {{TAGBL|TEEND}} = 300
+ {{TAGBL|MDALGO}} = 2
+ {{TAGBL|POTIM}} = 2.0
+ {{TAGBL|NSW}} = 10000
+ # Bias potential part
+ {{TAGBL|FBIAS_A}}  = 1
+ {{TAGBL|FBIAS_D}}  = 50
+ {{TAGBL|FBIAS_R0}} = 3.5
+
+Since the bias potential acts only on one internal coordinate (<math>M_4=1</math>), we need to provide only one number for each of the tags. The chosen bias potential parameters  
+ensure that repulsive bias forces steeply increase when the C...Cl distance is increased beyond about <math>3.2 \AA</math>. This causes a shortening of the distance in the next MD step. Notice that the bias force is essentially negligible for distances below <math>3 \AA</math>. 
+A careful adjustment of {{TAG|FBIAS_A}} and {{TAG|FBIAS_D}} is needed to ensure that (i) the bias force is large enough to effectively limit the value of <math>\xi</math>, and (ii) the interval of <math>\xi</math> values for which the bias forces are significant is broad enough to avoid overcoming via random fluctuations.      
+A suitable setting can be found by noting that the maximal bias force of <math>\frac{D\,A}{4\xi_0}</math> is exerted on the system at the point <math>\xi = \xi_{0}</math>. This can be seen by inspecting the analytical expression for the potential.
+
+== Related methods in VASP ==
+*[[Metadynamics]]: In contrast to the methods discussed on this page metadynamics continuously updates the bias potential of the system to push it into unvisited parts of phase space. 
+
+*[[Interface pinning]]: This employs a bias potential to pin the state of an interface between a solid and a liquid. This method uses entirely different {{FILE|INCAR}} tags than the bias potentials presented on this page.
+
+== Related tags and articles ==
+{{FILE|ICONST}}, {{FILE|PENALTYPOT}}, {{TAG|HILLS_BIN}}, {{TAG|FBIAS_R0}}, {{TAG|FBIAS_A}}, {{TAG|FBIAS_D}}, {{TAG|SPRING_K}}, {{TAG|SPRING_R0}}, {{TAG|SPRING_V0}}, {{FILE|REPORT}}
+
+[[Biased molecular dynamics]]
+
+== References ==
+<references/>
+
+[[Category:Advanced molecular-dynamics sampling]][[Category:Biased molecular dynamics]][[Category:Howto]]

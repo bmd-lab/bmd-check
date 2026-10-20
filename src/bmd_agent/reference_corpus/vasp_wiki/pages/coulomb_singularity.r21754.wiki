@@ -1,0 +1,119 @@
+The bare Coulomb operator
+:<math>
+V(\vert\mathbf{r}-\mathbf{r}'\vert)=\frac{1}{\vert\mathbf{r}-\mathbf{r}'\vert}
+</math>
+in the [[Hybrid_functionals: formalism|unscreened HF exchange]] has a representation in the reciprocal space that is given by
+:<math>
+V(q)=\frac{4\pi}{q^2}
+</math>
+It has an (integrable) singularity at <math>q=\vert\mathbf{k}'-\mathbf{k}+\mathbf{G}\vert=0</math> that leads to a very slow convergence of the results with respect to the cell size or number of '''k''' points. In order to alleviate this issue different methods have been proposed: the auxiliary function {{cite|gygi:prb:86}}, probe-charge Ewald {{cite|massidda:prb:93}} ({{TAG|HFALPHA}}), and Coulomb truncation{{cite|spenceralavi:prb:08}} methods (selected with {{TAG|HFRCUT}}). These mostly involve modifying the Coulomb Kernel in a way that yields the same result as the unmodified kernel in the limit of large supercell sizes.
+These methods can also be applied to the [[Hybrid functionals: formalism#Thomas-Fermi exponential screening with short-range Hartree-Fock exchange|Thomas-Fermi]] and [[Hybrid functionals: formalism#Range-separated hybrid functionals|error function]] screened Coulomb operators given by
+:<math>
+V(\vert\mathbf{r}-\mathbf{r}'\vert)=\frac{e^{-\lambda\left\vert\mathbf{r}-\mathbf{r}'\right\vert}}{\left\vert\mathbf{r}-\mathbf{r}'\right\vert}
+</math>
+and
+:<math>
+V(\vert\mathbf{r}-\mathbf{r}'\vert)=\frac{\text{erfc}\left({-\lambda\left\vert\mathbf{r}-\mathbf{r}'\right\vert}\right)}{\left\vert\mathbf{r}-\mathbf{r}'\right\vert}
+</math>
+respectively, whose representations in the reciprocal space are given by
+:<math>
+V(q)=\frac{4\pi}{q^{2}+\lambda^{2}}
+</math>
+and
+:<math>
+V(q)=\frac{4\pi}{q^{2}}\left(1-e^{-q^{2}/\left(4\lambda^2\right)}\right)
+</math>
+respectively. 
+
+=== Auxiliary function ===
+
+In this approach an auxiliary periodic function <math>F(q)</math> with the same <math>1/q^2</math> divergence as the Coulomb potential in reciprocal space is subtracted in the '''k''' points used to integrate the Hartree-Fock energy, thus regularizing the integral{{cite|gygi:prb:86}}. This function is chosen such that it has a closed analytical expression for its integral{{cite|gygi:prb:86}} or the integral is evaluated numerically{{cite|carrier:prb:2007}}. This approach is currently not implemented in VASP, instead, the probe-charge Ewald method is used.
+
+=== Probe-charge Ewald ===
+
+A similar approach to the auxiliary function method described above is the probe-charge Ewald method {{cite|massidda:prb:93}}. In this case, the auxiliary function <math>F(q)</math> is chosen to have the form of the Coulomb kernel times a Gaussian function <math>e^{-\alpha q^2}</math> with a width <math>\alpha</math> ({{TAG|HFALPHA}}) comparable to the Brillouin zone diameter.
+This function is used to regularize the Coulomb integral that is evaluated in the regular '''k''' point grid with the divergent part being evaluated by analytical integration of the Coulomb kernel (see eq. 29 in ref. {{cite|massidda:prb:93}}).
+The value of the integral of the bare Coulomb potential is (see eq. 31 in ref. {{cite|massidda:prb:93}})
+:<math>
+\begin{aligned}
+\frac{1}{2\pi^2} \int \frac{4\pi}{\mathbf{|q|}^2} e^{-\alpha\mathbf{|q|}^2} d\mathbf{q}= 
+\frac{2}{\pi} \int \frac{1}{q^2} e^{-\alpha q^2} q^2 dq = 
+\frac{2}{\pi} \int e^{-\alpha q^2} dq= \frac{1}{\sqrt{\pi \alpha}} 
+\end{aligned}
+</math>
+
+for the Thomas-Fermi and error function screened Coulomb kernels we have
+:<math>
+\begin{aligned}
+\frac{1}{2\pi^2} \int \frac{4\pi}{\mathbf{|q|}^2+\lambda^2} e^{-\alpha\mathbf{|q|}^2} d\mathbf{q}= 
+\frac{2} {\pi} \int \frac{q^2}{q^2+\lambda^2} e^{-\alpha q^2} q^2 dq = 
+-\lambda e^{\alpha \lambda^2} \text{erfc}({\lambda \sqrt{\alpha}}) + \frac{1}{\sqrt{\pi \alpha}} 
+\end{aligned}
+</math>
+and
+:<math>
+\begin{aligned}
+\frac{1}{2\pi^2} \int \frac{4\pi}{\mathbf{q}^2} 
+\left(
+    1-e^{-\mathbf{|q|}^2/(4\lambda^2)}
+\right) e^{-
+\alpha\mathbf{|q|}^2} d\mathbf{q}= 
+\frac{2}{\pi} \int \frac{1}{q^2}
+\left(
+    1-e^{-q^2/(4\lambda^2)}
+\right) e^{-\alpha q^2} q^2 dq = 
+\frac{1}{\sqrt{\pi \alpha}} -
+\frac{1}{\sqrt{\pi \left(\alpha+\frac{1}{4\lambda^2}\right)}} 
+\end{aligned}
+</math>
+respectively.
+
+=== Spherical truncation ===
+
+In this method{{cite|spenceralavi:prb:08}} the bare Coulomb operator <math>V(\vert\mathbf{r}-\mathbf{r}'\vert)</math> is spherically truncated by multiplying it by the step function <math>\theta(R_{\text{c}}-\left\vert\mathbf{r}-\mathbf{r}'\right\vert)</math>, and in the reciprocal this leads to
+:<math>
+V(q)=\frac{4\pi}{q^{2}}\left(1-\cos(q R_{\text{c}})\right)
+</math>
+whose value at <math>q=0</math> is finite and is given by <math>V(q=0)=2\pi R_{\text{c}}^{2}</math>, where the truncation radius <math>R_{\text{c}}</math> ([[HFRCUT]]) is by default chosen as <math>R_{\text{c}}=\left(3/\left(4\pi\right)N_{\mathbf{k}}\Omega\right)^{1/3}</math> with <math>N_{\mathbf{k}}</math> being the number of <math>k</math>-points in the full Brillouin zone.
+
+The screened potentials have no singularity at <math>q=0</math>. Nevertheless, it is still beneficial for accelerating the convergence with respect to the number of '''k''' points to multiply these screened operators by <math>\theta(R_{\text{c}}-\left\vert\mathbf{r}-\mathbf{r}'\right\vert)</math>, which in the reciprocal space gives
+:<math>
+V(q)=\frac{4\pi}{q^{2}+\lambda^{2}}
+\left(
+1-e^{-\lambda R_{\text{c}}}\left(\frac{\lambda}{q}
+\sin\left(qR_{\text{c}}\right) +
+\cos\left(qR_{\text{c}}\right)\right)\right)
+</math>
+and
+:<math>
+V(q)=\frac{4\pi}{q^{2}}
+\left(
+1-\cos(qR_{\text{c}})\text{erfc}\left(\lambda R_{\text{c}}\right) -
+e^{-q^{2}/\left(4\lambda^2\right)}
+\Re\left({\text{erf}\left(\lambda R_{\text{c}} +
+\text{i}\frac{q}{2\lambda}\right)}\right)\right)
+</math>
+respectively, with the following values at <math>q=0</math>:
+:<math>
+V(q=0)=\frac{4\pi}{\lambda^{2}}\left(1-e^{-\lambda R_{\text{c}}}\left(\lambda R_{\text{c}} + 1\right)\right)
+</math>
+and
+:<math>
+V(q=0)=2\pi\left(R_{\text{c}}^{2}\text{erfc}(\lambda R_{\text{c}}) -
+\frac{R_{\text{c}}e^{-\lambda^{2}R_{\text{c}}^{2}}}{\sqrt{\pi}\lambda} +
+\frac{\text{erf}(\lambda R_{\text{c}})}{2\lambda^{2}}\right)
+</math>
+
+Note that the spherical truncation method described above works very well in the case of 3D systems. However, it is not recommended for systems with a lower dimensionality{{cite|sundararamanarias:prb:13}}. For such systems, the approach proposed in ref. {{cite|sundararamanarias:prb:13}} (not implemented in VASP) is more adapted since the truncation is done according to the Wigner-Seitz cell and therefore more general.
+
+== Related tags and articles ==
+{{TAG|HFRCUT}},
+{{TAG|FOCKCORR}},
+{{TAG|Hybrid functionals: formalism}},
+[[Downsampling of the Hartree-Fock operator]]
+
+== References ==
+<references/>
+----
+
+[[Category:Exchange-correlation functionals]][[Category:Hybrid_functionals]][[Category:Theory]]

@@ -91,26 +91,74 @@ def alpha_path(directory: Path) -> Path:
 # ---------------------------------------------------------------------------
 
 
-def test_packaged_corpus_is_verified_and_unpopulated() -> None:
+RELEASED_VERSION = "1.0.0"
+RELEASED_DIGEST = "sha256:f7929354612f779f8ff3a921b1a3901426fcdaced1cf3d7604d87b78472fcfef"
+RELEASED_PAGES = 1047
+
+
+def test_packaged_corpus_is_the_verified_first_release() -> None:
     result = corpus.load_vasp_wiki_corpus()
-    assert result == CorpusUnavailable(corpus.UNAVAILABLE_UNPOPULATED, "the corpus contains no preserved pages yet")
+    assert isinstance(result, VaspWikiCorpus), result
+    assert (result.corpus_kind, result.corpus_version, result.corpus_digest) == (
+        corpus.KIND_AUTHORITATIVE,
+        RELEASED_VERSION,
+        RELEASED_DIGEST,
+    )
+    assert len(result.pages) == RELEASED_PAGES
+    assert result.upstream.api_endpoint == "https://vasp.at/wiki/api.php"
+    assert result.upstream.rights_text == "GNU Free Documentation License 1.2"
+    acquisition = result.acquisition
+    assert acquisition.method == corpus.ACQUISITION_ALL_PAGES
+    assert acquisition.completeness == corpus.COMPLETENESS_COMPLETE
+    assert acquisition.discovered_titles == 1048
+    assert acquisition.failed == ()
+    assert [(item.title, item.reason) for item in acquisition.excluded] == [("Changelog", "archival_character_policy")]
+    assert len(acquisition.redirects) == 256
+    # Every preserved page re-verifies (size, SHA-256, MediaWiki SHA-1, policy).
+    assert all(isinstance(page.read_wikitext(), str) for page in result.pages)
 
 
-def test_packaged_corpus_files_are_the_canonical_unpopulated_renderings() -> None:
-    manifest = corpus.unpopulated_manifest()
+def test_packaged_corpus_licensing_is_reviewed_and_attributed() -> None:
+    result = corpus.load_vasp_wiki_corpus()
+    assert isinstance(result, VaspWikiCorpus)
+    license_record = result.license
+    assert license_record.identifier == "GFDL-1.2-only"
+    assert license_record.site_notice_as_displayed == (
+        "Content is available under GNU Free Documentation License 1.2 unless otherwise noted."
+    )
+    assert (license_record.invariant_sections, license_record.cover_texts) == ("none_declared", "none_declared")
+    assert (license_record.reviewer, license_record.reviewed_on) == ("Lee Burton", "2026-10-20")
+    assert license_record.license_text_sha256 == corpus.AUTHORITATIVE_POLICY.license_text_sha256
+    text = (PACKAGED / license_record.license_text_file).read_text("ascii")
+    assert text.splitlines()[:2] == [
+        "                GNU Free Documentation License",
+        "                  Version 1.2, November 2002",
+    ]
+    assert {page.license_review.status for page in result.pages} == {corpus.PAGE_REVIEW_NO_EXCEPTIONS}
+    assert all(page.permalink.endswith(f"&oldid={page.revision_id}") for page in result.pages)
+    notice = (PACKAGED / "NOTICE").read_text("utf-8")
+    assert "not covered by the" in notice and "BMD Agent MIT License" in notice
+    assert notice.count("  history and authors: ") == RELEASED_PAGES
+
+
+def test_packaged_corpus_files_are_the_canonical_renderings() -> None:
+    manifest = read_manifest(PACKAGED)
     assert (PACKAGED / "manifest.json").read_bytes() == corpus.canonical_manifest_bytes(manifest)
     assert (PACKAGED / "NOTICE").read_bytes() == corpus.render_notice(manifest)
+    anchor = corpus.unpopulated_release_anchor()
     assert json.loads((PACKAGED / "RELEASES.json").read_text("ascii"))["releases"] == [
-        corpus.unpopulated_release_anchor()
+        anchor,
+        {
+            "corpus_version": RELEASED_VERSION,
+            "corpus_kind": corpus.KIND_AUTHORITATIVE,
+            "corpus_digest": RELEASED_DIGEST,
+            "previous_corpus_digest": anchor["corpus_digest"],
+        },
     ]
     names = {path.relative_to(PACKAGED).as_posix() for path in PACKAGED.rglob("*") if path.is_file()}
-    assert names == {"README.md", "NOTICE", "manifest.json", "RELEASES.json", "SHA256SUMS"}
-
-
-def test_packaged_corpus_contains_no_vasp_material_or_license_text() -> None:
-    assert not (PACKAGED / "pages").exists() or not any((PACKAGED / "pages").iterdir())
-    assert not list(PACKAGED.glob("COPYING*"))
-    assert read_manifest(PACKAGED)["corpus_kind"] == corpus.KIND_UNPOPULATED
+    expected = {"README.md", "NOTICE", "manifest.json", "RELEASES.json", "SHA256SUMS", "COPYING.GFDL-1.2.txt"}
+    expected |= {page["content_file"] for page in manifest["pages"]}
+    assert names == expected
 
 
 def test_packaged_corpus_is_never_a_synthetic_fixture() -> None:

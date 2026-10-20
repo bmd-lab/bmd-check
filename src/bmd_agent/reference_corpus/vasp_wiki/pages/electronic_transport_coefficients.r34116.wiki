@@ -1,0 +1,174 @@
+The theoretical framework is based on the [[Electron-phonon interactions theory#Transport coefficients | linearized Boltzmann transport equation (BTE)]] within the relaxation time approximation (RTA).
+We employ the frozen-band approximation, which assumes that the electronic potential and eigenvalues computed for the undoped system remain unchanged when electrons are added or removed.
+The goal of this page is to explain how to compute the electronic lifetimes, scattering rates, and transport coefficients such as the electrical conductivity, Seebeck coefficient, and the electronic thermal conductivity. If you would like to plot the scattering lifetimes or the electron-phonon matrix elements, see the [https://www.vasp.at/tutorials/latest/electron-phonon/part4/#electron-phonon-e12  end of Exercise 12] and [https://www.vasp.at/tutorials/latest/electron-phonon/part3/#electron-phonon-e08 Exercise 9] of the electron-phonon tutorials, respectively.
+
+== Electron–phonon coupling matrix elements ==
+The starting point is the set of Kohn–Sham eigenstates obtained from density functional theory (DFT). For a given Bloch state,
+:<math> H_{\mathbf{k}} |\psi_{n\mathbf{k}}\rangle = \epsilon_{n\mathbf{k}} S_{\mathbf{k}} |\psi_{n\mathbf{k}}\rangle, </math>
+where <math>n</math> is the band index, <math>\mathbf{k}</math> is a crystal momentum, and <math>S_{\mathbf{k}}</math> is the overlap matrix.
+The scattering with phonons is described by the electron–phonon coupling matrix elements
+:<math> g_{n\mathbf{k},n'\mathbf{k}'}^{\nu\mathbf{q}} = \langle \psi_{n\mathbf{k}} | \partial_{\nu\mathbf{q}} V | \psi_{n'\mathbf{k}'} \rangle, </math>
+where <math>\partial_{\nu\mathbf{q}} V</math> is the perturbation of the crystal potential due to a phonon of branch index <math>\nu</math> and wavevector <math>\mathbf{q}</math>. These matrix elements determine the scattering probability between states <math>(n,\mathbf{k})</math> and <math>(n',\mathbf{k}')</math>.
+
+== Scattering rates and lifetimes ==
+Within Fermi’s golden rule, the inverse lifetime (scattering rate) of an electron in state <math>(n,\mathbf{k})</math> is
+:<math>
+\frac{1}{\tau_{n\mathbf{k}}} = \frac{2\pi}{\hbar} \sum_{n'\nu\mathbf{k}'} w_{n\mathbf{k},n'\mathbf{k}'} \, |g^{\nu\mathbf{q}}_{n\mathbf{k},n'\mathbf{k}'}|^2 \left[ (n_{\nu\mathbf{q}} + 1 - f_{n'\mathbf{k}'}) \, \delta(\varepsilon_{n\mathbf{k}} - \varepsilon_{n'\mathbf{k}'} - \hbar\omega_{\nu\mathbf{q}}) + (n_{\nu\mathbf{q}} + f_{n'\mathbf{k}'}) \, \delta(\varepsilon_{n\mathbf{k}} - \varepsilon_{n'\mathbf{k}'} + \hbar\omega_{\nu\mathbf{q}}) \right]
+</math>
+where:
+* <math>f_{n\mathbf{k}}</math> is the Fermi–Dirac occupation,
+* <math>n_{\nu\mathbf{q}}</math> is the Bose–Einstein phonon occupation,
+* <math>\omega_{\nu\mathbf{q}}</math> is the phonon frequency.
+* <math>w_{n\mathbf{k},n'\mathbf{k}'}</math> weight determined by the {{TAG|ELPH_SCATTERING_APPROX}}
+
+The two terms correspond to phonon emission and absorption, respectively.
+
+== Transport distribution function ==
+The energy-resolved transport distribution function is
+:<math>
+\mathcal{T}(\epsilon) = \frac{e^2}{N_\mathbf{k}\Omega} \sum_{n\mathbf{k}} \tau_{n\mathbf{k}} \, \mathbf{v}_{n\mathbf{k}} \otimes \mathbf{v}_{n\mathbf{k}} \, \delta(\epsilon_{n\mathbf{k}}-\epsilon),
+</math>
+where <math>\Omega</math> is the unit-cell volume, <math>\mathbf{v}_{n\mathbf{k}}</math> are the carrier velocities, <math>\tau_{n\mathbf{k}}</math> are the lifetimes, and <math>N_\mathbf{k}</math> the number of <math>\mathbf{k}</math>-points.
+
+== Onsager coefficients ==
+
+
+The Onsager coefficients relate generalized forces (electric field and temperature gradient) to generalized fluxes (electronic and heat currents).  
+In compact matrix form:
+
+:<math>
+\begin{pmatrix}
+\mathbf{J}_e \\
+\mathbf{J}_q
+\end{pmatrix}
+=
+\begin{pmatrix}
+L_{11} & L_{12} \\
+L_{21} & L_{22}
+\end{pmatrix}
+\begin{pmatrix}
+\mathbf{\mathcal{E}} \\
+-\nabla T / T
+\end{pmatrix},
+</math>
+
+where
+* <math>\mathbf{J}_e</math> = electrical current density,
+* <math>\mathbf{J}_q</math> = heat current density carried by the electrons,
+* <math>\mathbf{\mathcal{E}} = E + \frac{\nabla\mu}{e}</math> electrochemical potential with <math>\mu</math> the [[Chemical potential in electron-phonon interactions | chemical potential]]
+* <math>T</math> = temperature.
+
+They are defined as
+:<math>
+L_{ij} = \int d\epsilon \, \mathcal{T}(\epsilon) \,
+(\epsilon-\mu)^{i+j-2}
+\left( -\frac{\partial f^0}{\partial \epsilon} \right),
+</math>
+where <math>\mathcal{T}(\epsilon)</math> is the transport distribution function,  
+<math>\mu</math> the [[Chemical potential in electron-phonon interactions | chemical potential]], and <math>f^0</math> the Fermi–Dirac distribution.
+{{NB|important|The [[Chemical potential in electron-phonon interactions | chemical potential]] is written as <math>\mu</math>. The mobility is <math>\mu_e</math> or <math>\mu_h</math>, and should not be mistaken for it.}}
+
+In practice, this integral can be evaluated in one of two ways determined by {{TAG|ELPH_TRANSPORT_DRIVER}}
+
+; Linear energy grids and Simpson rule
+The integrand is computed on a linear energy grid, and the Simpson rule is used for integration. The discretized Onsager coefficient is evaluated as
+:<math>
+L_{ij} \;\approx\; \sum_{k=1}^{N} w_k \;
+\mathcal{T}(\epsilon_k)\;
+(\epsilon_k - \mu)^{\,i+j-2}\;
+\left( -\frac{\partial f^0}{\partial \epsilon} \right).
+</math>
+
+with <math>\epsilon_k = \epsilon_\text{min}+(k-1)\Delta \epsilon,\;\; k=1,\dots,N</math> and 
+<math>\Delta \epsilon = \tfrac{\epsilon_\text{max}-\epsilon_\text{min}}{N-1}</math>
+and <math>\epsilon_\text{min}</math>={{TAG|ELPH_TRANSPORT_EMIN}} and 
+<math>\epsilon_\text{max}</math>={{TAG|ELPH_TRANSPORT_EMAX}} or alternatively both <math>\epsilon_\text{min}</math> and <math>\epsilon_\text{max}</math> are set by {{TAG|ELPH_TRANSPORT_DFERMI_TOL}} and <math>w_k</math> the weights due to the Simpson integration rule.
+
+; Gauss–Legendre quadrature  
+A change of variables is introduced to avoid explicitly sampling the sharp derivative of the Fermi–Dirac function.  
+Define
+:<math>
+x = 1-2f(\epsilon-\mu,T)
+</math>
+so that <math>\epsilon = \mu+ k_B T \ln\frac{1+x}{1-x}</math>.  
+With this substitution, the derivative of the Fermi–Dirac distribution is absorbed into the Jacobian, and the Onsager coefficients take the form
+:<math>
+L_{ij} \;\approx\; \tfrac{1}{2} \sum_{k=1}^N
+w_k \,
+\left( \frac{k_B T}{-e} \ln \frac{1+x_k}{1-x_k} \right)^{i+j-2}
+\mathcal{T}\!\left(\mu+ k_B T \ln\frac{1+x_k}{1-x_k}\right),
+</math>
+with <math>w_k</math> and <math>x_k</math> the weights and abscissae of the Gauss-Legendre quadrature rule.
+
+The Gauss–Legendre approach has the advantage that the integration grid adapts naturally to the width of the Fermi window, making it numerically efficient without having define manually the energy window through {{TAG|ELPH_TRANSPORT_DFERMI_TOL}} or {{TAG|ELPH_TRANSPORT_EMIN}} and {{TAG|ELPH_TRANSPORT_EMAX}}. Instead, only the number of points <math>N</math> in the sum above needs to be defined through {{TAG|TRANSPORT_NEDOS}}.
+
+== Transport coefficients ==
+
+{| class="wikitable" style="text-align:center"
+! Quantity
+! Formula
+! Physical meaning
+|-
+| Electrical conductivity <math>\sigma</math>
+| <math>\sigma = L_{11}</math>
+| Charge current response to an electric field
+|-
+| Seebeck coefficient <math>S</math>
+| <math>S = \tfrac{1}{T} L_{11}^{-1} L_{12}</math>
+| Voltage generated per temperature gradient
+|-
+| Peltier coefficient <math>\Pi</math>
+| <math>\Pi = T S = L_{11}^{-1} L_{12}</math>
+| Heat carried per unit charge current
+|-
+| Electronic thermal conductivity <math>\kappa_e</math>
+| <math>\kappa_e = \tfrac{1}{T} ( L_{22} - L_{21} L_{11}^{-1} L_{12} )</math>
+| Heat current carried by electrons in response to a thermal gradient
+|}
+
+The lattice thermal conductivity <math>\kappa_l</math>, i.e., the heat current carried by the lattice in response to a thermal gradient, can be computed using the [[Müller-Plathe method]] or with an external package such as [https://phonopy.github.io/phono3py/ phono3py].
+
+== Electron and hole mobilities in semiconductors ==
+
+In semiconductors, the electrical conductivity can be separated into contributions from conduction-band electrons and valence-band holes.  
+This is only meaningful in materials with a finite band gap, where carriers can be clearly identified as either electrons in the conduction band (CB) or holes in the valence band (VB).
+{{NB|important|Be careful not to mistake the [[Chemical potential in electron-phonon interactions | chemical potential]] <math>\mu</math> for the mobility <math>\mu_e</math> or <math>\mu_h</math>.}}
+
+{| class="wikitable" style="text-align:center"
+! Quantity
+! Definition
+! Carrier density
+|-
+| Electron mobility <math>\mu_e</math>
+| <math>\mu_e = \tfrac{\sigma_{n \in \text{CB}}}{n_e}</math>
+| <math>n_e = \frac{1}{\Omega N_\mathbf{k}}\sum_{\mathbf{k}n \in \text{CB}} f(\varepsilon_{\mathbf{k}n}, T, \mu)</math>
+|-
+| Hole mobility <math>\mu_h</math>
+| <math>\mu_h = \tfrac{\sigma_{n \in \text{VB}}}{n_h}</math>
+| <math>n_h = \frac{1}{\Omega N_\mathbf{k}}\sum_{\mathbf{k}n \in \text{VB}} \big[1 - f(\varepsilon_{\mathbf{k}n}, T, \mu)\big]</math>
+|}
+
+Here:
+* <math>\sigma_{n \in \text{CB}}</math> and <math>\sigma_{n \in \text{VB}}</math> denote the conductivity restricted to states in the conduction and valence bands, respectively.  
+* <math>f_{n\mathbf{k}}</math> is the Fermi–Dirac distribution.  
+* <math>\Omega</math> is the volume of the unit cell.
+* <math>N_\mathbf{k}</math> is the total number of k-points.
+* <math>\mu</math> is the [[Chemical potential in electron-phonon interactions | chemical potential]] at the given temperature.
+
+== Approximations and methods ==
+* Tetrahedron method: used for Brillouin-zone integration, avoiding the need for ad-hoc smearing parameters.
+* Plane-wave Bloch states: ensure systematic convergence and avoid interpolation errors.
+* Selection algorithms: restrict scattering processes to those allowed by energy conservation (delta functions), minimizing the number of matrix elements to compute.
+
+== Related tags and articles ==
+* [[Bandgap renormalization due to electron-phonon coupling|Band-structure renormalization]]
+* [[Electron-phonon potential from supercells]]
+* [[Transport coefficients including electron-phonon scattering]]
+* [[Chemical potential in electron-phonon interactions]]
+* [[Electron-phonon accumulators]]
+* {{FILE|phelel_params.hdf5}}
+* [[Electron-phonon interactions from Monte-Carlo sampling]]
+* {{TAG|ELPH_SCATTERING_APPROX}}
+* {{TAG|ELPH_TRANSPORT_DRIVER}}
+
+[[Category:Electron-phonon interactions]][[Category:Theory]]

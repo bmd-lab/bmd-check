@@ -1,0 +1,15 @@
+{{TAGDEF|MSDGW_NP|[integer]|2*max(NELECT/2+NIONS/2,NELECT*0.6)}}
+
+Description: Number of protected bands in mixed stochastic-deterministic compression algorithm.{{cite|altman:prl:2024}}
+{{Available|6.6.0}}
+----
+{{TAG|MSDGW_NP}} determines how many bands are protected by the mixed stochastic-deterministic compression of unoccupied bands. Bands beyond {{TAG|MSDGW_NP}} are compressed. This tag is set in combination with {{TAG|MSDGW_F}}, the constant energy ratio <math>F</math> of the compression algorithm. If a positive value of {{TAG|MSDGW_F}} is found, states beyond {{TAG|MSDGW_NP}} are subdivided into energy bins of width <math>\Delta E_i</math> and replaced by their average energy <math>E_i</math>, such that <math>F=\Delta E_i/E_i</math>. The original orbitals are replaced by {{TAG|MSDGW_NXI}} randomly linear combined orbitals. Larger values of {{TAG|MSDGW_NXI}} decrease the compression level and improve accuracy of results. The same holds true for smaller values of {{TAG|MSDGW_F}}.
+
+== Related tags and articles==
+{{TAG|MSDGW_F}},
+{{TAG|MSDGW_NXI}},
+{{TAG|MSDGW_SEED}}
+== References ==
+<references/>
+----
+[[Category:INCAR]][[Category:GW]][[Category:Constrained-random-phase_approximation]]

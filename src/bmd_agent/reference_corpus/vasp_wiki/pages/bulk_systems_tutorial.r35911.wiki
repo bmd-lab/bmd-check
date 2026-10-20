@@ -1,0 +1,19 @@
+{{Template:Bulk_systems - Tutorial}}
+
+The tutorial is made of the following parts:
+<div style="background:var(--vdefault-bg); border:solid 1px var(--vlines); padding:0.5em 1em; margin-right:14em;">
+# [[fcc Si|fcc Si]]
+# [[fcc Si DOS|fcc Si DOS]]
+# [[fcc Si bandstructure|fcc Si bandstructure]]
+# [[cd Si|cd Si]]
+# [[cd Si volume relaxation|cd Si volume relaxation]]
+# [[cd Si relaxation|cd Si relaxation]]
+# [[beta-tin Si|beta-tin Si]]
+# [[fcc Ni|fcc Ni]]
+# [[liquid Si|liquid Si]]
+# [[graphite TS binding energy|graphite TS binding energy]]
+# [[graphite MBD binding energy|graphite MBD binding energy]]
+# [[graphite interlayer distance|graphite interlayer distance]]
+</div>
+
+[[Category:Tutorials]]

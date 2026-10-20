@@ -1,0 +1,440 @@
+== Requirements ==
+
+For the compilation of the parallel version of VASP the following software is mandatory:
+* Fortran and C compilers. 
+* An implementation of MPI (Message Passing Interface).
+* Numerical libraries like BLAS, LAPACK, ScaLAPACK, and FFTW.
+
+== Build system ==
+
+The build system of VASP (as of versions >= 5.4.1) has the following
+structure:
+
+               vasp.X.X.X (root directory)
+                             |
+          ---------------------------------------
+         |              |          |             |
+        arch           bin       build          src
+                                                 |
+                                          ---------------
+                                         |       |       |
+                                        lib    parser   CUDA
+
+;root/
+:Holds the high-level makefile, and several subdirectories.
+
+;root/src
+:Holds the source files of VASP, and a low-level makefile.
+
+;root/src/lib
+:Holds the source of the VASP library (used to be vasp.X.lib), and a low-level makefile.
+
+;root/src/parser
+:Holds the source of the {{TAG|LOCPROJ}} parser (as of versions >= 5.4.4), and a low-level makefile.
+
+;root/src/CUDA
+:Holds the source of the cuda-code that will be executed on the GPU by the [[CUDA-C GPU port of VASP]].
+
+;root/arch
+:Holds a collection of makefile.include.arch files.
+	
+;root/build
+:The different versions of VASP, i.e., the standard, gamma-only, non-collinear version will be build in separate subdirectories of this directory.
+
+;root/bin
+:Here make will store the binaries.
+
+== How to make VASP ==
+
+Copy one of the <code>makefile.include.arch</code> files in <code>root/arch</code> to <code>root/makefile.include</code>.
+Take one that most closely reflects your system (hopefully).
+For instance, on a linux box with the Intel Composer suite:
+
+ cp arch/makefile.include.linux_intel  ./makefile.include
+
+In many cases these <code>makefile.include</code> files will have to be adapted to the particulars of your system (see [[#Adapting makefile.include|below]]).
+
+When you've finished setting up <code>makefile.include</code>, build VASP:
+
+ make all
+
+This will build the standard, gamma-only, and non-collinear version of VASP one after the other.
+Alternatively on may build these versions individually:
+
+ make std
+ make gam
+ make ncl
+
+To compile the [[CUDA-C GPU port of VASP]]:
+
+ cp arch/makefile.include.linux_intel_cuda ./makefile.include
+
+and adapt it to the particulars of your system (see [[#For the GPU port|below]]), followed by:
+
+ make gpu
+ make gpu_ncl
+
+to built the GPU ports of the standard and non-collinear versions, respectively.
+
+'''N.B.''': Unfortunately at this time we do not offer a GPU port of the gamma-only version yet.
+
+== Adapting makefile.include ==
+=== Precompiler variables ===
+----
+;CPP_OPTIONS
+:Specify the precompiler flags:
+
+:<pre>CPP_OPTIONS=[-Dflag1 [-Dflag2] ... ]</pre>
+
+:Take a lead from the <code>makefile.include.arch</code> files in '''/arch''', and have a look at the [[Precompiler flags|description of the commonly used VASP prcompiler flags]].
+
+:*N.B.I: -DNGZhalf, -DwNGZhalf, -DNGXhalf, -DwNGXhalf are deprecated options.  Building the standard, gamma-only, or non-collinear version of the code is specified through an additional argument to the make command (see the [[#How to make VASP|make]] section).
+:*N.B.II: CPP_OPTIONS is only used in this file, where it should be added to CPP (see next item).
+
+;CPP
+:The command to invoke the precompiler you want to use, for instance:
+:*Using Intel's Fortran precompiler:
+:<pre>CPP=fpp -f_com=no -free -w0 $*$(FUFFIX) $*$(SUFFIX) $(CPP_OPTIONS)</pre>
+
+:*Using cpp:
+:<pre>CPP=/usr/bin/cpp -P -C -traditional $*$(FUFFIX) >$*$(SUFFIX) $(CPP_OPTIONS)</pre>
+
+:*N.B.: This variable has to include $(CPP_OPTIONS)! If not, CPP_OPTIONS will be ignored.
+
+=== Compiler variables ===
+----
+The Fortran compiler will be invoked as:
+
+ $(FC) $(FREE) $(FFLAGS) $(OFLAG) $(INCS)
+
+;FREE
+:Specify the options that your Fortran compiler needs for it to accept free-form source layout, without line-length limitation. For instance:
+:*Using Intel's Fortran compiler:
+:<pre>FREE=-free -names lowercase</pre>
+
+:*Using gfortran:
+:<pre>FREE=-ffree-form -ffree-line-length-none</pre>
+
+;FC
+:The command to invoke your Fortran compiler (e.g. gfortran, ifort, mpif90, mpiifort, ... ).
+
+;FCL
+:The command that invokes the linker. In most cases:
+:<pre>FCL=$(FC) [+ some options]</pre>
+
+:*Using the Intel composer suite (Fortan compiler + MKL libraries), typically:
+:<pre>FCL=$(FC) -mkl</pre>
+
+;OFLAG
+:The general level of optimization (default: OFLAG=-O2).
+
+;FFLAGS
+:Additional compiler flags.
+:*To enable debugging in vasp following line can be added:
+:<pre>FFLAGS+=-g </pre>
+
+;OFLAG_IN
+:(default: -O2) In the vast majority of makefiles this variable is set:
+:<pre>OFLAG_IN=$(OFLAG)</pre>
+
+;DEBUG
+:The optimization level with which the main program (main.F) will be compiled, usually:
+:<pre>DEBUG=-O0</pre>
+
+;INCS
+:Use this variable to specify objects to be included in the sense of:
+:<pre>INCS=-Idirectory-with-files-to-be-included</pre>
+
+=== Linking against libraries ===
+----
+The linker will be invoked as:
+ $(FCL) -o vasp  ..all-objects.. $(LLIBS) $(LINK)
+
+;LLIBS
+:Specify libraries and/or objects to be linked against, in the usual ways:
+:<pre>LLIBS=[-Ldirectory -llibrary] [path/library.a] [path/object.o]</pre>
+
+Usually one has to specify several numerical libraries (BLAS, LAPACK or scaLAPACK, etc). For instance using the Intel composer suite (and compiling with CPP_OPTIONS= .. -DscaLAPACK ..):
+
+ MKL_PATH   = $(MKLROOT)/lib/intel64
+ BLACS      = -lmkl_blacs_openmpi_lp64
+ SCALAPACK  = $(MKL_PATH)/libmkl_scalapack_lp64.a $(BLACS)
+ LLIBS      = $(SCALAPACK) $(LAPACK)
+
+For other configurations please take a lead from the <code>makefile.include.arch</code> files under '''/arch''', or look at the [[#Examples|examples below]].
+==== Note on LAPACK 3.6.0 and newer ====
+As of LAPACK >=3.6 the subroutine DGEGV is deprecated and replaced by DGGEV [[http://www.netlib.org/lapack/lapack-3.6.0.html]]. 
+Linking against LAPACK 3.6 or higher will result in following error message: 
+ broyden.o: In function `__broyden_MOD_broyd':
+ broyden.f90:(.text+0x4bb0): undefined reference to `dgegv_'
+ dynbr.o: In function `brzero_':
+ dynbr.f90:(.text+0xe78): undefined reference to `dgegv_'
+ dynbr.f90:(.text+0x112c): undefined reference to `dgegv_'
+The recommended solution to this problem is to add following line to the <code>makefile.include</code> 
+ CPP_OPTIONS += -DLAPACK36
+and following lines to <code>./src/symbol.inc</code>
+ ! routines replaced in LAPACK >=3.6 
+ #ifdef LAPACK36
+ #define DGEGV DGGEV
+ #endif
+This will replace all calls of DGEGV by DGGEV before compilation.
+
+=== The list of objects ===
+----
+The standard list of objects needed to compile VASP is given by the variable SOURCE in the <code>root/src/.objects</code> file that is part of the 
+distribution.
+
+Objects to be added to this list can be specified in <code>makefile.include</code> by means of:
+<pre>OBJECTS= .. your list of objects ..</pre>
+
+N.B.: Several objects will *have* to be added in this manner (see the following section on "Fast-Fourier-Transforms).
+
+=== Fast-Fourier-Transforms ===
+----
+;OBJECTS
+:Add the objects to be compiled (or linked againts) that provide the FFTs (may include static libraries of objects .a).
+
+;INCS
+:In case one compiles using the fftw-library, i.e.,
+:<pre>OBJECTS= .. fftw3d.o fftmpiw.o ..</pre>
+
+:then INCS can be set to the directory that holds <code>fftw3.f</code>:
+:<pre>INCS=-Idirectory-that-holds-fftw3f</pre>
+
+:(needed because <code>fftw3d.F</code> and <code>fftmpiw.F</code> include <code>fftw3.f</code>).
+
+:N.B.: If in the aformentioned case INCS is not set, then <code>fftw3.f</code> has to be present in '''/src'''.
+
+Common choices are:
+
+*To use Intel's MKL wrapper of fftw (and compiling with CPP_OPTIONS= .. -DMPI ..):
+ OBJECTS= fftmpiw.o fftmpi_map.o fftw3d.o fft3dlib.o \
+          $(MKLROOT)/interfaces/fftw3xf/libfftw3xf_intel.a
+ INCS=-I$(MKLROOT)/include/fftw
+
+*Or to use Juergen Furtmueller's FFT implementation (and -DMPI):
+ OBJECTS= fftmpi.o fftmpi_map.o fft3dfurth.o fft3dlib.o
+ 
+ INCS=
+
+For other configurations please take lead from the <code>makefile.include.arch</code> files under '''/arch''' or look at the [[#Examples|examples below]].
+
+=== Special rules ===
+----
+==== Special rules for the optimization level of FFT related objects ====
+The makefiles of our old build systems contained a set of special rules for the optimization level allowed in the compilation of the FFT related objects. In the current build system these special rules can be duplicated by adding the following:
+ OBJECTS_O1 += fft3dfurth.o fftw3d.o fftmpi.o fftmpiw.o
+ OBJECTS_O2 += fft3dlib.o
+
+==== Special rules in general ====
+The current <code>src/makefile</code> contains a set of recipes to allow for the compilation of objects at different levels of optimization (other than the general level specified by OFLAG). These recipes replace the special rules section of the makefiles in our old build system.
+
+In these recipes the compiler will be invoked as:
+ $(FC) $(FREE) $(FFLAGS_x) $(OFLAG_x) $(INCS_x) 
+
+where x stands for: 1, 2, 3, or IN.
+
+;FFLAGS_x
+:Default: FFLAGS_x=$(FFLAGS), for x=1, 2, 3, and IN.
+
+;OFLAG_x
+:Default: OFLAG_x=-Ox (for x=1, 2, 3), and OFLAG_IN=-O2
+
+;INCS_x
+:Default: INCS_x=$(INCS), for x=1, 2, 3, and IN.
+
+The objects to be compiled in accordance with these recipes have to be specified by means of the variables:
+;OBJECTS_O1, OBJECTS_O2, OBJECTS_O3, OBJECTS_IN
+
+Several objects are compiled at -O1 and -O2 by default. These lists of objects are specified in the .objects file through the variables:
+;SOURCE_O1, SOURCE_O2, SOURCE_IN
+
+and reflect the special rules as they were present in most of the makefiles of the old build system.
+
+To completely overrule a default setting (for instance for the -O1 special rules) use the following construct:
+ SOURCE_O1=
+ OBJECTS_O1= .. your list of objects ..
+
+=== For the VASP library (<tt>lib</tt>) ===
+----
+;CPP_LIB
+:The command to invoke the precompiler. In most cases it will suffise to set:
+:<pre>CPP_LIB=$(CPP)</pre>
+
+;FC_LIB
+:The command to invoke your Fortran compiler. In most cases:
+:<pre>FC_LIB=$(FC)</pre>
+
+:N.B.: the library can be compiled without MPI support, i.e., when <code>FC=mpif90</code>, FC_LIB may specify a Fortran compiler without MPI supprt, e.g. <code>FC_LIB=ifort</code>.
+
+;FFLAGS_LIB
+:Fortran compiler flags, including a specification of the level of optimization. In most cases:
+:<pre>FFLAGS_LIB=-O1</pre>
+
+;FREE_LIB
+:Specify the options that your Fortran compiler needs for it to accept free-form source layout, without line-length limitation. In most cases it will suffise to set:
+:<pre>FREE_LIB=$(FREE)</pre>
+
+;CC_LIB
+:The command to invoke your C compiler (e.g. gcc, icc, ..).
+:N.B.: the library can be compiled without MPI support.
+
+;CFLAGS_LIB
+:C compiler flags, including a specification of the level of optimization. In most cases:
+:<pre>CFLAGS_LIB=-O</pre>
+
+;OBJECTS_LIB
+:List of "non-standard" objects to be added to the library. In most cases:
+:<pre>OBJECTS_LIB= linpack_double.o</pre>
+
+:When compiling VASP with <code>-Duse_shmem</code>, one has to add <code>getshmem.o</code> as well, i.e.,
+:<pre>OBJECTS_LIB= .. getshmem.o ..</pre>
+
+=== For the LOCPROJ-parser (<tt>parser</tt>) ===
+----
+;CXX_PARS
+:The command to invoke your C++ compiler (e.g. g++, icpc, ..).
+
+And tell make that the parser needs to be compiled:
+
+ LIBS += parser
+
+and needs to be linked against:
+
+ LLIBS += -Lparser -lparser -lstdc++
+
+<div id="wannier90"></div>
+=== For the interface to Wannier90 (optional) ===
+----
+To include the interface to Wannier90
+([[Precompiler flags#wannier90|-DVASP2WANNIER90 or -DVASP2WANNIER90v2]]),
+one needs to specify:
+
+ LLIBS += /your-wannier90-directory/libwannier.a
+
+And one needs to download [http://www.wannier.org Wannier90] and compile <tt>libwannier.a</tt>.
+
+<div id="libbeef"></div>
+
+=== For <tt>libbeef</tt> (optional) ===
+----
+In case one wants to compile VASP with the BEEF van-der-Waals functionals ([[Precompiler flags#libbeef|-Dlibbeef]]),
+one needs to add:
+
+ LLIBS += -Lyour-libbeef-directory -lbeef
+
+And one needs to [https://github.com/vossjo/libbeef download and compile libbeef], of course.
+
+=== For the GPU port ===
+----
+;CUDA_ROOT
+:Location of CUDA toolkit install.  For example:
+:<pre>CUDA_ROOT := /opt/cuda</pre>
+
+;CUDA_LIB
+:CUDA toolkit libraries to link to.  Typically:
+:<pre>CUDA_LIB := -L$(CUDA_ROOT)/lib64 -lnvToolsExt -lcudart -lcuda -lcufft -lcublas</pre>
+
+;NVCC
+:Location of CUDA compiler and flags.  Typically:
+:<pre>NVCC := $(CUDA_ROOT)/bin/nvcc -g</pre>
+
+;OBJECTS_GPU
+:Add the objects to be compiled (or linked againts) that provide the FFTs (may include static libraries of objects .a).  For FFTW:
+:<pre>OBJECTS_GPU = fftmpiw.o fftmpi_map.o fft3dlib.o fftw3d_gpu.o fftmpiw_gpu.o</pre>
+
+;GENCODE_ARCH
+:CUDA compiler options to generate code for your particular GPU architecture.
+:For Kepler:
+:<pre>GENCODE_ARCH := -gencode=arch=compute_35,code=\"sm_35,compute_35\"</pre>
+:For Maxwell:
+:<pre>GENCODE_ARCH := -gencode=arch=compute_53,code=\"sm_53,compute_53\"</pre>
+:Multiple `-gencode` statements can be compiled to create cross-platform executables.
+:For details see the [http://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc NVIDIA nvcc documentation].
+
+;MPI_INC
+:Path to MPI include files so the CUDA compiler can find them.  For example:
+:<pre>MPI_INC := /opt/openmpi/include</pre>
+:These can often be found with <code>mpicc --show</code>.
+
+;CPP_GPU
+:Preprocessor options for GPU compilation.
+:Always include:
+::<code>-DCUDA_GPU</code> to build cross-platform sources for GPU, <code>-DUSE_PINNED_MEMORY</code> to use pinned memory for transfer buffers, and <code>-DRPROMU_CPROJ_OVERLAP</code> to overlap communication and computation in RPROJ_MU.
+:Optional:
+::Set <code>-DCUFFT_MIN=N</code> to intercept any FFT calls of size greater than ''N''<sup>3</sup> and evaluate on GPU.
+:Experimental:
+::Set <code>-DUSE_MAGMA</code> to use MAGMA for LAPACK-like calls on the GPU.
+
+:So typically:
+:<pre>CPP_GPU    = -DCUDA_GPU -DRPROMU_CPROJ_OVERLAP -DUSE_PINNED_MEMORY -DCUFFT_MIN=28</pre>
+
+;MAGMA_ROOT
+:If using the experimental MAGMA support, path to MAGMA 1.6.  Typically:
+:<pre>MAGMA_ROOT := /opt/magma/lib</pre>
+
+== Examples ==
+
+*[[makefile.include.linux_intel]]
+*[[makefile.include.linux_gfortran]]
+*[[makefile.include.linux_intel_cuda]]
+
+== Patches ==
+
+=== For vasp.5.4.1.24Jun15 ===
+Unfortunately several bugs were reported for vasp.5.4.1.24Jun15.
+To fix them download the patch(es) below:
+
+*[http://cms.mpi.univie.ac.at/patches/patch.5.4.1.08072015.gz patch.5.4.1.08072015.gz]
+*[http://cms.mpi.univie.ac.at/patches/patch.5.4.1.27082015.gz patch.5.4.1.27082015.gz]
+*[http://cms.mpi.univie.ac.at/patches/patch.5.4.1.06112015.gz patch.5.4.1.06112015.gz]
+
+To apply these patch(es) gunzip the patch file(s) and
+
+ patch -p1 < patch.5.4.1.ddmmyyyy
+
+within your vasp.X.X.X root-directory.
+
+=== For vasp.5.4.1.05Feb16 (with GPU support) ===
+The following patch improves the mapping between MPI-ranks and GPUs on multi-node/multi-GPU systems (the issue is performance only, not a bugfix):
+*[http://cms.mpi.univie.ac.at/patches/patch.5.4.1.14032016.gz patch.5.4.1.14032016.gz]
+
+The following patch unfortunately does address several bugs:
+# For noncollinear calculations {{TAG|LOPTICS}}=.TRUE. didn't work correctly with Blöchl-smearing ({{TAG|ISMEAR}}&le;-4).
+# The Zeroth-Order-Regular-Approximation (ZORA) that accounts for the relativistic mass correction in the Spin-Orbit-Coupling operator was not implemented correctly.
+::'''N.B.''': Unfortunately this bugfix affects the total energy. Effects are expected to be negligible except for heavy elements.
+
+*[http://cms.mpi.univie.ac.at/patches/patch.5.4.1.03082016.gz patch.5.4.1.03082016.gz]
+
+To apply these patches gunzip the patch files and
+
+ patch -p0 < patch.5.4.1.14032016
+ patch -p0 < patch.5.4.1.03082016
+
+within your vasp.X.X.X root-directory.
+
+=== For vasp.5.4.4.18Apr17-6-g9f103f2a35 ===
+The following patch addresses a few issues:
+# Fixes a bug in the stress term when using the SCAN functional in certain pathological cases.
+# Fixes a bug in the Thomas-Fermi potential.
+# Fixes a bug that affected the optB88 for some atoms and molecules.
+# Fixes some issues with the BSE at finite '''q'''.
+
+and adds support for:
+# The CX13 vdW-DFT functional.
+
+*[http://cms.mpi.univie.ac.at/patches/patch.5.4.4.16052018.gz patch.5.4.4.16052018.gz]
+
+To apply this patch gunzip the patch file and
+
+ patch -p0 < patch.5.4.4.16052018
+
+within your vasp.X.X.X root-directory.
+
+== Related Sections ==
+[[Precompiler flags]],
+[[CUDA-C GPU port of VASP]],
+
+----
+
+[[Category:VASP]][[Category:Installation]][[Category:Performance]][[Category:GPU]]

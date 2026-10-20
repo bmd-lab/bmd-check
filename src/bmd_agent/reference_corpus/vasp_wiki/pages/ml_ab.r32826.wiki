@@ -1,0 +1,245 @@
+{{DISPLAYTITLE:ML_AB}}
+This file is used as input (with file name {{FILE|ML_AB}}) and output ({{FILE|ML_ABN}}) within the machine learning force field method. It contains the collection of ab initio data from previous calculations: Bravais matrices, atom positions, energies, forces, and stress tensors. Depending on the mode of operation it is used in the following ways:
+
+* '''{{TAG|ML_MODE|train}}, starting from scratch:''' A complete {{FILE|ML_ABN}} file containing all ab initio data and the list of current local reference configurations is written whenever a learning step is performed (check the line <code>STATUS</code> in the log file {{FILE|ML_LOGFILE}} for entries <code>learning</code> and <code>critical</code>).
+* '''{{TAG|ML_MODE|train}}, continuation run:''' Same {{FILE|ML_ABN}} output as above. In addition, upon start-up, the user-provided {{FILE|ML_AB}} file is read and an initial machine-learned force field is generated from the contained data.
+* '''{{TAG|ML_MODE|select}}, reselection of local reference configurations:''' Same {{FILE|ML_ABN}} output as for {{TAG|ML_MODE|train}}. The {{FILE|ML_AB}} file is read and the contained structures are fed sequentially to the on-the-fly training algorithm. The list of local reference configurations in the {{FILE|ML_AB}} file is ignored, however, a dummy section must still be present (see below).
+{{NB|tip|The {{FILE|ML_AB}} file is not required for {{TAG|ML_MODE|run}} (prediction only) because all necessary data (e.g. descriptors of local reference configurations) are already stored in the {{FILE|ML_FF}} file.}}
+An {{FILE|ML_ABN}} output file from {{TAG|ML_MODE|train, select}} can always be reused as input for {{TAG|ML_MODE|train, select}} by just renaming (copying) it to {{FILE|ML_AB}}.
+
+== Example ==
+
+As an example, here is a shortened version of an actual {{FILE|ML_AB}} file:
+<pre>
+ 1.0 Version
+**************************************************
+     The number of configurations
+--------------------------------------------------
+        299
+**************************************************
+     The maximum number of atom type
+--------------------------------------------------
+       5
+**************************************************
+     The atom types in the data file
+--------------------------------------------------
+     Pb I  C
+     N  H
+**************************************************
+     The maximum number of atoms per system
+--------------------------------------------------
+             96
+**************************************************
+     The maximum number of atoms per atom type
+--------------------------------------------------
+             48
+**************************************************
+     Reference atomic energy (eV)
+--------------------------------------------------
+  -72.5297190000000       -35.4081430000000       -2.39269120000000
+  -4.60003440000000       -1.12020270000000
+**************************************************
+     Atomic mass
+--------------------------------------------------
+   20.0000000000000        20.0000000000000        12.0110000000000
+   14.0010000000000        8.00000000000000
+**************************************************
+     The numbers of basis sets per atom type
+--------------------------------------------------
+       130  1202   128
+       125   790
+**************************************************
+     Basis set for Pb
+--------------------------------------------------
+          1      1
+        100      8
+          1      3
+        100      4
+          1      5
+          1      6
+ ...
+ ...
+ ...
+**************************************************
+     Basis set for I
+--------------------------------------------------
+          1      9
+          1     10
+        100     32
+        100     31
+          1     13
+        100     29
+          1     15
+          1     16
+ ...
+ ...
+ ...
+**************************************************
+     Basis set for C
+--------------------------------------------------
+        100     39
+        101     40
+        104     40
+        101     39
+        101     38
+        108     40
+        101     37
+ ...
+ ...
+ ...
+**************************************************
+     Basis set for N
+--------------------------------------------------
+          1     41
+        100     47
+          1     43
+          1     44
+        100     45
+          1     46
+ ...
+ ...
+ ...
+**************************************************
+     Basis set for H
+--------------------------------------------------
+        101     96
+        108     96
+        101     95
+        101     94
+        108     95
+        101     93
+        101     92
+ ...
+ ...
+ ...
+**************************************************
+     Configuration num.      1
+==================================================
+     System name
+--------------------------------------------------
+     Optimal
+==================================================
+     The number of atom types
+--------------------------------------------------
+       5
+==================================================
+     The number of atoms
+--------------------------------------------------
+         96
+**************************************************
+     Atom types and atom numbers
+--------------------------------------------------
+     Pb      8
+     I      24
+     C       8
+     N       8
+     H      48
+==================================================
+     CTIFOR
+--------------------------------------------------
+   7.2153124269575984E-003
+==================================================
+     Primitive lattice vectors (ang.)
+--------------------------------------------------
+   12.6230002000000       0.000000000000000E+000  0.000000000000000E+000
+  0.000000000000000E+000   12.6230002000000       0.000000000000000E+000
+  0.000000000000000E+000  0.000000000000000E+000   12.6322002000000
+==================================================
+     Atomic positions (ang.)
+--------------------------------------------------
+   3.53104385888580        2.84086367297985        2.90622172474177
+   9.81419124013876        2.65432768009571        3.05638374363947
+   3.26003769786731        9.08189602171279        2.78238128942769
+   9.68338433877730        9.01798419847282        3.33422943250601
+   3.97567522985842        2.30549969401587        9.43194287333753
+   10.2367187113626        2.60925731212548        9.47119538915201
+   3.14970369394084        8.58643640964228        9.24921780934012
+   9.89456550951183        9.28033187172892        9.29623786496524
+   10.2580847101708        12.3062955711284        3.18366035907868
+   3.82895321819843        12.3181255490181        2.42031967883849
+ ...
+ ...
+ ...
+==================================================
+     Total energy (eV)
+--------------------------------------------------
+  -1844.06244866897
+==================================================
+     Forces (eV ang.^-1)
+--------------------------------------------------
+  2.660349497586850E-002 -4.547882666592111E-003  0.190783123263071
+  0.130884508367191       0.299290099652476       1.596358887670635E-002
+  3.408685056302496E-002 -4.091615555857331E-002  0.178271772476586
+ -8.681206662816165E-002 -2.646077052932483E-002 -0.627496783708147
+ -2.387963973365542E-002  0.272206550808848      -0.188554040851596
+ -0.349175317569579       0.372666466514608       9.810640873955712E-002
+  0.508292852334109       2.851700722091148E-002 -0.297636066674050
+ -0.477466544993604      -0.767209034380190       0.537092981997701
+  1.081052495208487E-002 -0.454162570762754      -2.885905409516716E-002
+  5.233785861238309E-002 -4.907001101287316E-002  0.357709899123724
+ ...
+ ...
+ ...
+==================================================
+     Stress (kbar)
+--------------------------------------------------
+     XX YY ZZ
+--------------------------------------------------
+  -12.6559383536223       -8.82753684858342       -13.1791695209263
+--------------------------------------------------
+     XY YZ ZX
+--------------------------------------------------
+  -1.91691819690402        2.12274173946129       0.103818583636094
+**************************************************
+     Configuration num.      2
+==================================================
+ ...
+ ...
+ ...
+</pre>
+
+== General format remarks ==
+
+{{NB|important|All element-dependent quantities must follow the order of the element entries given in the header entry named <code>The atom types in the data file</code>.}}
+*All element-type-dependent information is limited to 3 entries per line. For more than 3 types or multiples of 3, the entries are written over multiple lines.
+*The order of the entries for the header and also the data is fixed. 
+*The ledger lines cannot be omitted. <code>*****</code> and <code>-----</code> lines for the header. <code>*****</code>, <code>-----</code> and <code>=====</code> lines for the data.
+
+== Header specification==
+
+*<code>1.0 Version</code>: In the very beginning of the header this entry specifies to the version of the {{FILE|ML_AB}} file. If in the future the contents of the file will be changed or extended the version number will ensure I/O compatibility. If not stated otherwise use <code>1.0 Version</code>. 
+*<code>The number of configurations</code>: Total number of training structures stored in this {{FILE|ML_AB}} file.
+*<code>The maximum number of atom type</code>: Total number of unique types listed in all structures (e.g. if the file contains some ab initio data for H<sub>2</sub>O, some data for MgO and some data for NaCl, then the total number of types is 5).
+*<code>The atom types in the data file</code>: Listing of all atom types (two characters for each type as in {{VASP}}) appearing in all structures. Multiple lines for more than 3 element types. Maximum 3 entries per line. 
+*<code>The maximum number of atoms per system</code>: The largest number of atoms within one structure among all training structures.
+*<code>The maximum number of atoms per atom type</code>: The largest number of atoms per element within one structure among all elements within all training structures.
+*<code>Reference atomic energy (eV)</code>: Reference atomic energies used in the calculation for each element type. Multiple lines for more than 3 element types. Maximum 3 entries per line. This entry is only important for {{TAG|ML_ISCALE_TOTEN|1}}.
+*<code>Atomic mass</code>: Atomic mass of each element type (in u). Multiple lines for more than 3 element types. Maximum 3 entries per line.
+*<code>The numbers of basis sets per atom type</code>: Number of local reference configurations for each type. Multiple lines for more than 3 element types. Maximum 3 entries per line.
+*<code>Basis set for X</code>: List of local reference configurations for each type. This line is followed by a block with two columns. The first column denotes from which training structure the local reference configuration is taken. The second column is the index of the atom in the given training structure that is chosen as a local reference configuration. This whole block (together with the title line) is repeated for each element type in the force field. For {{TAG|ML_MODE|select}} this section is ignored and a new list of local reference configurations will be written to {{FILE|ML_ABN}}. However, upon reading in the {{FILE|ML_AB}} file a dummy line (e.g. only one line with <code>1 1</code>) for each type still needs to be present (also set <code>The numbers of basis sets per atom type</code> to 1 in this case).
+{{NB|warning|The maximum number of the training structures {{TAG|ML_MCONF}} and the maximum number of the local reference configurations {{TAG|ML_MB}} in the {{FILE|INCAR}} file have to be set larger than the entries <code>The number of configurations</code> and <code>The numbers of basis sets per atom type</code> in the {{FILE|ML_AB}} file, respectively.}}
+
+== Training structure data format ==
+
+*<code>Configuration num.      n</code>: Denotes the beginning of a structure in the training data. Training structures have to be numbered consecutively starting with 1.
+*<code>System name</code>: Name of the structure, taken from the {{FILE|POSCAR}} file which was used to start the {{TAG|ML_MODE|train}} run. Copied from the input {{FILE|ML_AB}} file in case of {{TAG|ML_MODE|select}}. The length of system names is limited to 40 characters.
+*<code>The number of atom types</code>: The number of atom types in the structure. Because the list of types in this structure has to be a subset of all types appearing in the {{FILE|ML_AB}} this number must be smaller or equal to the number given in the header section <code>The atom types in the data file</code>.
+*<code>The number of atoms</code>: Number of atoms in the structure.
+*<code>Atom types and atom numbers</code>: Atom types and the number of atoms per type in the structure. Each type is written on a separate line.
+*<code>CTIFOR</code> (''optional''): Value of {{TAG|ML_CTIFOR}} used while sampling this structure. Depending on {{TAG|ML_ICRITERIA}} the value may change between structures. This line is always present if the {{FILE|ML_ABN}} file was created by {{VASP}} with {{TAG|ML_MODE|train}}. Then, also continuation and re-selection runs with {{TAG|ML_MODE|train, select}} will write out current <code>CTIFOR</code> values in {{FILE|ML_ABN}} files. On the other hand, if {{FILE|ML_AB}} files are created from external training data this section may be omitted. In this case {{TAG|ML_MODE|train, select}} runs will also not include <code>CTIFOR</code> sections. {{NB|warning|Training structures with a value for <code>CTIFOR</code> and without must not be combined. Either <code>CTIFOR</code> is provided for all structures or none of them.|:}}
+*<code>Primitive lattice vectors (ang.)</code>: Bravais matrix of the structure, one line corresponds to one lattice vector. The unit of length units is Angstrom.
+*<code>Atomic positions (ang.)</code>: Ionic positions in Cartesian coordinates (given in Angstrom). Note that the order of atoms needs to correspond to the atom types list in <code>Atom types and atom numbers</code>.
+*<code>Total energy (eV)</code>: Total energy (in eV) of the structure.
+*<code>Forces (eV ang.^-1)</code>: Forces (in eV/Angstrom) for each atom in the structure.
+*<code>Stress (kbar)</code>: 6 entries for the stress tensor (in kb) of the structure.
+
+== Merging different ML_AB files ==
+
+Multiple {{FILE|ML_AB}} files may be merged by hand, keeping the following restrictions and tips in mind:
+*The training structure data can be simply concatenated, i.e., by just adding more structure sections starting with <code>Configuration num.      n</code> at the end of the file. However, the structure numbering needs to be updated in such a way that they are enumerated continuously starting from 1.
+*We strongly advise to group structures with the same number of elements and atoms per element in the training data together, otherwise the code will automatically reorder the data, such that those are sticking together. If one relies on the automatic reordering it will not be possible to easily "diff" the input {{FILE|ML_AB}} file and its corresponding {{FILE|ML_ABN}} output file.
+*The header must be adjusted to reflect the combined number of element types, the maximum number of atoms, etc. 
+*The lists of local reference configurations cannot be easily merged (renumbering would be required). Instead, it is recommended to recalculate them using {{TAG|ML_MODE|select}}. However, to start with a valid {{FILE|ML_AB}} file first manually set <code>The numbers of basis sets per atom type</code> to 1 for each species. Also, set the block <code>Basis set for X</code> with dummy value <code>1 1</code> for each species. After running with {{TAG|ML_MODE|select}} the output {{FILE|ML_ABN}} will contain the selected new local reference configurations for the combined training data. {{NB|tip|If calculations for {{TAG|ML_MODE|select}} are too time consuming using the default settings it is useful to increase {{TAG|ML_MCONF_NEW}} to values around 10-16 and set {{TAG|ML_CDOUB|4}}. This often accelerates the calculations by a factor of 2-4.|:}}
+
+----
+[[Category:Files]][[Category:Machine-learned force fields]][[Category:Input files]]

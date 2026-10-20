@@ -1,0 +1,19 @@
+The {{FILE|LOCPOT}} file stores the local potential (in eV). The definition of the written local potential depends on the settings for {{TAG|LVTOT}}, {{TAG|LVHAR}}, and {{TAG|WRT_POTENTIAL}}.
+
+The format is similar to that of the {{TAG|CHGCAR}} file, but it does not have the same data arrangement.
+For spin-unpolarized calculations ({{TAG|ISPIN}}=1, {{TAG|LNONCOLLINEAR}}=F), it contains a single dataset with the scalar potential.
+For spin-polarized calculations ({{TAG|ISPIN}}=2), it contains two datasets: spin up and spin down.
+For noncollinear calculations ({{TAG|LNONCOLLINEAR}}=T), it contains four datasets in the spinor representation of the potential. In other words, it contains the scalar potential and the B-field-like potential <math>B_1</math>, <math>B_2</math>, and <math>B_3</math> in the basis defined by {{TAG|SAXIS}} (see [[Known_issues#KnownIssue4|known issue 4: LOCPOT-format issue for VASP<6.4.3]]).
+{{NB|warning|Note for versions older than vasp.5.1.12: please check whether your version supports this tag (it is written out at the beginning of the OUTCAR file). Versions not supporting {{TAG|LVHAR}} might or not add <math>V_{\text{XC}}(\mathbf{r})</math>. Please check this by searching for <tt>LEXCHG{{=}}-1</tt> in <tt>main.F</tt>. If the line <tt>LEXCHG{{=}}-1</tt> is commented out <math>V_{\text{XC}}(\mathbf{r})</math> is added otherwise it is not.}}
+
+== Related tags and articles ==
+[[Restart and output files cheat sheet]]
+
+{{TAG|LVACPOTAV}},
+{{TAG|LVTOT}},
+{{TAG|LVHAR}},
+{{TAG|WRT_POTENTIAL}},
+{{FILE|POT}}
+
+
+[[Category:Files]][[Category:Output files]][[Category:Electrostatics]][[Category:Potential]]

@@ -1,0 +1,60 @@
+The expression for the density-dependent energy correction dDsC{{cite|steinmann:jcp:11}}{{cite|steinmann:jctc:11}} is very similar to that of the {{TAG|DFT-D2}} method (see the equation for <math>E_{disp}</math> for the {{TAG|DFT-D2}} method). The important difference is, however, that the dispersion coefficients and damping function are charge-density dependent. The dDsC method is therefore able to take into account variations in the vdW contributions of atoms due to their local chemical environment. In this method, polarizability, dispersion coefficients, charge and charge-overlap of an atom in a molecule or solid are computed in the basis of a simplified exchange-hole dipole moment formalism{{cite|steinmann:jcp:11}} pioneered by Becke and Johnson{{cite|becke:jcp:05}}.
+
+The dDsC dispersion energy is expressed as follows:
+
+:<math>{{E}_{\mathrm{disp}}}=-\sum\limits_{i=2}^{{{N}_\mathrm{at}}}{\sum\limits_{j=1}^{i-1}\sum\limits_{n=3}^{n=5}{{{f}_{2n}}(b{{R}_{ij}})\frac{C_{2n}^{ij}}{R_{ij}^{2n}}}}
+{{E}_{\mathrm{disp}}}=-\sum\limits_{i=2}^{{{N}_{\mathrm{at}}}}{\sum\limits_{j=1}^{i-1}
+{{{f}_{6}}(b{{R}_{ij}})\frac{C_{6,ij}}{R_{ij}^{6}}}} </math>
+
+where <math>N_{\mathrm{at}}</math> is the number of atoms in the system and <math>b</math> is the Tang and Toennies (TT) damping factor. The damping function <math>f_{6}(bR_{ij})</math> is defined as follows:
+
+:<math>f_{6}(x)=1-\exp(-x)\sum^{6}_{k=0}\frac{x^k}{k!}</math>
+
+and its role is to attenuate the correction at short internuclear distances. A key component of the dDsC method is the damping factor <math>b</math>:
+
+:<math>b(x)=\frac{2 b_{ij,\mathrm{asym}}}{{{e}^{{{a}_{0}}\cdot x}}+1} </math>
+
+where the fitted parameter <math>a_{0}</math> controls the short-range behaviour and <math>x</math> is the damping argument for the TT-damping factor associated with two separated atoms (<math>b_{ij,\mathrm{asym}}</math>).
+The term <math>b_{ij,\mathrm{asym}}</math> is computed according to the combination rule:
+
+:<math>b_{ij,\mathrm{asym}}=2\frac{b_{ii,\mathrm{asym}}\cdot b_{jj,\mathrm{asym}}}{b_{ii,\mathrm{asym}} + b_{jj,\mathrm{asym}}} </math>
+
+with <math>b_{ii,\mathrm{asym}}</math> being estimated from  effective atomic polarizabilities:
+
+:<math>{b}_{ii,\mathrm{asym}}={b}_{0}\cdot \sqrt[3]{\frac{1}{\alpha_{i}}}</math>
+
+The effective atom-in-molecule polarizabilities <math>\alpha_{i}</math> are computed from the tabulated free-atomic polarizabilities (available for the elements of the first six rows of the periodic table except of lanthanides) in the same way as in the {{TAG|Tkatchenko-Scheffler method}} and {{TAG|Tkatchenko-Scheffler method with iterative Hirshfeld partitioning}}, but the Hirshfeld-dominant instead of the conventional Hirshfeld partitioning is used.
+The last element of the correction is the damping argument <math>x</math>:
+
+:<math>x=\left( 2{{q}_{ij}}+\frac{|({{Z}_{i}}-N_{i}^{D})\cdot ({{Z}_{j}}-N_{j}^{D})|}{{{r}_{ij}}} \right)\frac{N_{i}^{D}+N_{j}^{D}}{N_{i}^{D}\cdot N_{j}^{D}}</math>
+
+where <math>Z_i</math> and <math>N_i^D</math> are the nuclear charge and Hirshfeld dominant population of atom <math>i</math>, respectively.
+The term <math>2q_{ij} = q_{ij} + q_{ji}</math> is a covalent bond index based on the overlap of conventional Hirshfeld populations <math>q_{ij}=\int w_i({\mathbf{r}})w_j({\mathbf{r}})n({\mathbf{r}})d{\mathbf{r}}</math>, and the fractional term in the parentheses is a distance-dependent ionic bond index.
+
+The Performance of PBE-dDsC in the description of the adsorption of hydrocarbons on Pt(111) has been examined in reference {{cite|gautier:pccp:15}}.
+
+== Usage ==
+
+The dDsC correction is invoked by setting {{TAG|IVDW}}=4. The default values for damping function parameters are available for the functionals PBE ({{TAG|GGA}}=''PE''}) and revPBE ({{TAG|GGA}}=''RE''). If another functional is used, the user has to define these parameters via corresponding tags in the {{TAG|INCAR}} file (parameters for common DFT functionals can be found in reference {{cite|steinmann:jctc:11}}. The following parameters can be optionally defined in the {{TAG|INCAR}} file (the given values are the default ones):
+*{{TAG|VDW_RADIUS}}=50.0 : cutoff radius (in <math>\AA</math>) for pair interactions
+*{{TAG|VDW_S6}}=13.96 : scaling factor <math>{a}_{0}</math>
+*{{TAG|VDW_SR}}=1.32 : scaling factor <math>{b}_{0}</math>
+
+{{NB|mind|
+*The dDsC method has been implemented into VASP by Stephan N. Steinmann.
+*This method requires the use of {{TAG|POTCAR}} files from the PAW dataset version 52 or later.
+*The input reference polarizabilities for non-interacting atoms are available only for elements of the first six rows of periodic table except of the lanthanides.
+*It is essential that a sufficiently dense FFT grid (controlled via {{TAG|NGXF}}, {{TAG|NGYF}} and {{TAG|NGZF}}) is used when using dDsC, especially for accurate gradients. We strongly recommend to use {{TAG|PREC}}{{=}}''Accurate'' for this type of calculations (in any case, avoid using {{TAG|PREC}}{{=}}''Low'').
+*The charge-density dependence of gradients is neglected. This approximation has been thoroughly investigated and validated in reference {{cite|bremond:jcp:14}}.}}
+
+== Related tags and articles ==
+{{TAG|VDW_RADIUS}},
+{{TAG|VDW_S6}},
+{{TAG|VDW_SR}},
+{{TAG|IVDW}}
+
+== References ==
+<references/>
+
+----
+[[Category:Exchange-correlation functionals]][[Category:van der Waals functionals]][[Category:Theory]][[Category:Howto]]

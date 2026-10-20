@@ -1,0 +1,409 @@
+{{Template:optics_dielectric - Tutorial}}
+
+== Task ==
+
+Calculation of the static and frequency dependent dielectric properties of SiC.
+
+== Static dielectric properties ==
+
+=== Density functional perturbation theory ===
+Let us start with the calculation of the static dielectric properties.
+The most convenient way to determine the Born effective charges, dielectric-,
+piezoelectric tensors is by means of density functional perturbation theory
+({{TAG|LEPSILON}}=''.TRUE.'').
+
+*{{TAG|INCAR}} (see INCAR.LEPSILON)
+
+ {{TAGBL|ISMEAR}} =  0
+ {{TAGBL|SIGMA}}  =  0.01
+ {{TAGBL|EDIFF}}  = 1.E-8
+    
+ ## to get the Born effective charges
+ ## and the macroscopic dielectric tensor
+ {{TAGBL|LEPSILON}} = .TRUE.
+     
+ #{{TAGBL|LRPA}} = .TRUE.
+ #{{TAGBL|LPEAD}} = .TRUE.
+    
+ ## to get the ionic contribution
+ ## to the macroscopic dielectric tensor
+ #{{TAGBL|IBRION}} = 8
+    
+ ## As an alternative to {{TAGBL|LEPSILON}} = .TRUE.
+ ## you might try the following:
+ #{{TAGBL|LCALCEPS}} = .TRUE.
+    
+ ## and:
+ #{{TAGBL|IBRION}} = 6
+ #{{TAGBL|NFREE}} = 2
+
+*{{TAG|KPOINTS}} (see KPOINTS.8)
+<pre>
+8x8x8
+ 0
+G
+ 8 8 8
+ 0 0 0
+</pre>
+
+*{{TAG|POSCAR}}
+<pre>
+system SiC
+4.35
+0.5 0.5 0.0
+0.0 0.5 0.5
+0.5 0.0 0.5
+1 1
+cart
+0.00 0.00 0.00 
+0.25 0.25 0.25
+</pre>
+
+[[File:Fig dielectric properties SiC 1.png|300px]]
+
+*The {{TAG|LRPA}}-tag
+By default the dielectric tensor is calculated in the independent-particle (IP) approximation,
+you should see the following lines in the {{TAG|OUTCAR}} file:
+
+ HEAD OF MICROSCOPIC STATIC DIELECTRIC TENSOR (independent particle, excluding Hartree and local field effects)
+
+and
+ 
+ MACROSCOPIC STATIC DIELECTRIC TENSOR (including local field effects in DFT)
+
+which comes later in the {{TAG|OUTCAR}} file.
+
+If one adds
+
+ {{TAG|LRPA}}=.TRUE.
+
+to the {{FILE|INCAR}} above, the second instance will include local field effect
+only with respect to the response in the Hartree part of the potential, i.e., in the
+''random-phase-approximation'' (RPA).
+Search for
+
+ MACROSCOPIC STATIC DIELECTRIC TENSOR (including local field effects in RPA (Hartree))
+
+in the {{FILE|OUTCAR}}.
+
+*The Born effective charge tensors (<math>Z^{*}_{ij}</math>)
+Roughly speaking, the Born effective tensors provide a measure of how much charge
+effectively moves with an atom when you displace it.
+For a definition see the article on [[Berry_phases_and_finite_electric_fields|Berry phases and finite electric fields]].
+For {{TAG|LEPSILON}}=.TRUE., the Born effective charge tensors are written near the end of the {{FILE|OUTCAR}} file.
+
+Look for
+
+ BORN EFFECTIVE CHARGES (in e, cummulative output)
+
+'''Mind''': you will find this entry only if {{TAG|LRPA}}=.FALSE. (default), since the Born-effective charges in the RPA tend to be nonsensical.
+
+* The {{TAG|LPEAD}}-tag
+As an alternative to solving a linear Sternheimer equation (Eq. 32 of <ref name="gajdos:prb:06"/>), one may
+compute <math>| \nabla_{\mathbf{k}} \tilde{u}_{n\mathbf{k}} \rangle</math> from finite differences by specifying
+
+ {{TAG|LPEAD}}=.TRUE.
+
+
+in the {{FILE|INCAR}} file.
+The derivative of the cell-periodic part of the wave function w.r.t. the Bloch vector is then computed
+by means of a fourth-order finite difference stencil, in the spirit of Eqs. 96 and 97 of <ref name="nunes:prb:01"/>.
+The results of the calculation of static dielectric properties by means of {{TAG|LEPSILON}}=.TRUE.
+tend to converge more rapidly w.r.t. '''k'''-point sampling with {{TAG|LPEAD}}=.TRUE.
+
+Rerun the example with
+
+ {{TAGBL|ISMEAR}} =  0
+ {{TAGBL|SIGMA}}  =  0.01
+ {{TAGBL|EDIFF}}  = 1.E-8
+    
+ ## to get the Born effective charges
+ ## and the macroscopic dielectric tensor
+ {{TAGBL|LEPSILON}} = .TRUE.
+ {{TAGBL|LPEAD}} = .TRUE.
+
+This will allow for a clean comparison with the next topic.
+
+=== Response to finite electric fields ===
+The second way one may compute the static dielectric properties is from [[Berry_phases_and_finite_electric_fields|self-consistent response of the system to a finite electric field]].<ref name="souza:prl:02"/>
+
+*{{TAG|INCAR}}
+
+ {{TAGBL|ISMEAR}} =  0
+ {{TAGBL|SIGMA}}  =  0.01
+ {{TAGBL|EDIFF}}  = 1.E-8
+     
+ {{TAGBL|LCALCEPS}} = .TRUE.
+
+=== Ionic contributions to the static dielectric properties ===
+To obtain the ionic contributions to the static dielectric properties one needs to compute the force-constant matrices (Hessian of the total energy w.r.t. the ionic positions) and internal strain tensors (second derivative of the total energy w.r.t. strain fields and ionic postions).
+These properties may be obtained from finite differences ({{TAG|IBRION}}=5 or 6) or from perturbation theory ({{TAG|IBRION}}=7 or 8).
+Try the following
+
+*{{TAG|INCAR}}
+
+ {{TAGBL|ISMEAR}} =  0
+ {{TAGBL|SIGMA}}  =  0.01
+ {{TAGBL|EDIFF}}  = 1.E-8
+    
+ ## to get the Born effective charges
+ ## and the macroscopic dielectric tensor
+ {{TAGBL|LEPSILON}} = .TRUE.
+ {{TAGBL|LPEAD}} = .TRUE.
+     
+ ## to get the ionic contribution
+ ## to the macroscopic dielectric tensor
+ {{TAGBL|IBRION}} = 8
+
+and search for
+
+ MACROSCOPIC STATIC DIELECTRIC TENSOR IONIC CONTRIBUTION
+
+ ELASTIC MODULI IONIC CONTR (kBar)
+
+ PIEZOELECTRIC TENSOR IONIC CONTR  for field in x, y, z        (C/m^2)
+
+in the {{FILE|OUTCAR}} file.
+
+== Frequency dependent dielectric response ==
+Frequency dependent dielectric functions may be computed at various levels of approximation:
+# In the independent-particle approximation.
+# Including local field effects in the random-phase-approximation.
+# Including local field effects in DFT.
+
+Whatever we may choose to do afterwards in terms of dielectric response calculations,
+we have to start with a standard DFT (or hybrid functional) calculation
+
+*{{TAG|INCAR}} (see INCAR.DFT)
+
+ {{TAGBL|ISMEAR}} =  0
+ {{TAGBL|SIGMA}}  =  0.01
+ {{TAGBL|EDIFF}}  = 1.E-8
+
+*{{TAG|KPOINTS}} (see KPOINTS.6)
+<pre>
+6x6x6
+ 0
+G
+ 6 6 6
+ 0 0 0
+</pre>
+
+'''Mind''': keep the {{FILE|WAVECAR}} file, you're going to need it in the following.
+
+=== The independent-particle picture ===
+To compute the frequency dependent dielectric function in the independent-particle (IP) picture
+we restart from the {{FILE|WAVECAR}} of the previous run, with the following {{FILE|INCAR}}
+*{{TAG|INCAR}} (see INCAR.LOPTICS)
+
+ {{TAGBL|ALGO}} = Exact
+ {{TAGBL|NBANDS}}  = 64
+ {{TAGBL|LOPTICS}} = .TRUE. ; {{TAGBL|CSHIFT}} = 0.100
+ {{TAGBL|NEDOS}} = 2000
+    
+ ## and you might try with the following
+ #{{TAGBL|LPEAD}} = .TRUE.
+    
+ {{TAGBL|ISMEAR}} =  0
+ {{TAGBL|SIGMA}}  =  0.01
+ {{TAGBL|EDIFF}}  = 1.E-8
+
+The frequency dependent dielectric functions is written to the {{FILE|OUTCAR}} file.
+Search for
+
+  frequency dependent IMAGINARY DIELECTRIC FUNCTION (independent particle, no local field effects)
+
+and
+
+  frequency dependent      REAL DIELECTRIC FUNCTION (independent particle, no local field effects)
+
+To visualize the real and imaginary parts of the frequency dependent dielectric function you may
+use <tt>p4vasp</tt>
+
+ p4v vasprun.xml
+
+or run the following bash-script (<tt>plotoptics2</tt>)
+<pre>
+awk 'BEGIN{i=1} /imag/,\
+                /\/imag/ \
+                 {a[i]=$2 ; b[i]=$3 ; i=i+1} \
+     END{for (j=12;j<i-3;j++) print a[j],b[j]}' vasprun.xml > imag.dat
+
+awk 'BEGIN{i=1} /real/,\
+                /\/real/ \
+                 {a[i]=$2 ; b[i]=$3 ; i=i+1} \
+     END{for (j=12;j<i-3;j++) print a[j],b[j]}' vasprun.xml > real.dat
+
+cat >plotfile<<!
+# set term postscript enhanced eps colour lw 2 "Helvetica" 20
+# set output "optics.eps"
+plot [0:25] "imag.dat" using (\$1):(\$2) w lp, "real.dat" using (\$1):(\$2) w lp
+!
+
+gnuplot -persist plotfile
+</pre>
+
+*{{TAG|LPEAD}}-tag
+As an alternative to the perturbative expression (Eq. 31 of <ref name="gajdos:prb:06"/>), one may
+compute <math>| \nabla_{\mathbf{k}} \tilde{u}_{n\mathbf{k}} \rangle</math> from finite differences by specifying
+
+ {{TAG|LPEAD}}=.TRUE.
+
+in the {{FILE|INCAR}} file.
+The derivative of the cell-periodic part of the wave function w.r.t. the Bloch vector is then computed
+by means of a fourth-order finite difference stencil, in the spirit of Eqs. 96 and 97 of <ref name="nunes:prb:01"/>.
+
+'''Mind''': keep the {{FILE|WAVECAR}} and {{FILE|WAVEDER}} files, you're going to need them in the following.
+You might also want to keep a copy of the {{FILE|vasprun.xml}}.
+
+ cp vasprun.xml vasprun_loptics.xml
+
+=== Including local field effects ===
+To determine the frequency dependent dielectric function including local field effects one needs the {{FILE|WAVECAR}} and {{FILE|WAVEDER}} files from the previous calculation ({{TAG|ALGO}}=Exact and {{TAG|LOPTICS}}=.TRUE., and sufficient virtual orbitals), and
+
+*{{TAG|INCAR}} (see INCAR.CHI)
+ 
+ # Frequency dependent dielectric tensor with and
+ # without local field effects in RPA
+ # N.B.: beware one first has to have done a
+ # calculation with {{TAGBL|ALGO}}=Exact, {{TAGBL|LOPTICS}}=.TRUE.
+ # and a reasonable number of virtual states (see above)
+ {{TAGBL|ALGO}} = CHI
+        
+ # be sure to take the same number of bands as for
+ # the {{TAGBL|LOPTICS}}=.TRUE. calculation, otherwise the
+ # WAVEDER file is not read correctly
+ {{TAGBL|NBANDS}} = 64
+    
+ {{TAGBL|ISMEAR}} =  0
+ {{TAGBL|SIGMA}}  =  0.01
+ {{TAGBL|EDIFF}}  = 1.E-8
+      
+ {{TAGBL|LWAVE }}= .FALSE.
+ {{TAGBL|LCHARG}}= .FALSE.
+
+
+Information concerning the dielectric function in the independent-particle picture is written after the line
+
+ HEAD OF MICROSCOPIC DIELECTRIC TENSOR (INDEPENDENT PARTICLE)
+
+in the {{FILE|OUTCAR}} file.
+
+Per default, for {{TAG|ALGO}}=''CHI'', local field effects are included at the level of the RPA ({{TAG|LRPA}}=''.TRUE.''), i.e., limited to Hartree contributions only.
+
+See the information after
+
+ INVERSE MACROSCOPIC DIELECTRIC TENSOR (including local field effects in RPA (Hartree))
+
+in the {{FILE|OUTCAR}} file.
+
+To include local field effects beyond the RPA, i.e., contributions from DFT exchange and correlation, one has to specify
+
+ {{TAG|LRPA}}=.FALSE.
+
+in the {{FILE|INCAR}} file.
+
+In this case look at the output after
+
+ INVERSE MACROSCOPIC DIELECTRIC TENSOR (test charge-test charge, local field effects in DFT)
+
+in the {{FILE|OUTCAR}} file.
+
+The following bash-script (<tt>plotchi</tt>) uses ''awk'' to extract the frequency dependent dielectric constant, both
+in the independent-particle picture as well as including local field effects (either in DFT or in the RPA) and plots the real and imaginary components using ''gnuplot'':
+
+<pre>
+awk 'BEGIN{i=1} /HEAD OF MICRO/,\
+                /XI_LOCAL/ \
+                 {if ($4=="dielectric") {a[i]=$1 ; b[i]=$2 ; c[i]=$3 ; i=i+1}} \
+     END{for (j=1;j<i;j++) print a[j],b[j],c[j]}' OUTCAR > chi0.dat
+
+awk 'BEGIN{i=1} /INVERSE MACRO/,\
+                /XI_TO_W/ \
+                 {if ($4=="dielectric") {a[i]=$1 ; b[i]=$2 ; c[i]=$3 ; i=i+1}} \
+     END{for (j=1;j<i;j++) print a[j],b[j],c[j]}' OUTCAR > chi.dat
+cat >plotfile<<!
+# set term postscript enhanced eps colour lw 2 "Helvetica" 20
+# set output "optics.eps"
+
+plot "chi0.dat" using (\$1):(\$2)  w lp lt -1 lw 2 pt 4 title "chi0 real", \
+     "chi0.dat" using (\$1):(-\$3) w lp lt  0 lw 2 pt 4 title "chi0 imag", \
+     "chi.dat"  using (\$1):(\$2)  w lp lt  1 lw 2 pt 2 title "chi  real", \
+     "chi.dat"  using (\$1):(-\$3) w lp lt  0 lw 2 pt 2 lc 1 title "chi  imag"
+!
+
+gnuplot -persist plotfile
+</pre>
+
+If you have kept a copy of the {{FILE|vasprun.xml}} of the {{TAG|LOPTICS}}=''.TRUE.'' run (e.g., <tt>vasprun_loptics.xml</tt>), you might execute <tt>plotall</tt> to compare the dielectric functions computed with {{TAG|LOPTICS}}=''.TRUE.'' and {{TAG|ALGO}}=''CHI''.
+
+<pre>
+vasprun_LOPTICS=vasprun_loptics.xml
+OUTCAR_CHI=OUTCAR
+
+awk 'BEGIN{i=1} /imag/,\
+                /\/imag/ \
+                 {a[i]=$2 ; b[i]=$3 ; i=i+1} \
+     END{for (j=12;j<i-3;j++) print a[j],b[j]}' $vasprun_LOPTICS > imag.dat
+
+awk 'BEGIN{i=1} /real/,\
+                /\/real/ \
+                 {a[i]=$2 ; b[i]=$3 ; i=i+1} \
+     END{for (j=12;j<i-3;j++) print a[j],b[j]}' $vasprun_LOPTICS > real.dat
+
+awk 'BEGIN{i=1} /HEAD OF MICRO/,\
+                /XI_LOCAL/ \
+                 {if ($4=="dielectric") {a[i]=$1 ; b[i]=$2 ; c[i]=$3 ; i=i+1}} \
+     END{for (j=1;j<i;j++) print a[j],b[j],c[j]}' $OUTCAR_CHI > chi0.dat
+
+awk 'BEGIN{i=1} /INVERSE MACRO/,\
+                /XI_TO_W/ \
+                 {if ($4=="dielectric") {a[i]=$1 ; b[i]=$2 ; c[i]=$3 ; i=i+1}} \
+     END{for (j=1;j<i;j++) print a[j],b[j],c[j]}' $OUTCAR_CHI > chi.dat
+
+cat >plotfile<<!
+# set term postscript enhanced eps colour lw 2 "Helvetica" 20
+# set output "optics.eps"
+
+plot "chi0.dat" using (\$1):(\$2)  w lp lt -1 lw 2 pt 4 title "chi0 real", \
+     "chi0.dat" using (\$1):(-\$3) w lp lt  0 lw 2 pt 4 title "chi0 imag", \
+     "chi.dat"  using (\$1):(\$2)  w lp lt  1 lw 2 pt 2 title "chi  real", \
+     "chi.dat"  using (\$1):(-\$3) w lp lt  0 lw 2 pt 2 lc 1 title "chi  imag", \
+     "real.dat"  using (\$1):(\$2) w l lt -1  title "optics  real", \
+     "imag.dat"  using (\$1):(-\$2) w l lt  0 lc -1 title "optics  imag"
+!
+
+gnuplot -persist plotfile
+</pre>
+
+Why are the dielectric functions in independent-particle picture from the {{TAG|LOPTICS}}=''.TRUE.'' and the {{TAG|ALGO}}=''CHI'' calculations different?
+
+Hints:
+*What {{TAG|CSHIFT}} is used in the {{TAG|ALGO}}=''CHI'' calculation?
+
+Try redoing the {{TAG|LOPTICS}}=''.TRUE.'' calculation with the same {{TAG|CSHIFT}} as VASP chose for the {{TAG|ALGO}}=''CHI'' calculation (see INCAR.LOPTICS2):
+
+ CSHIFT=0.466
+
+*Redo the {{TAG|ALGO}}=''CHI'' calculation with {{TAG|LSPECTRAL}}=''.FALSE.'' in the {{TAG|ALGO}}=''CHI'' calculation (see INCAR.CHI2).
+
+and compare the dielectric functions again.
+
+*The sample output (using a <math>6\times6\times6</math> mesh for the k points) should look like the following:
+
+[[File:Fig dielectric properties SiC 2.png|600px]]
+
+== References ==
+<references>
+<ref name="gajdos:prb:06">[http://link.aps.org/doi/10.1103/PhysRevB.73.045112 M. Gajdoš, K. Hummer, G. Kresse, J. Furthmüller, and F. Bechstedt, Phys. Rev. B 73, 045112 (2006).]</ref>
+<ref name="nunes:prb:01">[http://link.aps.org/doi/10.1103/PhysRevB.63.155107 R. W. Nunes and X. Gonze, Phys. Rev. B 63, 155107 (2001).]</ref>
+<ref name="souza:prl:02">[http://link.aps.org/doi/10.1103/PhysRevLett.89.117602 I. Souza, J. Íñiguez, and D. Vanderbilt, Phys. Rev. Lett. 89, 117602 (2002).]</ref>
+</references>
+
+== Download ==
+[[Media:SiC_dielectric.tgz| SiC_dielectric.tgz]]
+
+{{Template:optics_dielectric}}
+
+
+[[Category:Examples]]

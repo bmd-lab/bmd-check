@@ -1,0 +1,34 @@
+The [[NVE ensemble]] (micro-canonical ensemble) is a [[:Category:Ensembles|statistical ensemble]] that is used to study material properties under the conditions of a constant particle number N, constant volume V and a conserved internal energy E (up to numerical inaccuracies). This page describes how to sample the NVE ensemble from a [[Molecular dynamics calculations|molecular-dynamics]] run.
+ 
+''' Instructions for setting up a NVE ensemble '''
+
+There are multiple ways to set up a [[Molecular dynamics calculations|molecular-dynamics]] run which samples from the NVE ensemble in {{VASP}}. All options have in common that one of the available thermostats is selected but effectively disabled via their respective coupling parameters. The simplest and recommended way is to use the [[Andersen thermostat]] and setting the collision probability ({{TAG|ANDERSEN_PROB}}) with the fictitious heat bath to zero. Another possibility is to enable the [[Nosé-Hoover thermostat]] and select the special value -3 for the mass of the virtual degree of freedom ({{TAG|SMASS}}). Both presented options will switch the thermostat off, such that the velocities are determined by the [[Hellmann-Feynman forces]] or [[Machine-learned force fields]] only.
+See the following table for the corresponding {{TAG|MDALGO}} setting and related tags.
+
+{|class="wikitable" style="margin:aut 
+! NVE ensemble !! Andersen !! Nosé-Hoover 
+|- 
+|style="text-align:center;"| {{TAG|MDALGO}}           ||   style="text-align:center;"|   1 || style="text-align:center;"|    2        
+|- 
+| additional tags  to set || style="text-align:center;"| {{TAG|ANDERSEN_PROB|0.0}} ||style="text-align:center;"| {{TAG|SMASS|-3}} 
+|}
+
+The additional tags in the column for every thermostat have to be set to the given values. Otherwise the NVE ensemble will not be realized.
+{{NB|deprecated|{{VASP}} comes with another, older implementation of the [[Nosé-Hoover thermostat]] which can be selected with {{TAG|MDALGO|0|color=grey}}. However, we recommend {{TAG|MDALGO|2|color=grey}} as stated above because the older variant comes with some drawbacks regarding post-processing: the atom coordinates in output files will always be wrapped back into the box if atoms cross the periodic boundaries. This makes it impossible to carry out certain analysis, e.g. computing the mean squared displacement (MSD).}} To enforce constant volume throughout the calculation, set {{TAG|ISIF|3|op=<}}. In NVE MD runs there is no control over temperature and pressure, their respective averages depend on the initial structure (lattice, atom positions provided in {{FILE|POSCAR}}) and initial velocities (either set in {{FILE|POSCAR}} or via {{TAG|TEBEG}}). Hence, it is often desirable to equilibrate the system before sampling from the NVE ensemble. This can be achieved in various ways, for example, the system can be thermalized by performing an MD simulation in the [[NVT ensemble]] or thermalized and additionally its cell equilibrated via the [[NpT ensemble]]. Preparatory steps may also include non-MD algorithms, like structure and volume optimization with {{TAG|IBRION|1 or 2}} and setting {{TAG|ISIF|2|op=>}}. A general guide for molecular-dynamics simulations can be found on the [[Molecular dynamics calculations|molecular-dynamics]] page.
+
+''An example {{FILE|INCAR}} file for the [[Andersen thermostat]]'' 
+
+  #INCAR molecular-dynamics tags NVE ensemble 
+  {{TAGBL|IBRION}} = 0                   # choose molecular-dynamics 
+  {{TAGBL|MDALGO}} = 1                   # using Andersen thermostat
+  {{TAGBL|ISIF}} = 2                     # compute stress tensor but do not change box volume/shape 
+  {{TAGBL|TEBEG}} = 300                  # set temperature 
+  {{TAGBL|NSW}} = 10000                  # number of time steps 
+  {{TAGBL|POTIM}} = 1.0                  # time step in femto seconds 
+  {{TAGBL|ANDERSEN_PROB}} = 0.0          # setting Andersen collision probability to zero to get NVE enseble
+{{NB|mind| This {{FILE|INCAR}} file only contains the parameters for the molecular-dynamics part. The [[Electronic minimization|electronic minimization]] or the [[Machine-learned force fields|machine learning]] tags have to be added.}}
+
+==Related tags and articles==
+[[Molecular dynamics calculations|Molecular-dynamics calculations]], {{TAG|ISIF}}, {{TAG|MDALGO}}, [[:Category:Ensembles|Ensembles]]
+
+[[Category:Molecular dynamics]][[Category:Ensembles]][[Category:Thermostats]]

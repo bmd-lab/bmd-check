@@ -1,0 +1,132 @@
+:{| border="0" cellspacing="0" cellpadding="5" style="border:1px solid"
+|-
+|+ real spherical harmonics
+! align="left"|''l''
+! align="left"|''m''
+! align="left" width="80"|Name
+! align="left"|''Y<sub>lm</sub>''
+|-
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|-
+|  0 ||  1 || s ||<math>\frac{1}{\sqrt{4\pi}}</math>
+|-
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|-
+|  1 || -1 || py || <math>\sqrt{\frac{3}{4\pi}}\frac{y}{r}</math>
+|-
+|  1 ||  0 || pz || <math>\sqrt{\frac{3}{4\pi}}\frac{z}{r}</math>
+|-
+|  1 ||  1 || px || <math>\sqrt{\frac{3}{4\pi}}\frac{x}{r}</math>
+|-
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|-
+|  2 || -2 || dxy    || <math>\frac{1}{2}\sqrt{\frac{15}{\pi}}\frac{xy}{r^2}</math>
+|-
+|  2 || -1 || dyz    || <math>\frac{1}{2}\sqrt{\frac{15}{\pi}}\frac{yz}{r^2}</math>
+|-
+|  2 ||  0 || dz2    || <math>\frac{1}{4}\sqrt{\frac{5}{\pi}}\frac{3z^2-r^2}{r^2}</math>
+|-
+|  2 ||  1 || dxz    || <math>\frac{1}{2}\sqrt{\frac{15}{\pi}}\frac{zx}{r^2}</math>
+|-
+|  2 ||  2 || dx2-y2 || <math>\frac{1}{4}\sqrt{\frac{15}{\pi}}\frac{x^2-y^2}{r^2}</math>
+|-
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|-
+|  3 || -3 || fy(3x2-y2) || <math>\frac{1}{4}\sqrt{\frac{35}{2\pi}}\frac{(3x^2-y^2)y}{r^3}</math>
+|-
+|  3 || -2 || fxyz       || <math>\frac{1}{2}\sqrt{\frac{105}{\pi}}\frac{xyz}{r^3}</math>
+|-
+|  3 || -1 || fyz2       || <math>\frac{1}{4}\sqrt{\frac{21}{2\pi}}\frac{(5z^2-r^2)y}{r^3}</math>
+|-
+|  3 ||  0 || fz3        || <math>\frac{1}{4}\sqrt{\frac{7}{\pi}}\frac{(5z^2-3r^2)z}{r^3}</math>
+|-
+|  3 ||  1 || fxz2       || <math>\frac{1}{4}\sqrt{\frac{21}{2\pi}}\frac{(5z^2-r^2)x}{r^3}</math>
+|-
+|  3 ||  2 || fz(x2-y2)  || <math>\frac{1}{4}\sqrt{\frac{105}{\pi}}\frac{(x^2-y^2)z}{r^3}</math>
+|-
+|  3 ||  3 || fx(x2-3y2) || <math>\frac{1}{4}\sqrt{\frac{35}{2\pi}}\frac{(x^2-3y^2)x}{r^3}</math>
+|}
+
+
+:{| border="0" cellspacing="0" cellpadding="5" style="border:1px solid"
+|-
+|+ hybrid angular functions
+|-
+| sp 
+|align="left" width="80"| sp-1 || <math>\frac{1}{\sqrt 2}\rm s+\frac{1}{\sqrt 2}\rm p_x</math>
+|-
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|-
+|    || sp-2 || <math>\frac{1}{\sqrt 2}\rm s-\frac{1}{\sqrt 2}\rm p_x</math>
+|-
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|-
+| sp2 || sp2-1 || <math>\frac{1}{\sqrt 3}\rm s-\frac{1}{\sqrt 6}\rm p_x+\frac{1}{\sqrt 2}\rm p_y</math>
+|-
+|     || sp2-2 || <math>\frac{1}{\sqrt 3}\rm s-\frac{1}{\sqrt 6}\rm p_x-\frac{1}{\sqrt 2}\rm p_y</math>
+|-
+|     || sp2-2 || <math>\frac{1}{\sqrt 3}\rm s+\frac{2}{\sqrt 6}\rm p_x</math>
+|-
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|-
+| sp3 || sp3-1 || <math>\frac{1}{2}(\rm s+\rm p_x+\rm p_y+\rm p_z)</math>
+|-
+|     || sp3-2 || <math>\frac{1}{2}(\rm s+\rm p_x-\rm p_y-\rm p_z)</math>
+|-
+|     || sp3-2 || <math>\frac{1}{2}(\rm s-\rm p_x+\rm p_y-\rm p_z)</math>
+|-
+|     || sp3-4 || <math>\frac{1}{2}(\rm s-\rm p_x-\rm p_y+\rm p_z)</math>
+|-
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|-
+| sp3d || sp3d-1 || <math>\frac{1}{\sqrt 3}\rm s-\frac{1}{\sqrt 6}\rm p_x+\frac{1}{\sqrt 2}\rm p_y</math>
+|-
+|      || sp3d-2 || <math>\frac{1}{\sqrt 3}\rm s-\frac{1}{\sqrt 6}\rm p_x-\frac{1}{\sqrt 2}\rm p_y</math>
+|-
+|      || sp3d-3 || <math>\frac{1}{\sqrt 3}\rm s+\frac{2}{\sqrt 6}\rm p_x</math>
+|-
+|      || sp3d-4 || <math>\frac{1}{\sqrt 2}\rm p_z+\frac{1}{\sqrt 2}\rm d_{z^2}</math>
+|-
+|      || sp3d-5 || <math>-\frac{1}{\sqrt 2}\rm p_z+\frac{2}{\sqrt 2}\rm d_{z^2}</math>
+|-
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|style="border-bottom:1px solid"|
+|-
+| sp3d2 || sp3d2-1 || <math>\frac{1}{\sqrt 6}\rm s-\frac{1}{\sqrt 2}\rm p_x-\frac{1}{\sqrt 12}\rm d_{z^2}+\frac{1}{2}\rm d_{x^2-y^2}</math>
+|-
+|       || sp3d2-2 || <math>\frac{1}{\sqrt 6}\rm s+\frac{1}{\sqrt 2}\rm p_x-\frac{1}{\sqrt 12}\rm d_{z^2}+\frac{1}{2}\rm d_{x^2-y^2}</math>
+|-
+|       || sp3d2-3 || <math>\frac{1}{\sqrt 6}\rm s-\frac{1}{\sqrt 2}\rm p_y-\frac{1}{\sqrt 12}\rm d_{z^2}-\frac{1}{2}\rm d_{x^2-y^2}</math>
+|-
+|       || sp3d2-4 || <math>\frac{1}{\sqrt 6}\rm s+\frac{1}{\sqrt 2}\rm p_y-\frac{1}{\sqrt 12}\rm d_{z^2}-\frac{1}{2}\rm d_{x^2-y^2}</math>
+|-
+|       || sp3d2-5 || <math>\frac{1}{\sqrt 6}\rm s-\frac{1}{\sqrt 2}\rm p_z+\frac{1}{\sqrt 3}\rm d_{z^2}</math>
+|-
+|       || sp3d2-6 || <math>\frac{1}{\sqrt 6}\rm s+\frac{1}{\sqrt 2}\rm p_z+\frac{1}{\sqrt 3}\rm d_{z^2}</math>
+|}

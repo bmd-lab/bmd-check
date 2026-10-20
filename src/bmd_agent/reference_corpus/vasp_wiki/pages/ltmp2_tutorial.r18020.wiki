@@ -1,0 +1,50 @@
+{{Template:MP2 - Tutorial}}
+On this page, we explain how to perform a calculation using the '''LTMP2'''<ref name="schaefer2017"/> algorithm. Make sure you successfully completed the preparation steps [[MP2 ground state calculation#Preparation:_the_Hartree-Fock_ground_state|Hartree-Fock ground state]] and [[MP2 ground state calculation#Calculating_the_unoccupied_Hartree-Fock_orbitals|Hartree-Fock virtuals]].
+
+'''NOTE:''' ''If you use this algorithm, please cite reference <ref name="schaefer2017"/> in your publication in addition to the standard VASP reference.''
+
+== The INCAR file ==
+
+The LTMP2 calculation can simply be performed using the following {{TAG|INCAR}} file
+ {{TAGBL|ALGO}} = ACFDTRK 
+ {{TAGBL|LMP2LT}} = .TRUE.
+ {{TAGBL|NOMEGA}} = # number of tau points (see below)
+ {{TAGBL|NBANDS}} = # same value as in the Hartree-Fock unoccupied step ( = number of plane-waves)
+ {{TAGBL|ENCUT}} = # same value as in the Hartree-Fock step
+ {{TAGBL|LORBITALREAL}} = .TRUE.
+ {{TAGBL|PRECFOCK}} = Fast
+ {{TAGBL|KPAR}} = # parallelization (see below)
+Make sure that VASP reads the WAVECAR file from the [[MP2 ground state calculation#Calculating_the_unoccupied_Hartree-Fock_orbitals|Hartree-Fock virtuals]] step. The setting for [[PRECFOCK|PRECFOCK]] is strongly recommended, since the code heavily relies on real space grid FFTs.
+
+==== NOMEGA flag ====
+
+The number of <math>\tau</math>-points is controlled by the NOMEGA flag. This is necessary to calculate the Laplace transformed energy denominator (see Ref <ref name="schaefer2017"/>  for details),
+
+<math>
+\frac{1}{\varepsilon_i + \varepsilon_j - \varepsilon_a -\varepsilon_b} = - \int_0^\infty \textrm e^{-(\varepsilon_i + \varepsilon_j - \varepsilon_a -\varepsilon_b)\tau} \; \textrm d \tau \;.
+</math>
+
+Usually it is sufficient to set {{TAG|NOMEGA}}=6. For materials with a small bandgap it is worth checking if the MP2 energy changes with increasing {{TAG|NOMEGA}} (e.g. 8 or 10). Note, that the MP2 energy diverges with 1/bandgap, independent of {{TAG|NOMEGA}}.
+
+== Parallelization ==
+The LTMP2 algorithm is a high-performance code and can easily be used on many CPUs. Both OpenMP and MPI is supported. We recommend to use MPI for parallelization since the code possesses an almost ideal parallelization efficiency. OpenMP should only be used to increase the shared memory, if necessary.
+
+In order to activate the efficient MPI parallelization use the KPAR flag in the following way (note that the usual meaning of the KPAR flag becomes obsolete in the LTMP2 algorithm). KPAR specifies the number of plane-waves treated in parallel. Ideally, set KPAR to half of the used MPI ranks. If this results in memory issues, further decrease KPAR (such that KPAR is alway a divisor of the used MPI ranks) or increase the number of OpenMP threads.
+
+==== Example for 512 CPUs ====
+MPI ranks: 512 <br />
+OpenMP threads per rank: 1 <br />
+ KPAR = 256
+To decrease the memory requirement you can alternatively set KPAR to 128 or 64 and so on. Or also try <br />
+MPI ranks: 256 <br />
+OpenMP threads per rank: 2 <br />
+ KPAR = 128
+
+== References ==
+<references>
+<ref name="schaefer2017">[http://dx.doi.org/10.1063/1.4976937 T. Sch&auml;fer, B. Ramberger, and G. Kresse, J. Chem. Phys. 146, 104101 (2017).]</ref>
+
+</references>
+
+----
+[[Category:Many-body perturbation theory]][[Category:MP2]][[Category:Tutorials]]

@@ -1,0 +1,64 @@
+VASP offers two approaches for calculating the X-ray Absorption Spectra (XAS). The [[XAS_theory|supercell core-hole (SCH)]] method and the Bethe-Salpeter equation (BSE). As discussed in detail on the [[Bethe-Salpeter equation|theory page]], within the BSE approach the electron-hole interaction or the excitonic effects are explicitly included in the dielectric function. The screening of the electron-hole interaction is described in the random phase approximation (RPA) and the Green's functions are calculated in the [[GW approximation of Hedin's equations|GW approximation]]. This BSE+GW approach represents the state of the art for XAS spectra calculations in solids. 
+{{Available|6.6.0}}
+__TOC__
+== Solving Bethe-Salpeter equation ==
+The BSE calculations for core excitaions, similarly to BSE in the optical region, require a preceding [[Practical guide to GW calculations |<math>GW</math> calculation]]. In addition to the standard VASP input files, the following files are needed to perform a BSE calculation:
+* {{FILE|WAVECAR}} the quasiparticle energies and orbitals produced in the preceding <math>GW</math> calculation
+* {{FILE|Wxxxx.tmp}} the RPA dielectric matrix from the preceding <math>GW</math> calculation
+* {{FILE|WAVEDER}}* the orbital derivatives from the <math>GW</math> step, only required if the valence states are included
+The quasiparticle energies are only calculated for the valence and conduction bands set by {{TAG|NBANDSGW}}, the energies of the core states are taken from the potentials in the {{FILE|POTCAR}} file. Hence, the absolute values for the core excitations are not accurate, but the overall shape and the relative positions of the spectral feature can be captured with high precision within BSE {{cite|unzog:prb:2022}}{{cite|karsai:prb:2018}}.
+
+The BSE calculation workflow consists of the following steps:
+# DFT calculation with a large number of empty states
+# <math>GW</math> calculation to obtain the quasiparticles and the RPA dielectric tensor
+# BSE calculation
+
+Below you will find an example of the {{FILE|INCAR}} file required for an XAS calculation in BSE.
+ {{TAG|NBANDS}}     = 64      ! same as in GW calculation
+ {{TAG|ISMEAR}}     = 0       ! Gaussian smearing
+ {{TAG|SIGMA}}      = 0.05    ! rather small to avoid fractional occupations
+ {{TAG|ALGO}}       = BSE     ! BSE algorithm
+ {{TAG|NBANDSO}}    = 0       ! zero valence states 
+ {{TAG|NBANDSV}}    = 16      ! number of empty bands
+ {{TAG|ICORELEVEL}} = 2       ! enables the core states calculation
+ {{TAG|CLNT}}       = 1       ! species of the excited atom
+ {{TAG|CLN}}        = 0       ! main quantum number of the excited core state
+ {{TAG|CLL}}        = 0       ! orbital quantum number of the excited core state
+{{NB|mind|The core states in VASP remain frozen in the configuration for which the PAW potential was generated.}}
+The intensities of the core state excitations can be too small for a correct representation with the four decimal places used in the standard output, thus VASP provides a tag that can be used to scale the dielectric function and the oscillator strengths by a factor {{TAG|CH_AMPLIFICATION}}.
+All atoms of the selected type {{TAG|CLNT}} are excited in the BSE calculation, therefore, it is recommended to treat the excited atom as a separate species in the {{FILE|POSCAR}} file. It is possible to excite multiple atoms in BSE, but it increases the number of core states, i.e., the size of the problem, and it should be done only if the atoms are not equivalent in the atomic configuration. The valence states are usually not included in the XAS calculations, i.e., {{TAG|NBANDSO}}=0. Nevertheless, the valence states can be included in BSE via tag {{TAG|NBANDSO}}.
+
+==Recommendations and advice==
+General advice for running BSE calculations can be found in this [[Best practices for Bethe-Salpeter calculations|article]]. Specific advice for using the BSE to calculate the XAS as given below. 
+
+=== BSE solvers ===
+The default option for solving BSE is the exact diagonalization algorithm with {{TAG|IBSE}}=2, which is the most accurate but also most time-consuming method. Approximate solvers can yield accurate spectra at a fraction of the computational time. The most efficient approach is the iterative Lanczos algorithm, which can be selected with {{TAG|IBSE}}=3. The time-evolution algorithm ({{TAG|IBSE}}=1) can be used in the XAS calculations, but it is less efficient for spectra with a wide energy range as in the case of XANES. Both approximate solvers can only be used to obtain the spectra, but cannot be used to calculated the BSE eigenvectors. 
+=== Processing the results ===
+The calculated dielectric function and the oscillator strength information can be found in [[vasprun.xml]] and [[vaspout.h5]].  
+=== Core exciton wavefunction ===
+The excitons can be visualized in VASP as described in this [[Plotting exciton wavefunction|article]]. In the case of XAS, the core state is strongly localized and only the hole position can be fixed by providing the coordinate of the excited atom via the {{TAG|BSEHOLE}} tag.
+=== Beyond Tamm-Dancoff approximation ===
+The default approximation for the BSE algorithm is the Tamm-Dancoff approximation (TDA), i.e., {{TAG|ANTIRES}}=0, which usually holds for XAS. Nevertheless, the full BSE equation without TDA can be solved by setting {{TAG|ANTIRES}}=2.
+=== Model BSE and TDDFT ===
+The dielectric function for the core states can be calculated with the model BSE approach or the Casida TDDFT formalism by selecting the algorithm {{TAG|ALGO}}=TDHF. However, these approximations were found inaccurate for XANES {{cite|unzog:prb:2022}}.
+
+== Comparing to the SCH ==
+The spectra from the SCH calculation in the initial state approximation and the BSE calculation in the independent particle approximation (IP) can be directly compared and should be identical. The initial state approximation can be selected in SCH by setting {{TAG|ICORELEVEL}}=1. The independent particle approximation (IP) can be selected in BSE by disabling both the bare and screened Coulomb interaction, i.e., {{TAG|LADDER}}=.FALSE. and {{TAG|LHARTREE}}=.FALSE..
+== Related tags and articles ==
+{{TAG|ALGO}},
+{{TAG|LADDER}},
+{{TAG|LHARTREE}},
+{{TAG|NBANDSV}},
+{{TAG|NBANDSO}},
+{{TAG|OMEGAMAX}},
+{{TAG|ANTIRES}},
+{{TAG|NBSEEIG}},
+{{TAG|BSEHOLE}},
+{{TAG|CLNT}},
+{{TAG|CLL}},
+{{TAG|CLN}},
+{{TAG|ICORELEVEL}},
+{{FILE|BSEFATBAND}}
+== References ==
+
+[[Category:Many-body perturbation theory]][[Category:Bethe-Salpeter equations]][[Category:XAS]][[Category:Howto]][[Category:Linear response]]

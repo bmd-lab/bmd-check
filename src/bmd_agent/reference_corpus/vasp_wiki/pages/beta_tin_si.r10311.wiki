@@ -1,0 +1,46 @@
+{{Template:Bulk_systems - Tutorial}}
+
+== Task ==
+
+Relaxation of the internal coordinates, volume and cell shape in beta-tin Si. 
+
+== Input ==
+
+=== {{TAG|POSCAR}} ===
+ beta Sn
+     4.9000000000000
+  1.0    0.0     0.0
+  0.0    1.0     0.0
+  0.5    0.5     0.26
+   2
+ Direct
+  -0.125 -0.375  0.25
+   0.125  0.375 -0.25
+
+=== {{TAG|INCAR}} ===
+ {{TAGBL|System}} = beta Si
+ {{TAGBL|ISMEAR}} = 0; {{TAGBL|SIGMA}} = 0.1;
+ {{TAGBL|ENMAX}}  =  240
+ {{TAGBL|IBRION}}=2; {{TAGBL|ISIF}}=3 ; {{TAGBL|NSW}}=15
+ {{TAGBL|EDIFF}}  = 0.1E-04
+ {{TAGBL|EDIFFG}} = -0.01
+
+=== {{TAG|KPOINTS}} ===
+ k-points
+  0
+ Monkhorst Pack
+  11 11 11
+  0  0  0
+
+== Calculation ==
+
+This example is completely analagous to {{TAG|cd Si volume relaxation}}.
+
+== Download ==
+[[Media:2 5 beta-tinSi.tgz| 2_5_beta-tinSi.tgz]]
+ 
+{{Template:Bulk_systems}}
+
+Back to the [[The_VASP_Manual|main page]].
+
+[[Category:Examples]]

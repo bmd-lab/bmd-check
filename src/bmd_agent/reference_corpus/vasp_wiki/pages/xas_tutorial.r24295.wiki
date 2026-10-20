@@ -1,0 +1,12 @@
+{{Template:XAS - Tutorial}}
+
+This tutorial explains how to calculate the X-ray absorption spectrum (XAS) of a given compound in particular the edge and near edge region. The respective spectroscopy is often called XANES (X-ray absorption near edge structure) or NEXAFS (near edge X-ray absorption fine structure). 
+
+This tutorial requires VASP 6.0 or higher.
+ 
+The tutorial is made of the following parts:
+<div style="background:#FFFFFF; border:solid 1px #AAAAAA; padding:0.5em 1em; margin-right:14em;">
+# [[XANES in Diamond|XANES in Diamond]]
+</div>
+
+[[Category:Tutorials]]

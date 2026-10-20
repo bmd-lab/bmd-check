@@ -1,0 +1,75 @@
+Description: Antiferromagnetic (AFM) configuration for NiO in the GGA+U<sub>eff</sub> (Dudarev's) approach ; PBE functional
+
+In the Dudarev method, a Hubbard effective parameter U<sub>eff</sub> = U - J is used. Concretely, the J value is considered equal to 0, and U<sub>eff</sub> = U. For more details read the page on the [[LDAUTYPE|LDAUTYPE]]-tag .
+
+
+''<u>Exercise :</u>'' Study the change of the magnetic moment of Ni atoms and the DOS by varying the U<sub>eff</sub> value.
+
+----
+*{{TAG|INCAR}}
+ NiO GGA+U AFM
+   {{TAGBL|SYSTEM}}    = "NiO"
+     
+ Electronic minimization
+   {{TAGBL|ENCUT}}     = 450
+   {{TAGBL|EDIFF}}     = 1E-5
+   {{TAGBL|LORBIT}}    = 11
+   {{TAGBL|LREAL}}     = .False.
+   {{TAGBL|ISTART}}    = 0
+   {{TAGBL|NELMIN}}    = 6
+     
+ DOS
+   {{TAGBL|ISMEAR}}    = -5
+     
+ Magnetism
+   {{TAGBL|ISPIN}}     = 2
+   {{TAGBL|MAGMOM}}    = 2.0 -2.0 2*0.0 
+      
+ Mixer
+   {{TAGBL|AMIX}}      = 0.2
+   {{TAGBL|BMIX}}      = 0.00001
+   {{TAGBL|AMIX_MAG}}  = 0.8
+   {{TAGBL|BMIX_MAG}}  = 0.00001
+      
+ GGA+U
+   {{TAGBL|LDAU}}      = .TRUE.
+   {{TAGBL|LDAUTYPE}}  = 2
+   {{TAGBL|LDAUL}}     = 2 -1
+   {{TAGBL|LDAUU}}     = 5.00 0.00
+   {{TAGBL|LDAUJ}}     = 0.00 0.00
+   {{TAGBL|LDAUPRINT}} = 1
+   {{TAGBL|LMAXMIX}}   = 4 
+
+*{{TAG|KPOINTS}}
+<pre>
+k-points
+ 0
+gamma
+ 4  4  4 
+ 0  0  0
+</pre>
+
+*{{TAG|POSCAR}}
+<pre>
+NiO
+ 4.17
+ 1.0 0.5 0.5
+ 0.5 1.0 0.5
+ 0.5 0.5 1.0
+ 2 2
+Cartesian
+ 0.0 0.0 0.0
+ 1.0 1.0 1.0
+ 0.5 0.5 0.5
+ 1.5 1.5 1.5
+</pre>
+
+----
+
+To check the results obtained with this approach, they can be compared to those determined with a [[NiO HSE06|hybrid]] approach. The magnetic moment for the Ni atoms and the E<sub>g</sub> calculated using this approach are 1.67 &mu;<sub>B</sub> and 3.97 eV respectively.
+
+== Download ==
+[[Media:Nio_gga+u.tgz| nio_gga+u.tgz]]
+----
+
+[[Category:Examples]][[Category:Strongly correlated electrons]]

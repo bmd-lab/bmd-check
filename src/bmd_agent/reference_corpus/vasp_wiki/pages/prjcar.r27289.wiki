@@ -1,0 +1,22 @@
+The PRJCAR file stores the output of the '''k'''-point projection scheme (for {{TAG|LKPROJ}}=.TRUE.). 
+
+----
+It has the following format:
+* The header section lists the basis vectors of the reciprocal space belonging to the structure defined in the {{FILE|POSCAR.prim}} file, and a list of the set of points {'''k&prime;'''}, the projection scheme has found in the irreducible part of the Brillouin (IBZ) zone of the aforementioned reciprocal space cell (see the section on {{TAG|LKPROJ}}).
+
+* The body of the {{FILE|PRJCAR}} file lists:
+
+:<math>
+\Kappa_{n\mathbf{k}\sigma\mathbf{k}'}=\sum_{\mathbf{GG}'}
+|\langle \mathbf{k}'+\mathbf{G}'| \mathbf{k}+\mathbf{G}\rangle
+\langle \mathbf{k}+\mathbf{G} | \Psi_{n\mathbf{k}\sigma}\rangle |^2
+</math>
+
+:where ''n'' is the band index, '''k''' labels the <tt>NKPTS</tt> points in the IBZ of the structure defined by the {{FILE|POSCAR}} file, &sigma; is the spin index, and '''k&prime;''' refers to the <tt>NKPTS_PRIME</tt> points in the IBZ of {{FILE|POSCAR.prim}} (see the section of {{TAG|LKPROJ}}).
+:For each band ''n'' at '''k'''&sigma; the body of the {{FILE|PRJCAR}} lists the index ''n'' and eigenenergy &epsilon;<sub>n'''k'''&sigma;</sub>, followed by one or more rows with a total of <tt>NKPTS_PRIME</tt> entries K<sub>n'''k'''&sigma;'''k&prime;'''</sub>, one for each point '''k&prime;'''.
+
+== Related Tags and Sections ==
+{{TAG|LKPROJ}}
+
+
+[[Category:Files]][[Category:Output files]][[Category:Crystal momentum]]

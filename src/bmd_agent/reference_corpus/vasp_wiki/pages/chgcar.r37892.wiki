@@ -1,0 +1,77 @@
+The {{FILE|CHGCAR}} file stores the charge density and the PAW one-center occupancies. It is written by default, but it can be avoided ({{TAG|LCHARG}}) or redirected to {{FILE|vaspwave.h5}} ({{TAG|LH5}}).
+The {{FILE|CHGCAR}} file can be read to restart a calculation ({{TAG|ICHARG}}).
+{{NB|tip|We recommend starting from the {{FILE|CHGCAR}} file when repeatedly restarting with small changes in the input parameters, e.g., the '''k'''-point mesh ({{FILE|KPOINTS}}).}}
+The {{FILE|CHG}} file also stores the charge density without the PAW one-center occupancies and is intended for visualization and post-processing.
+For an overview of which restart files are written depending on set {{FILE|INCAR}} tags, see [[Restart and output files cheat sheet]].
+
+== Format == 
+The {{FILE|CHGCAR}} consists of the following blocks:
+* Structure in {{FILE|POSCAR}} format
+* FFT-grid dimensions {{TAG|NGXF}}, {{TAG|NGYF}}, {{TAG|NGZF}}
+* Charge times FFT-grid volume is written with multiple real numbers per line until all {{TAG|NGXF}}*{{TAG|NGYF}}*{{TAG|NGZF}} values of the block are written. 
+* Augmentation occupancies
+
+The real-space mesh (NX,NY,NZ) is uniform and is spanned by the lattice vectors <math>\vec{a}, \vec{b}, \vec{c}</math> defined in the structure block. The coordinates of the mesh points can be restored via
+
+::<math>(N_x,N_y,N_z) \hat{=} \frac{N_x-1}{N_{GXF}}\mathbf{a}+\frac{N_y-1}{N_{GYF}}\mathbf{b}+\frac{N_z-1}{N_{GZF}}\mathbf{c}</math>.
+The dimensions can be increased by increasing the cutoff energy ({{TAG|ENCUT}}) or explicitly by setting the fine FFT-grid dimensions ({{TAG|NGXF}}, {{TAG|NGYF}}, {{TAG|NGZF}}).
+
+To arrange the data on the real-space grid in the unit cell, mind that the data runs fastest over NX and slowest over NZ. To be more explicit, the density is written using the following command in Fortran
+
+::<code> WRITE(IU,FORM) (((C(NX,NY,NZ),NX=1,{{TAGBL|NGXF}}),NY=1,{{TAGBL|NGYF}}),NZ=1,{{TAGBL|NGZF}}) </code>.
+{{NB|important|Remember that the values must be divided by the FFT-grid volume and the cell volume to obtain the charge density <math>n(r)</math> in units 1/Å<math>^3</math>.}}
+Hence,
+::<math>N_{grid} = N_{GXF}*N_{GYF}*N_{GZF},  </math>
+::<math>V_{cell} = |\mathbf{a}\cdot(\mathbf{b}\times\mathbf{c})| </math>,
+::<math>d^3\mathbf{r}=V_{cell}/N_{grid},  </math>
+::<math>n(r)=data(r)/V_{cell},     </math>
+where <math>n(r)</math> is the charge density in units 1/Å<math>^3</math>. Sanity check: The integral of <math>n(r)</math> over the unit cell yields the number of valence electrons ({{TAG|NELECT}}),
+
+::<math>\text{NELECT}=\int_{V_{cell}} n(\mathbf{r}) d^3\mathbf{r}= \sum_{N_X,N_Y,N_Z} data(N_X,N_Y,N_Z)/(N_{GXF}*N_{GYF}*N_{GZF})</math>.
+By our convention, the charge density <math>n(r)</math> is in units 1/Å<math>^3</math> and **not** e/Å<math>^3</math> because the potential (e.g. {{FILE|LOCPOT}}, {{TAG|WRT_POTENTIAL}}) is assumed to be in eV. However, e<math>=1</math>, so while this convention makes the sign of <math>n(r)</math> less ambiguous, it has no effect on the numerical values.
+{{NB|warning|The augmentation occupancies are written up to the ''l''-quantum number set by the {{TAG|LMAXMIX}}.}}
+Restarting calculations without one-center PAW occupancy matrices up to the appropriate ''l''-quantum number leads to loss of information. This is particularly problematic for calculations with fixed charge density, e.g., band-structure calculations. See {{TAG|LMAXMIX}} for more details.
+
+=== Magnetic calculations ===
+For magnetic calculations, the {{FILE|CHGCAR}} file contains additional data blocks for the magnetization. In particular, for spin-polarized calculations ({{TAG|ISPIN}}=2), the first set contains the total charge density (spin up + spin down) and the second one is the magnetization density (spin up - spin down):
+* Structure 
+* FFT-grid dimensions 
+* Charge density times FFT-grid volume (spin up + spin down)
+* Augmentation occupancies
+* FFT-grid dimensions 
+* Magnetization density (spin up - spin down)
+* Augmentation occupancies
+For noncollinear calculation ({{TAG|LNONCOLLINEAR}}=T), contains the total charge density and the magnetization density in the spinor basis set by {{TAG|SAXIS}}:
+* Structure 
+* FFT-grid dimensions 
+* Charge density times FFT-grid volume
+* Augmentation occupancies
+* Augmentation occupancies (imaginary part)
+* FFT-grid dimensions 
+* Magnetization density times FFT-grid volume **in <math>\sigma_1</math> direction**
+* Augmentation occupancies
+* Augmentation occupancies (imaginary part)
+* FFT-grid dimensions 
+* Magnetization density times FFT-grid volume in <math>\sigma_2</math> direction
+*  ...
+* FFT-grid dimensions 
+* Magnetization density times FFT-grid volume in <math>\sigma_3</math> direction
+*  ....
+
+== Molecular dynamics and structure relaxation ({{TAG|IBRION}})==
+In the case of [[:Category:Molecular dynamics|molecular-dynamics (MD) simulations]] ({{TAG|IBRION}}=0), {{FILE|CHGCAR}} contains the extrapolated charge density for the next step, which corresponds to the atomic structure in the {{FILE|CONTCAR}} file. Although it makes the charge density incompatible with the last atomic coordinates in the {{FILE|OUTCAR}} file, it allows one to use the {{FILE|CHGCAR}} and the {{FILE|CONTCAR}} files consistently for continuing the MD simulation. 
+{{NB|warning|In MD simulations, the charge density in {{FILE|CHGCAR}} is not the self-consistent charge density for the structure in the {{FILE|CONTCAR}} file. Hence, one should not perform a band-structure calculation directly after the MD simulation.}}
+For static and relaxation calculations ({{TAG|IBRION}}=-1,1,2), the charge density in {{FILE|CHGCAR}} is the self-consistent charge density for the last iteration. Hence, it can be used for accurate band structure calculations.
+
+== Related tags and articles ==
+[[Restart and output files cheat sheet]]
+
+{{FILE|WAVECAR}},
+{{FILE|CHG}},
+{{TAG|LCHARG}},
+{{TAG|ICHARG}},
+{{TAG|LMAXMIX}},  
+FFT-grid dimensions: {{TAG|ENCUT}}, {{TAG|NGXF}}, {{TAG|NGYF}}, {{TAG|NGZF}}
+
+
+[[Category:Files]][[Category:Input files]][[Category:Output files]][[Category:Electronic ground-state properties]][[Category:Charge density]]

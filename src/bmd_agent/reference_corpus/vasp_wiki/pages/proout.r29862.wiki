@@ -1,0 +1,47 @@
+This file is written if {{TAG|LORBIT}}=5 and the {{TAG|RWIGS}} tag is set in the {{TAG|INCAR}} file. It contains the projection of the Kohn-Sham orbitals <math>|\psi_{n\mathbf{k}}\rangle</math> onto a localized orbitals basis <math>|\beta^\alpha_{lm}\rangle</math> which can be written as
+
+<math>
+P^\alpha_{lmn\mathbf{k}} 
+\equiv \langle \beta_{lm}^{\alpha}|S|\psi_{n\mathbf{k}}\rangle
+= \underbrace{\langle \beta_{lm}^{\alpha}|\psi_{n\mathbf{k}}\rangle}_{P^{\text{SOFT},\alpha}_{lmn\mathbf{k}}} + 
+\underbrace{\sum_{ij} \langle \beta^\alpha_{lm}|\tilde{p}_i\rangle Q_{ij} \langle \tilde{p}_j | \psi_{n\mathbf{k}}\rangle}_{P^{\text{AUG},\alpha}_{lmn\mathbf{k}}}.
+</math>
+
+Here, the two terms on the right-hand side are called soft and augmentation part, respectively, and <math>S</math> is the overlap matrix,
+
+<math>S = 1+\sum_{ij} |\tilde{p}_i\rangle Q_{ij} \langle \tilde{p}_j|.</math>
+
+The radial and the angular part of <math>\beta^\alpha_{lm}(\mathbf{r})</math> are described by a linear combination of spherical bessel functions <math>\phi_n(r)</math> and by spherical harmonics <math>Y^\alpha_{lm}(\hat{\mathbf{r}})</math>, respectively: 
+
+<math>
+\beta^\alpha_{lm}(\mathbf{r}) = 
+Y^\alpha_{lm}(\hat{\mathbf{r}})\sum_n \phi_n(r).
+</math>
+
+The spherical bessel functions <math>\phi_n(r)</math> are parametrized to be non-zero within a radius determined by {{TAG|RWIGS}}. In addition, it so happens that <math>|\tilde{p}_i\rangle</math> has a similar form as <math>|\beta^\alpha_{lm}\rangle</math> which simplifies the computations above.
+
+The {{TAG|PROOUT}} file contains similar information as the {{TAG|PROCAR}} file but the following differences exist:
+*The {{TAG|PROOUT}} file writes the real and imaginary parts of <math>P^{\text{SOFT},\alpha}_{lmn\mathbf{k}}</math>, and the real part of the augmentation part <math>P^{\text{AUG},\alpha}_{lmn\mathbf{k}}</math>.
+*The {{TAG|PROCAR}} file contains the information of the squared projection, <math>P^\alpha_{lmn\mathbf{k}} (P^\alpha_{lmn\mathbf{k}})^{*}</math>, whereas the {{TAG|PROOUT}} file contains <math>P^\alpha_{lmn\mathbf{k}}</math>.
+*The arrangement of the output is very different in both files.
+
+This information makes it possible to construct, e.g., partial DOS projected onto bonding and anti-bonding molecular orbitals and the so-called crystal-orbital-overlap-population (COOP) function. Depending on the application, users might find it more practical to use the information contained in the {{FILE|PROJCAR}} and {{FILE|LOCPROJ}} files. These are controlled by the {{TAG|LOCPROJ}} tag.
+
+For spin-polarized calculations with {{TAG|ISPIN}}=2 and noncollinear calculations with {{TAG|LNONCOLLINEAR}}=.TRUE., '''PROOUT.1''' and '''PROOUT.2''' are written, referring to the Kohn-Sham orbitals' two spin components.
+
+== Format ==
+*line 1: PROOUT
+*line 2: Number of kpoints, bands and ions
+*line 3: Twice the number of types followed by the number of ions for each type
+*line 4: The Fermi weights for each k point (inner loop) and band (outer loop)
+*line 5 <math>-</math> ...: Real and imaginary part of <math>P^{\text{SOFT},\alpha}_{lmn\mathbf{k}}</math> for every <math>lm</math>-quantum number (inner loop), band, ion per type, k point and ion type (outer loop).
+*below : augmentation part
+*last line: real part of <math>P^{\text{AUG},\alpha}_{lmn\mathbf{k}}</math> for every <math>lm</math>-quantum number (inner loop), ion per type, ion type, band and k point (outer loop).
+{{NB|warning|For VASP version <{{=}} 6.2.1, {{FILE|PROOUT}} is not correctly written when {{TAG|LNONCOLLINEAR}} {{=}} True. }}
+
+== Related Tags and Sections ==
+{{TAG|LORBIT}}, {{FILE|LOCPROJ}}, {{FILE|PROJCAR}}, {{FILE|PROCAR}}
+
+----
+
+[[Category:Files]][[Category:Output files]]

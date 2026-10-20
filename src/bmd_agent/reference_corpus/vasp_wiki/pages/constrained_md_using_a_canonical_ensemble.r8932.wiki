@@ -1,0 +1,97 @@
+<b>Description</b>:
+Compare adsoption  of H2O on TiO2[110] using a simple model structure: the model surface consists of 2 layers TiO2, (1x1)
+* The bottom layer of the slab will be kept frozen
+* 2 setups will be tested:
+** Standard relaxation, minimizing the Hellmann-Feyman forces
+** Constrained MD, fixing the bond lengths and angle of H2O, the system is coupled to an ANDERSEN thermostat:
+***Microcanonical NVE ensemble (no collisions with the thermostat)
+***Canonical ensembe at T= 10K, to be close to the standard relaxation (0K)
+   
+To keep the computing time reasonable, the number of steps in the MD is limited to 100 (100 fs) which implies that the MD is NOT CONVERGED.
+
+*{{TAG|INCAR}} for standard relaxation
+ {{TAGBL|SYSTEM}} = H2O_TiO2
+ {{TAGBL|ENMAX}} = 400
+ {{TAGBL|ISMEAR}} =  2
+ {{TAGBL|SIGMA}} = 0.05
+ {{TAGBL|EDIFF}} = 1e-6
+ {{TAGBL|EDIFFG}} = -0.05
+ {{TAGBL|IBRION}} = 2
+ {{TAGBL|POTIM}} = 0.5
+ {{TAGBL|NSW}} = 200
+
+
+*{{TAG|INCAR}} for constrained MD using a microcanonical ensemble
+ {{TAGBL|SYSTEM}} = H2O_TiO2
+ {{TAGBL|ENMAX}} = 400
+ {{TAGBL|ISMEAR}} = 2
+ {{TAGBL|SIGMA}} = 0.05
+ {{TAGBL|ISMEAR}} = 0
+ {{TAGBL|EDIFF}} = 1e-6
+ {{TAGBL|EDIFFG}} = -0.05
+ {{TAGBL|IBRION}} = 0
+ {{TAGBL|POTIM}} = 1.
+ {{TAGBL|MDALGO}} = 1    # Andersen Thermostat
+ {{TAGBL|TEBEG}} = 10; {{TAGBL|TEEND}} = 10
+ {{TAGBL|NSW}} = 100    
+
+*{{TAG|ICONST}} for constrained MD using a microcanonical ensemble
+ R 7 8 0
+ R 7 9 0
+ A 8 7 9 0
+
+
+*{{TAG|INCAR}} for constrained MD using a canonical ensemble
+ {{TAGBL|SYSTEM}} = H2O_TiO2
+ {{TAGBL|ENMAX}} = 400
+ {{TAGBL|ISMEAR}} = 2
+ {{TAGBL|SIGMA}} = 0.05
+ {{TAGBL|ISMEAR}} = 0
+ {{TAGBL|EDIFF}} = 1e-6
+ {{TAGBL|EDIFFG}} = -0.05
+ {{TAGBL|IBRION}} = 0
+ {{TAGBL|POTIM}} = 1.
+ {{TAGBL|MDALGO}} = 1    # Andersen Thermostat
+ {{TAGBL|ANDERSEN_PROB}} = 0.9
+ {{TAGBL|TEBEG}} = 10; {{TAGBL|TEEND}} = 10
+ {{TAGBL|NSW}} = 100
+
+*{{TAG|ICONST}} for constrained MD using a canonical ensemble
+ R 7 8 0
+ R 7 9 0
+ A 8 7 9 0
+
+
+*{{TAG|POSCAR}} 
+ TiO2+H2O                                    
+    1.00000000000000     
+      4.61949   0.00000    0.00000
+      0.00000   4.61949    0.00000
+      0.00000   0.00000   14.7788
+    Ti   O  H
+      2     5     2
+ Selective
+ Direct
+   0.00000  0.00000  0.00000    F F F
+   0.50000  0.50000  0.10000    T T T
+   0.30374  0.30374  0.00000    F F F
+   0.69625  0.69625  0.00000    F F F
+   0.19625  0.80374  0.10000    T T T
+   0.80374  0.19625  0.10000    T T T
+   0.50000  0.50000  0.31500    T T T
+   0.37720  0.62280  0.35881    T T T
+   0.62280  0.37720  0.35881    T T T
+
+
+*{{TAG|KPOINTS}}
+ Automatically generated mesh
+        0
+ Gamma
+  5 5 1
+
+== Download ==
+[http://www.vasp.at/vasp-workshop/examples/h2o_on_tio2.tgz h2o_on_tio2.tgz, sub-folder constrMD_canonical]
+----
+[[VASP_example_calculations|To the list of examples]] or to the [[The_VASP_Manual|main page]]
+
+<!-- [[Category:Examples]] -->

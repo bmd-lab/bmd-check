@@ -1,0 +1,389 @@
+{{DISPLAYTITLE:vasprun.xml}}The {{FILE|vasprun.xml}} is written in xml format and contains both, general output that is written for any calculation and specific output depending on the method or quantity that is being computed. Below you see details regarding the general output, while the specific output, e.g. the dielectric function ({{TAG|LOPTICS}}), partial density of states ({{TAG|LORBIT}}), the electronic self-energy ({{TAG|LSELFENERGY}}) etc., are detailed on the corresponding tag documentation. Mind that newer features tend to write to {{FILE|vaspout.h5}}. The {{FILE|vaspout.h5}} should generally be preferred for reading large datasets.
+
+== File format ==
+
+The root element is <code><modeling></code>. The file uses four repeating XML primitives throughout:
+
+* <code><i name="..." type="...">value</i></code> — a named scalar (real, integer, logical, or string).
+* <code><v name="...">x y z</v></code> — a named row vector.
+* <code><varray name="..."></code> — a named array of vectors, each on a <code><v></code> line.
+* <code><array></code> — a labelled multi-field table with named dimensions; rows are stored as <code><r></code> elements inside <code><set></code> blocks.
+
+The overall layout of {{FILE|vasprun.xml}} is:
+
+<syntaxhighlight lang="xml">
+ <modeling>
+   <generator>   ...  </generator>
+   <incar>       ...  </incar>
+   <primitive_cell> ... </primitive_cell>
+   <kpoints>     ...  </kpoints>
+   <parameters>  ...  </parameters>
+   <atominfo>    ...  </atominfo>
+   <structure name="initialpos"> ... </structure>
+ 
+   <!-- one block per ionic step (MD, relaxation): -->
+   <structure> ... </structure>
+   <varray name="forces"> ... </varray>
+   <varray name="stress"> ... </varray>
+   <energy> ... </energy>
+   <time name="totalsc"> ... </time>
+   ...
+ 
+   <!-- OR a single calculation block (single-point, GW, BSE): -->
+   <calculation> ... </calculation>
+ 
+   <structure name="finalpos"> ... </structure>
+ </modeling>
+</syntaxhighlight>
+
+== Sections ==
+
+=== Generator ===
+
+Contains the VASP version, build details, and the date and time of the run.
+
+<syntaxhighlight lang="xml">
+ <generator>
+   <i name="program"    type="string">vasp </i>
+   <i name="version"    type="string">6.5.0  </i>
+   <i name="subversion" type="string">29Jan2024 (build Feb 14 2024) complex parallel</i>
+   <i name="platform"   type="string">LinuxGNU </i>
+   <i name="date"       type="string">2024 01 01 </i>
+   <i name="time"       type="string">12:00:00 </i>
+ </generator>
+</syntaxhighlight>
+
+=== INCAR ===
+
+Contains only the tags explicitly set in the {{FILE|INCAR}} file, without defaults. This is a compact record of the user-specified settings for the run.
+
+<syntaxhighlight lang="xml">
+ <incar>
+   <i type="string" name="SYSTEM">diamond Si</i>
+   <i type="string" name="ALGO">Normal</i>
+   <i name="ENCUT">    500.00000000</i>
+   <i type="int" name="ISMEAR">     0</i>
+   <i name="SIGMA">      0.05000000</i>
+ </incar>
+</syntaxhighlight>
+
+=== Primitive cell ===
+
+Contains the structure and lattice of the primitive unit cell, along with the mapping of primitive-cell ion indices to the full simulation-cell ion indices.
+
+<syntaxhighlight lang="xml">
+ <primitive_cell>
+   <structure name="primitive_cell">
+     <crystal>
+       <varray name="basis">            <!-- lattice vectors in A -->
+         <v>  1.92  1.92  0.00 </v>
+         <v>  0.00  1.92  1.92 </v>
+         <v>  1.92  0.00  1.92 </v>
+       </varray>
+       <i name="volume">     28.35 </i>  <!-- volume in A^3 -->
+       <varray name="rec_basis">        <!-- reciprocal lattice vectors in A^-1 -->
+         <v>  0.26  0.26 -0.26 </v>
+         <v> -0.26  0.26  0.26 </v>
+         <v>  0.26 -0.26  0.26 </v>
+       </varray>
+     </crystal>
+     <varray name="positions">          <!-- fractional (direct) coordinates -->
+       <v> 0.00  0.00  0.00 </v>
+       <v> 0.25  0.25  0.25 </v>
+     </varray>
+   </structure>
+   <varray name="primitive_index">      <!-- index of each primitive ion in the full cell -->
+     <v type="int"> 1 </v>
+     <v type="int"> 2 </v>
+   </varray>
+ </primitive_cell>
+</syntaxhighlight>
+
+=== k points ===
+
+Specifies the '''k'''-point sampling of the Brillouin zone, mirroring the {{FILE|KPOINTS}} file.
+
+<syntaxhighlight lang="xml">
+ <kpoints>
+   <generation param="Gamma">             <!-- generation scheme: Gamma, Monkhorst-Pack, or Explicit -->
+     <v type="int" name="divisions"> 4 4 4 </v>
+     <v name="usershift"> 0.0  0.0  0.0 </v>
+     <v name="genvec1">   0.25 0.00 0.00 </v>
+     <v name="genvec2">   0.00 0.25 0.00 </v>
+     <v name="genvec3">   0.00 0.00 0.25 </v>
+     <v name="shift">     0.00 0.00 0.00 </v>
+   </generation>
+   <varray name="kpointlist">             <!-- '''k'''-point coordinates in reciprocal space -->
+     <v>  0.000  0.000  0.000 </v>
+     <v>  0.250  0.000  0.000 </v>
+     ...
+   </varray>
+   <varray name="weights">               <!-- integration weights, normalized to sum to 1 -->
+     <v> 0.00463 </v>
+     <v> 0.03704 </v>
+     ...
+   </varray>
+ </kpoints>
+</syntaxhighlight>
+
+=== Parameters ===
+
+Contains a complete record of all effective {{FILE|INCAR}} parameters, including those not set explicitly (with their default values). The block is organized into named <code><separator></code> subsections corresponding to groups of related tags, for example:
+
+* <code>general</code>
+* <code>electronic</code> (with sub-separators: <code>smearing</code>, <code>projectors</code>, <code>startup</code>, <code>spin</code>, <code>exchange-correlation</code>, <code>convergence</code>, <code>mixer</code>, <code>dipolcorrection</code>)
+* <code>grids</code>
+* <code>ionic</code> and <code>ionic md</code>
+* <code>symmetry</code>
+* <code>dos</code>
+* <code>writing</code>
+* <code>performance</code>
+* <code>miscellaneous</code>
+* <code>orbital magnetization</code>
+* <code>response functions</code> (GW/BSE calculations)
+* <code>vdW DFT</code>
+
+There are several other groups that we have not included here. The full documentation for each tag is found on its individual tag page.
+
+=== Atom info ===
+
+Contains the atomic species and per-ion type information.
+
+<syntaxhighlight lang="xml">
+
+ <atominfo>
+   <atoms> 2 </atoms>               <!-- total number of ions -->
+   <types> 1 </types>               <!-- number of distinct species -->
+   <array name="atoms">             <!-- per-ion element label and type index -->
+     <dimension dim="1">ion</dimension>
+     <field type="string">element</field>
+     <field type="int">atomtype</field>
+     <set>
+       <rc><c>Si </c><c>   1</c></rc>
+       <rc><c>Si </c><c>   1</c></rc>
+     </set>
+   </array>
+   <array name="atomtypes">         <!-- per-species data -->
+     <dimension dim="1">type</dimension>
+     <field type="int">atomspertype</field>
+     <field type="string">element</field>
+     <field>mass</field>            <!-- atomic mass in u -->
+     <field>valence</field>         <!-- number of valence electrons -->
+     <field type="string">pseudopotential</field>   <!-- PAW potential label -->
+     <set>
+       <rc><c>   2</c><c>Si </c><c>     28.08500000</c><c>      4.00000000</c><c>PAW_PBE Si 05Jan2001</c></rc>
+     </set>
+   </array>
+ </atominfo>
+</syntaxhighlight>
+
+=== Initial structure ===
+
+The ionic positions at the start of the run, read from {{FILE|POSCAR}}. For [[:Category:Molecular Dynamics|molecular-dynamics]] runs, this block also contains the initial ionic velocities.
+
+<syntaxhighlight lang="xml">
+ <structure name="initialpos">
+   <crystal>
+     <varray name="basis">            <!-- lattice vectors in A -->
+       <v>  5.43  0.00  0.00 </v>
+       <v>  0.00  5.43  0.00 </v>
+       <v>  0.00  0.00  5.43 </v>
+     </varray>
+     <i name="volume">   160.10 </i>  <!-- cell volume in A^3 -->
+     <varray name="rec_basis">
+       <v>  0.184  0.000  0.000 </v>
+       <v>  0.000  0.184  0.000 </v>
+       <v>  0.000  0.000  0.184 </v>
+     </varray>
+   </crystal>
+   <varray name="positions">          <!-- fractional (direct) coordinates -->
+     <v>  0.000  0.000  0.000 </v>
+     <v>  0.250  0.250  0.250 </v>
+   </varray>
+   <!-- MD only: -->
+   <varray name="velocities">         <!-- ionic velocities in A/fs -->
+     <v>  0.0005 -0.0004  0.0002 </v>
+     <v> -0.0009  0.0004  0.0005 </v>
+   </varray>
+ </structure>
+</syntaxhighlight>
+
+=== Ionic steps ===
+
+For runs with ionic motion ([[:Category:Ionic minimization|relaxations]], [[:Category:Molecular Dynamics|MD]], [[:Category:Transition states|NEB]]), each ionic step is written as a sequence of flat blocks directly under <code><modeling></code>. There is no enclosing <code><calculation></code> element; each step contains:
+
+<syntaxhighlight lang="xml">
+ <!-- ionic step i (repeated for each step) -->
+ <structure>
+   <crystal>
+     <varray name="basis"> ... </varray>
+     <i name="volume"> ... </i>
+     <varray name="rec_basis"> ... </varray>
+   </crystal>
+   <varray name="positions"> ... </varray>   <!-- fractional coordinates -->
+ </structure>
+ <varray name="forces">               <!-- Hellmann-Feynman forces in eV/A -->
+   <v>  0.12 -0.03  0.00 </v>
+   ...
+ </varray>
+ <varray name="stress">               <!-- stress tensor in kB -->
+   <v> -0.16  0.00  0.11 </v>
+   <v>  0.00  0.00  0.00 </v>
+   <v>  0.11  0.00 -0.08 </v>
+ </varray>
+ <energy>
+   <i name="e_fr_energy"> -53.93 </i>  <!-- free energy F = E - TS (eV) -->
+   <i name="e_wo_entrp">  -53.93 </i>  <!-- energy without entropy (eV) -->
+   <i name="e_0_energy">  -53.93 </i>  <!-- energy extrapolated to sigma->0 (eV) -->
+   <!-- MD only: -->
+   <i name="kinetic">       0.10 </i>  <!-- ionic kinetic energy (eV) -->
+   <i name="lattice kinetic"> 0.00 </i> <!-- lattice kinetic energy, e.g. for NPT (eV) -->
+   <i name="total">       -53.83 </i>  <!-- total energy E + E_kin, conserved in NVE (eV) -->
+ </energy>
+ <time name="totalsc"> 0.04 0.01 </time>   <!-- CPU and wall time for this step (s) -->
+</syntaxhighlight>
+{{NB|mind|For {{TAG|IBRION}}{{=}}0 ([[:Category:Molecular Dynamics|MD]]) with a large number of steps ({{TAG|NSW}} >> 1), {{FILE|vasprun.xml}} can become very large. Consider using {{FILE|vaspout.h5}} instead, or reading with a streaming XML parser (see [[#Direct XML parsing|below]]).}}
+
+=== Electronic-structure calculation block ===
+
+For a [[Setting up an electronic minimization|single-point electronic minimization calculations]] ({{TAG|NSW|0}}) and [[:Category:Many-body perturbation theory|post-DFT methods]] (GW, BSE), a single <code><calculation></code> block instead of per-step ionic-step blocks is written. It contains eigenvalues, the density of states (DOS), the partial DOS ({{TAG|LORBIT}}) and, for optical calculations, the dielectric function ({{TAG|LOPTICS}}).
+
+For [[GW calculations]] (e.g., {{TAG|ALGO}}{{=}}EVGW0 or GW0), <code><eigenvalues></code> contains the quasiparticle energies updated by the GW self-energy. Multiple <code><dielectricfunction></code> blocks appear in the same <code><calculation></code>, each labelled by its <code>comment</code> attribute.
+
+=== Final structure ===
+
+The ionic positions at the end of the run. For [[MD runs]], this block also contains the final ionic velocities (also see {{TAG|VELOCITY}} for {{FILE|vaspout.h5}} output), suitable for restarting the trajectory.
+
+<syntaxhighlight lang="xml">
+ <structure name="finalpos">
+   <crystal>
+     <varray name="basis"> ... </varray>
+     <i name="volume"> ... </i>
+     <varray name="rec_basis"> ... </varray>
+   </crystal>
+   <varray name="positions"> ... </varray>
+   <!-- MD only: -->
+   <varray name="velocities"> ... </varray>
+ </structure>
+</syntaxhighlight>
+
+== Reading vasprun.xml ==
+=== pymatgen ===
+
+The [https://pymatgen.org pymatgen] library provides the <code>Vasprun</code> class:
+
+<syntaxhighlight lang="python">
+from pymatgen.io.vasp import Vasprun
+
+vr = Vasprun("vasprun.xml")
+
+print(vr.final_energy)        # total energy of the final ionic step (eV)
+
+# Iterate over ionic steps
+for step in vr.ionic_steps:
+    e = step["electronic_steps"][-1]["e_fr_energy"]
+    print(e)
+
+print(vr.final_structure)     # pymatgen Structure object
+dos = vr.complete_dos         # total and projected DOS
+</syntaxhighlight>
+
+=== ASE ===
+
+The [https://wiki.fysik.dtu.dk/ase/ Atomic Simulation Environment] (ASE) reads {{FILE|vasprun.xml}} as a sequence of <code>Atoms</code> objects:
+
+<syntaxhighlight lang="python">
+from ase.io import read
+
+images = read("vasprun.xml", index=":")   # all ionic steps
+atoms  = images[-1]                       # final structure
+
+print(atoms.get_potential_energy())       # total energy (eV)
+print(atoms.get_forces())                 # forces (eV/Å)
+</syntaxhighlight>
+
+=== Direct XML parsing ===
+==== ElementTree ====
+
+For custom workflows, parse {{FILE|vasprun.xml}} with Python's standard library:
+
+<syntaxhighlight lang="python">
+import xml.etree.ElementTree as ET
+
+tree = ET.parse("vasprun.xml")
+root = tree.getroot()
+
+# Read INCAR tags
+for tag in root.find("incar"):
+    print(tag.attrib.get("name"), "=", tag.text.strip())
+
+# Read forces from each ionic step
+for forces in root.iter("varray"):
+    if forces.attrib.get("name") == "forces":
+        data = [[float(x) for x in v.text.split()] for v in forces]
+        print(data)
+</syntaxhighlight>
+{{NB|mind|For large MD trajectories, use <code>xml.etree.ElementTree.iterparse</code> to stream the file element by element and avoid loading it entirely into memory.}}
+
+==== lxml ====
+
+There are also plenty of other Python packages that can be used to read {{FILE|vasprun.xml}}, e.g., <code>lxml</code>:
+
+<syntaxhighlight lang="python">
+from lxml import etree
+
+# Parse XML
+tree = etree.parse("vasprun.xml")
+root = tree.getroot()
+
+# Read INCAR tags
+incar = root.find("incar")
+
+for tag in incar:
+    name = tag.attrib.get("name")
+    value = tag.text.strip() if tag.text else None
+    print(name, "=", value)
+
+# Read the final energy
+energies = root.xpath(".//i[@name='e_0_energy']/text()")
+final_energy = float(energies[-1])
+
+print(final_energy)
+
+# Read forces from each ionic step
+forces_blocks = root.xpath(".//varray[@name='forces']")
+
+for forces in forces_blocks:
+    data = [
+        [float(x) for x in v.text.split()]
+        for v in forces
+    ]
+    print(data)
+</syntaxhighlight>
+
+There are plenty of other Python packages that can be used, or other languages if you prefer, which we will not describe here.
+
+=== Terminal commands ===
+==== xmllint ====
+The [https://xmllint.com/ xmllint] tool can be used to view the contents of the {{FILE|vasprun.xml}} file based from command line. E.g., 
+<syntaxhighlight lang="shell">
+ xmllint --xpath '//dos/partial' vasprun.xml
+</syntaxhighlight>
+will print the partial density of states to terminal. 
+
+==== xmlstarlet ====
+Alternatively, the [https://xmlstar.sourceforge.net/ xmlstarlet] tool can be used {{FILE|vasprun.xml}}, e.g., 
+<syntaxhighlight lang="shell">
+ xmlstarlet sel -t -c '//dos/partial' vasprun.xml
+</syntaxhighlight>
+will print the partial density of states to terminal. 
+
+There are several other command line tools that can be used for analysis, e.g., [https://pymatgen.org/#pmg-command-line-interface mpg] that we will not go into detail in here.
+
+== Related tags and articles ==
+
+* {{FILE|OUTCAR}} — the human-readable logfile.
+* {{FILE|vaspout.h5}} — the HDF5 alternative to {{FILE|vasprun.xml}}, preferred for large runs and newer features.
+
+[[Category:Files]]
+[[Category:Output files]]

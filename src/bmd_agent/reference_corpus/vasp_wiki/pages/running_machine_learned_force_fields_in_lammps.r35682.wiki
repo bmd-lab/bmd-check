@@ -1,0 +1,134 @@
+[https://www.lammps.org LAMMPS] is a very popular molecular dynamics (MD) package which implements lots of advanced simulation methods. Although {{VASP}} itself also offers [[:Category:Molecular_dynamics|MD simulations]] LAMMPS provides more flexibility and additional methods (e.g. thermostats/barostats, grouping atoms, etc.). This page describes how to make pre-trained {{VASP}} machine-learned force fields available within LAMMPS. On a technical level this is achieved by patching the LAMMPS source code in such way that a new [https://docs.lammps.org/pair_style.html <code>pair_style</code>] named <code>vasp</code> is available in the LAMMPS script language. The patched LAMMPS source is compiled and then linked to the [[VASPml library]]. The first section describes in detail how to patch and compile LAMMPS. The second section explains how the {{VASP}} {{FILE|ML_FF}} file can be loaded in a LAMMPS script.
+{{NB|warning|The VASPml library available as of {{VASP}} 6.5.0 and therefore also the LAMMPS interface are experimental features. Please carefully check results and, if feasible, compare against similar VASP MD simulations.}}
+
+= Building LAMMPS with VASPml patch =
+
+The LAMMPS packages offers two distinct build pathways: via [https://cmake.org/ CMake] or via traditional makefiles. While the latter was available at the time of the first VASPml release in {{VASP}} 6.5.0, it since has been slowly phased out. Hence, starting with {{VASP}} 6.6.0 building LAMMPS with VASPml patch is only supported via CMake.
+
+== Using traditional make (only for VASP 6.5.X) ==
+
+Before starting the LAMMPS build please either compile [[Makefile.include#VASPml_(experimental)|{{VASP}} with the VASPml library]], or alternatively, keep your {{VASP}} installation untouched and perform a [[VASPml library#Standalone build instructions|standalone build]] of the VASPml library. To confirm that everything is ready we can check for the presence of the following files:
+
+* For a {{VASP}} build with VASPml:
+** <code>/path/to/vasp/build/VERSION/vaspml/lib/libvaspml.a</code>
+** <code>/path/to/vasp/build/VERSION/vaspml/include/InterfaceLAMMPS.hpp</code>
+
+where <code>VERSION</code> is any of <code>std</code>, <code>gam</code> or <code>ncl</code>. It does not matter which {{VASP}} build version is used because the VASPml library will be identical in all three cases.
+
+* Or, alternatively, for a [[VASPml library#Standalone build instructions|VASPml standalone build]] please check:
+** <code>/path/to/vaspml/lib/libvaspml.a</code>
+** <code>/path/to/vaspml/include/InterfaceLAMMPS.hpp</code>
+
+Next, we need to obtain the LAMMPS source code with the patch for VASPml. Please clone the following repository to your hard disk and change into the LAMMPS root directory:
+
+ git clone https://github.com/vasp-dev/lammps
+ cd lammps
+
+At this point looking around in the git repository will show the files from the <code>develop</code> branch (the main development branch of LAMMPS). However, the patch files are located in another branch, hence we need to switch with this command:
+
+ git checkout vasp-mlff
+
+Then, while still in the LAMMPS root directory we need to create a symbolic link from <code>lammps/lib/vasp/vaspml</code> to the actual location of the VASPml folder. 
+
+* In case of a {{VASP}} build with VASPml: {{CB|ln -s /path/to/vasp/build/std/vaspml lib/vasp/|:}} Again, it is not important which of the three {{VASP}} build directories (<code>std</code>, <code>gam</code> or <code>ncl</code>) is used because the VASPml library is the same.
+
+* Alternatively, for a standalone VASPml build: {{CB|ln -s /path/to/vaspml lib/vasp/|:}}
+
+For the remaining steps we need to change into the <code>src</code> directory:
+
+ cd src
+
+The source files for the <code>pair_style vasp</code> are part of the optional package <code>ML-VASP</code> which can be activated with this command:
+
+ make yes-ml-vasp
+
+Before we can finally start the build process it is necessary to adapt the LAMMPS makefile in <code>MAKE/Makefile.mpi</code>. Modify the <code>CC</code> and <code>LINK</code> variables to match the compiler used during the [[VASPml library#Build instructions|VASPml build process]] (<code>CXX_ML</code> variable). Also match the compiler flags in <code>CCFLAGS</code> and <code>LINKFLAGS</code> to <code>CXXFLAGS_ML</code>. Flags do not need to be identical but at least compatible compiler features should be used. Since VASPml requires BLAS and LAPACK we may also need to complete the <code>LIB</code> variable with the required libraries and their paths. For the GNU compiler with openBLAS it may look like this:
+
+ ...
+ CC =    mpic++
+ CCFLAGS = -g -O3 -std=c++17
+ ...
+ LINK =    mpic++
+ LINKFLAGS = -g -O3 -std=c++17
+ LIB = -L${OPENBLAS_ROOT}/lib -lopenblas
+
+Finally, compile the LAMMPS source code with this command:
+
+ make mpi
+
+Optionally, add the <code>-j</code> flag to perform a parallel build (faster). If the build process succeeds the LAMMPS executable <code>lmp_mpi</code> will be located in the <code>lammps/src</code> directory.
+
+== Using CMake ({{VASP}} 6.6.0 and later) ==
+
+Before starting the LAMMPS build please either compile [[Makefile.include#VASPml_(experimental)|{{VASP}} with the VASPml library]], or alternatively, keep your {{VASP}} installation untouched and perform a [[VASPml library#Standalone build instructions|standalone build]] of the VASPml library. Optionally, if you want to confirm that everything is ready you can check for the presence of the following files:
+
+* <code>/path/to/vaspml/lib/libvaspml.a</code>,
+* <code>/path/to/vaspml/build/libvaspml/InterfaceLAMMPS.hpp</code>,
+
+where, in case of a build together with {{VASP}}, VASPml is located inside of <code>/path/to/vasp/build/VERSION</code>, where <code>VERSION</code> is any of <code>std</code>, <code>gam</code> or <code>ncl</code>. It does not matter which {{VASP}} build version is used because the VASPml library will be identical in all three cases.
+
+Next, we need to obtain the LAMMPS source code with the patch for VASPml. Please clone the following repository to your hard disk and change into the LAMMPS root directory:
+
+ git clone https://github.com/vasp-dev/lammps
+ cd lammps
+
+At this point looking around in the git repository will show the files from the <code>develop</code> branch (the main development branch of LAMMPS). However, the patch files are located in another branch, hence we need to switch with this command:
+
+ git checkout vasp-mlff-6.6.0
+
+Now we configure the [https://docs.lammps.org/Build_cmake.html LAMMPS build with CMake] where <code>PKG_ML-VASP</code> and <code>VASPML_DIR</code> need to be set:
+
+ cmake -S cmake -B build -DPKG_ML-VASP=yes -DVASPML_DIR=/path/to/vaspml
+
+With this command CMake checks the available compilers and libraries and reports if anything is missing. Please check if the output is consistent with the toolchain selected for building {{VASP}} or standalone VASPml. In case CMake does not correctly determine the compiler and libraries it may be necessary to pass them explicitly with [https://cmake.org/cmake/help/latest/manual/cmake-variables.7.html standard CMake variables], like <code>-DCMAKE_CXX_COMPILER=...</code> and <code>-DCMAKE_CXX_FLAGS=...</code> for specifying the C++ compiler and command line arguments, respectively. Finally, in the output you should see these lines confirming that VASPml has been found:
+
+ -- Found VASPml: /path/to/vaspml  
+ -- Found VASPml library: /path/to/vaspml/lib/libvaspml.a
+ -- Found VASPml include directory: /path/to/vaspml/build/libvaspml
+
+If the previous CMake command exited successfully, LAMMPS can be built with
+
+ cmake --build build
+
+Adding the <code>-j</code> flag allows the build process to run in parallel. The LAMMPS executable <code>lmp</code> will be located inside the <code>build</code> directory.
+
+= Setting up a LAMMPS MD run =
+
+{{NB|warning|Please always review the current [[VASPml library#Restrictions|limitations and bug reports]].}}
+
+LAMMPS comes with its own powerful script language which allows the user to specify all relevant MD simulation parameters in a single file. Please consult the [https://docs.lammps.org/Commands_input.html LAMMPS documentation] for details. Within the LAMMPS script language the commands <code>pair_style</code> and <code>pair_coeff</code> are responsible for selecting a force field. The <code>ML-VASP</code> package introduces a new <code>pair_style</code> called <code>vasp</code>. The <code>pair_style vasp</code> command does not have any additional arguments, all configurable settings are given as arguments to the <code>pair_coeff</code> command in this format:
+
+<pre>pair_style vasp
+pair_coeff * * file types</pre>
+The <code>pair_coeff</code> command must be followed by <code>* *</code>, then followed by the name of the {{VASP}} force field file, typically <code>ML_FF</code>. Finally, there comes a mapping from LAMMPS atom types to {{VASP}} force-field types, e.g., <code>H O Na Cl</code> means that LAMMPS types <code>1</code>, <code>2</code>, <code>3</code> and <code>4</code> are mapped to {{VASP}} types <code>H</code>, <code>O</code>, <code>Na</code> and <code>Cl</code>, respectively. A valid example may look like this:
+
+<pre>pair_style vasp
+pair_coeff * * ML_FF Pb Br Cs</pre>
+This will map the LAMMPS atom types <code>1</code>, <code>2</code> and <code>3</code> in the [https://docs.lammps.org/read_data.html input data file] to the types <code>Pb</code>, <code>Br</code> and <code>Cs</code> for which a pre-trained machine-learned force field should be present in the <code>ML_FF</code> file in the execution directory. A summary of the type mapping is provided in the screen output and the <code>log.lammps</code> file, e.g. for the example above it looks like this:
+
+<pre>   LAMMPS       pair_coeff      VASP      |             VASP force field
+    types       names           subtypes  |     types       names        subtypes
+----------------------------------------- | -------------------------------------
+        1 &lt;---&gt; Pb        &lt;---&gt; 0         |         0 &lt;---&gt; Pb     &lt;---&gt; 0        
+        2 &lt;---&gt; Br        &lt;---&gt; 1         |         1 &lt;---&gt; Br     &lt;---&gt; 1        
+        3 &lt;---&gt; Cs        &lt;---&gt; 2         |         2 &lt;---&gt; Cs     &lt;---&gt; 2  </pre>
+On the left side we find the mapping, the right side gives an overview of types present in the force field file. In this example, there is a one-to-one mapping, hence, the table looks pretty obvious and contains somewhat redundant information. However, it is also possible to leave out a mapping from specified LAMMPS types by supplying <code>NULL</code> instead of a valid {{VASP}} type name. This can be helpful when multiple force fields should be combined, see [https://docs.lammps.org/pair_hybrid.html <code>pair_style hybrid</code>]. Furthermore, multiple LAMMPS types may be mapped to the same {{VASP}} types. Finally, the force field file may contain types which are not used in the current MD simulation. Therefore, a more complicated example may look like this:
+
+<pre>pair_coeff * * vasp ML_FF NULL Cs NULL Br Pb Br</pre>
+and the corresponding table could contain this information:
+
+<pre>   LAMMPS       pair_coeff      VASP      |             VASP force field
+    types       names           subtypes  |     types       names        subtypes
+----------------------------------------- | -------------------------------------
+        1 &lt;---&gt; unmapped! &lt;---&gt; unmapped! |         0 &lt;---&gt; Ca     &lt;---&gt; unused!
+        2 &lt;---&gt; Cs        &lt;---&gt; 2         |         1 &lt;---&gt; Pb     &lt;---&gt; 0        
+        3 &lt;---&gt; unmapped! &lt;---&gt; unmapped! |         2 &lt;---&gt; O      &lt;---&gt; unused!
+        4 &lt;---&gt; Br        &lt;---&gt; 1         |         3 &lt;---&gt; Br     &lt;---&gt; 1        
+        5 &lt;---&gt; Pb        &lt;---&gt; 0         |         4 &lt;---&gt; Cs     &lt;---&gt; 2        
+        6 &lt;---&gt; Br        &lt;---&gt; 1         |</pre>
+{{NB|mind|Always ensure that the type mapping is correctly set up because mixed-up types may not immediately result in errors. An MD simulation may still run and only post-processing may ultimately reveal inconsistencies which can be tedious to trace back to type-mapping mistakes.}}
+
+The <code>pair_style vasp</code> expects input coordinates to be in the units of Ångström and returns energies and forces with the energy unit of eV. Hence, it is only compatible with the LAMMPS setting <code>units metal</code> in the input script, otherwise an error will occur.
+
+[[Category:Machine-learned force fields]]
+[[Category:Howto]]

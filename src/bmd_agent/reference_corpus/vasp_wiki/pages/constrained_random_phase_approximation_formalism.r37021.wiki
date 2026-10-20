@@ -1,0 +1,287 @@
+The '''constrained random-phase approximation''' (cRPA) is a method that allows to calculate the effective interaction parameter U, J and J' for model Hamiltonians.
+The main idea is to neglect screening effects of specific '''target states''' in the screened Coulomb interaction W of the [[The GW approximation of Hedin's equations|GW method]].
+The resulting partially screened Coulomb interaction is often evaluated in a localized basis that spans the target space and is described by the model Hamiltonian.
+Usually, the target space is low-dimensional (up to 5 states) and therefore allows for the application of a higher level theory, such as [[DFT+DMFT calculations|dynamical mean-field theory]] (DMFT).
+
+This page introduces the theoretical foundations of cRPA. The [[#Tight-binding model Hamiltonian|first section]] presents the tight-binding model Hamiltonian and the [[Wannier basis]] used to represent the target states. The [[#Effective Coulomb kernel in constrained random-phase approximation|second section]] describes four methods for computing the effective Coulomb kernel by excluding screening contributions from the target space. The [[#Off-center interactions|final section]] covers off-center Coulomb integrals for extended models.
+
+== Tight-binding model Hamiltonian ==
+A model Hamiltonian describes a small subset of electrons around the chemical potential and has, in second quantization, the following form
+::<math>
+H = \sum_\sigma \sum_{<ij>} t_{ij}^\sigma c_{i\sigma}^\dagger c_{j\sigma} + \sum_{\sigma\sigma'} \sum_{<ijkl>} U_{ijkl}^{\sigma\sigma'} c_{i\sigma}^\dagger c_{k\sigma'}^\dagger c_{j\sigma}
+ c_{l\sigma'}</math>
+Here, <math>i,j,k,l</math> are site and <math>\sigma,\sigma'</math> spin indices, respectively and the symbol <math><\cdots></math> indicates summation over nearest neighbors.
+The hopping matrix elements <math>t_{ij}^\sigma </math> describe the hopping of electrons (of same spin) between site <math>i</math> and <math>j</math>, while the effective Coulomb matrix elements <math>U_{ijkl}^{\sigma\sigma'}</math> describe the interaction of electrons between sites.
+
+=== Wannier basis and target space ===
+To use model Hamiltonians successfully a localized basis set is chosen.
+In most applications this basis set consists of [[Wannier states]] that are connected with the Bloch functions <math>\psi_{n\bf k}^\sigma ({\bf r}) = e^{i{\bf k r}} u_{n\bf k}({r})</math> of band <math>n</math> at k-point <math>\bf{k}</math> with spin <math>\sigma</math> via
+::<math>
+| w_{i\bf R}^\sigma \rangle = \frac{1}{N_k}\sum_{n\bf k} e^{-i {\bf k R}} T_{i n}^{\sigma({\bf k})} | \psi_{n\bf k}^\sigma \rangle
+</math>
+Usually, the target states and thus the appropriate basis set is localized such that the interaction between periodic images can be neglected. This allows to work with Wannier functions in the unit cell at <math>\bf R=0</math>:
+::<math>
+| w_{i}^\sigma \rangle = \frac{1}{N_k}\sum_{n\bf k} T_{i n}^{\sigma({\bf k})} | \psi_{n\bf k}^\sigma \rangle
+</math>
+{{NB|mind|Here, <math>T</math> instead of the widely used <math>U</math> notation for the transformation matrix is used to avoid confusion with the Hubbard parameter.}}
+In practice, one builds a model Hamiltonian only for a small subset of Bloch functions. These '''target states''' are typically centered around the chemical potential (or Fermi energy see {{TAG|EFERMI}}) and are strongly localized around ions. The model Hamiltonian can be solved successfully only if the target states are well-represented by the [[Wannier basis]].
+{{NB|tip|As an indicator of the quality of the Wannier representation, compare the [[Band-structure calculation using density-functional theory|original band structure]] with the Wannier interpolated one.}}
+
+In the following example considering SrVO3, the target space consists of three Bloch bands (red bands) that may be represented well by three Wannier states:
+
+[[File:SrVO3_t2g_bands.png|250px|center]]
+
+The complete target space is spanned by a certain number of Bloch bands. These bands can be selected with the {{TAG|NCRPA_BANDS}} tag. Refer to the [[CRPA_of_SrVO3|full SrVO3 cRPA calculation]] for more details of the setup. 
+
+More often, however, one has delocalized states that mix with the target space of the model.
+Without including these additional states in the [[Wannier basis]], a good representation of the band structure is not possible.
+Below is an example (face-centered-cubic Ni), where the delocalized s-band (blue) crosses the five target d-states (red):
+
+[[File:Ni_d_s_bands.png|250px|center]]
+
+Due to the hybridization of s and d electrons, the system requires at least six [[Wannier states]] to properly represent the electronic structure of five target states.
+The selection of target states in the [[Wannier basis]] is done with the {{TAG|NTARGET_STATES}}.
+
+If a modification of the band structure is acceptable within an energy window, these five target states might be '''disentangled''' from the remaining ones, and one arrives at the following picture:
+
+[[File:Ni_d_bands_decoupled.png|250px|center]]
+
+Here, the original Bloch bands (gray lines) are projected to five non-crossing Wannier states.
+
+In the following <math>\cal T</math> denotes the '''target space''', that is, the states described by the model Hamiltonian.
+
+=== Definition of model parameters: Hopping and Coulomb repulsion ===
+The calculation of the hopping matrix <math>t</math> depends on the theory that is used to solve the effective model.
+For instance, in [[DFT+DMFT calculations|DFT+DMFT]] (often termed LDA+DMFT) one calculates the hopping matrix from Kohn-Sham energies, while in GW+DMFT [[GW approximation of Hedin's equations|GW quasi-particle energies]] are used.
+If <math>\epsilon^\sigma_{n\bf k}</math> denotes these one-electron energies and <math>\mu^\sigma</math> is the corresponding Fermi energy,
+the hopping matrix elements are calculated with following formula
+::<math>
+t_{ij}^\sigma = \frac{1}{N_k}\sum_{n\bf k}T_{in}^{*\sigma({\bf k})} (\epsilon^\sigma_{n{\bf k}} - \mu^\sigma) T_{jn}^{\sigma({\bf k})}
+</math>
+
+Similarly, Coulomb matrix elements are evaluated from the Bloch representation of the effective Coulomb kernel <math>U_{{\bf G G}'}({\bf q})</math> via
+::<math>
+U_{ijkl}^{\sigma\sigma'} =  \frac{1}{N^3_k}\sum_{{\bf k k q}}\sum_{n_1n_2n_3n_4}
+T_{in_1}^{*\sigma({\bf k})}
+T_{jn_2}^{\sigma({\bf k-q})}
+\langle u^\sigma_{n_1\bf k}| e^{-i({\bf q + G})\cdot {\bf r}} |u^\sigma_{n_2\bf k-q}\rangle
+U^{\sigma\sigma'}_{{\bf G G}'}({\bf q})
+\langle u^{\sigma'}{n_3\bf k'-q}| e^{i({\bf q - G'})\cdot {\bf r'} }|u^{\sigma'}{n_4\bf k'}\rangle
+T_{kn_3}^{*\sigma'({\bf k'-q})}
+T_{ln_4}^{\sigma'({\bf k'})}
+</math>
+{{NB|mind|The effective Coulomb kernel is frequency-dependent and thus the effective interaction in the model as well.}}
+In most applications, however, one considers the static limit <math>U=U(\omega\to 0)</math>.
+
+In practice, one often simplifies the model Hamiltonian further and works with the Hubbard-Kanamori parameters:{{cite|vaugier:prb:86}}
+::<math>
+{\cal U }^{\sigma\sigma'} = \frac 1 N \sum_{i\in \cal T} U_{iiii}^{\sigma\sigma'}
+</math>
+::<math>
+{\cal U' }^{\sigma\sigma'} = \frac{1}{N(N-1)}\sum_{i,j \in{\cal T}, i\neq j}^N U_{ijji}^{\sigma\sigma'}
+</math>
+::<math>
+{\cal J }^{\sigma\sigma'} = \frac{1}{N(N-1)} \sum_{i,j \in{\cal T}, i\neq j}^N U_{ijij}^{\sigma\sigma'}
+</math>
+Here, <math>N</math> specifies the number of [[Wannier functions]] in the target space <math>\cal T</math>.
+
+== Effective Coulomb kernel in constrained random-phase approximation ==
+In analogy to the [[GW approximation of Hedin's equations#W_reci|screened Coulomb kernel in GW]], the effective Coulomb kernel is calculated as
+::<math>
+U^{\sigma\sigma'}*{{\bf G}{\bf G}'}({\bf q},i\omega)=\left[\delta*{{\bf G}{\bf G}'}-(\chi^{\sigma\sigma'}*{{\bf G}{\bf G}'}({\bf q},i\omega) -  \tilde\chi^{\sigma\sigma'}*{{\bf G}{\bf G}'}({\bf q},i\omega) ) \cdot V_{{\bf G}{\bf G}'}({\bf q})\right]^{-1}V_{{\bf G}{\bf G}'}({\bf q})
+</math>
+In contrast to the [[GW method]], however, the polarizability contains all RPA-screening effects except those from the target space. These effects are described by the correlated polarizability <math>\tilde \chi</math>.
+
+In the following four cRPA methods are presented for the calculation of <math>\tilde \chi</math>.
+Note, all methods below reduce to the '''band method''' if the target space forms an isolated set of bands.
+
+=== Band method ===
+The simplest way to define the target polarizability is to use the expression of Adler and Wiser{{cite|adler:1962}}{{cite|wiser:1963}}{{cite|aryasetiawan:prb70}}
+::<math>\tilde  \chi^\sigma_{{\bf G,G}'}({\bf q},i\omega)=
+\frac 1{N_k}\sum_{\bf k}\sum_{nn'\in{\cal T}}
+\frac{
+f_{n\bf k}-f_{n'\bf k-q}
+}{
+\epsilon_{n{\bf k}} -  \epsilon_{n'\bf k-q} - i \omega
+}
+\langle
+ u_{n {\bf k  }}^{\sigma  }
+|e^{-i \bf (G+q) r}|
+u_{n'{\bf k-q}}^{ \sigma' }
+\rangle
+\langle
+u_{n' {\bf k-q}}^{\sigma' }
+|e^{-i \bf (G'-q)r'} |
+ u_{n{\bf k  }}^{ \sigma  }
+\rangle
+</math>
+This approach is most accurate for an isolated target space <math>\cal T</math> as depicted in the first example above.
+{{NB|mind|Target bands can be selected with {{TAG|NCRPA_BANDS}}.}}
+{{NB|warning|This method is not recommended for systems with entangled target states.}}
+
+=== Disentanglement-cRPA method (d-cRPA) ===
+Miyake, Aryasetiawan, and Imada{{cite|miyake:prb:80}} propose to disentangle the target space from the full space by diagonalizing the Hamiltonian in both spaces independently.
+This yields a disentangled band structure similar to the one shown in the third example above.
+The corresponding target polarizability reduces to a constrained Adler and Wiser expression{{cite|adler:1962}}{{cite|wiser:1963}}
+::<math>\tilde  \chi^\sigma_{{\bf G,G}'}({\bf q},i\omega)=
+\frac 1{N_k}\sum_{\bf k}\sum_{nn'\in{\cal T}}
+\frac{
+f_{n\bf k}-f_{n'\bf k-q}
+}{
+\tilde\epsilon_{n{\bf k}} -  \tilde\epsilon_{n'\bf k-q} - i \omega
+}
+\langle
+\tilde u_{n {\bf k  }}^{\sigma  }
+|e^{-i \bf (G+q) r}|
+\tilde u_{n'{\bf k-q}}^{ \sigma' }
+\rangle
+\langle
+\tilde u_{n' {\bf k-q}}^{\sigma' }
+|e^{-i \bf (G'-q)r'} |
+\tilde u_{n{\bf k  }}^{ \sigma  }
+\rangle
+</math>,
+where <math>\tilde \epsilon_{n\bf k}^\sigma</math> is the disentangled band structure.
+The resulting Hubbard-Kanamori interactions depend on the chosen energy window of the Wannier functions.
+{{NB|mind|Typically, this method yields the largest Hubbard-Kanamori interactions and is selected with {{TAG|LDISENTANGLED}} tag.}}
+
+=== Weighted-cRPA method (w-cRPA) ===
+Sasioglu, Friedrich and Blügel propose an alternative approach.{{cite|sasioglu:prb:83}}
+They calculate the screening effects within the target space as follows:
+::<math>\tilde  \chi^\sigma_{{\bf G,G}'}({\bf q},i\omega)=
+\frac 1{N_k}\sum_{nn'{\bf k}}
+\frac{
+f_{n\bf k}-f_{n'\bf k-q}
+}{
+\epsilon_{n{\bf k}} -  \epsilon_{n'\bf k-q} - i \omega
+}
+p_{n\bf k }^{\sigma}
+p_{n'\bf k-p }^{\sigma'}
+\langle
+u_{n {\bf k  }}^{\sigma  }
+|e^{-i \bf (G+q) r}|
+u_{n'{\bf k-q}}^{ \sigma' }
+\rangle
+\langle
+u_{n' {\bf k-q}}^{\sigma' }
+|e^{-i \bf (G'-q)r'} |
+u_{n'{\bf k  }}^{ \sigma  }
+\rangle
+</math>
+Here, the weighting factors
+::<math>p_{n\bf k}^\sigma = \sum_{i\in\cal T} |T_{i n}^{\sigma({\bf k})}|^2 , \quad 0 \le p_{n\bf k}^\sigma \le 1
+</math>
+measure the probability for <math>|\psi_{n\bf k}^\sigma\rangle</math> being in the target space.
+This method does not alter the band structure, however, neglects screening effects within the target space as shown in next section.
+Typically, the weighted-cRPA method yields the smallest Hubbard-Kanamori interactions.
+{{NB|mind|This method is selected with the {{TAG|LWEIGHTED}} tag.}}
+
+=== Projector-cRPA method (p-cRPA) ===
+A consistent expression for the target polarizability gives rise to the projector-cRPA (p-cRPA) method.
+The main goal is to subdivide the target from the full Fock space in a Wannier basis.{{cite|kaltak:prb:2025:2}}
+To this end, we work with the target projectors
+::<math>
+P_{mn}^{\sigma({\bf k})} =  \sum_{i\in \cal T} T_{i m}^{*\sigma({\bf k})} T_{i n}^{\sigma({\bf k})}
+</math>
+that filter out target space contributions to each Bloch state. Using these projectors,
+the target polarizability for the projector method reads{{cite|kaltak:thesis2015}}
+::<math>\tilde  \chi^\sigma_{{\bf G,G}'}({\bf q},i\omega)=
+\frac 1{N_k}\sum_{nn'{\bf k}}
+\frac{
+f_{n\bf k}-f_{n'\bf k-q}
+}{
+\epsilon_{n{\bf k}} -  \epsilon_{n'\bf k-q} - i \omega
+}
+\sum_{m_1m_2' }
+P_{m_1  n }^{*\sigma  ({\bf k  })}
+\langle
+u_{m_1 {\bf k  }}^{\sigma  }
+|e^{-i \bf (G+q) r}|
+u_{m_2'{\bf k-q}}^{ \sigma' }
+\rangle
+P_{m_2' n'}^{ \sigma' ({\bf k-q})}
+\sum_{m_1'm_2 }
+P_{m_2  n'}^{*\sigma' ({\bf k-q})}
+\langle
+u_{m_2 {\bf k-q}}^{\sigma' }
+|e^{-i \bf (G'-q)r'} |
+u_{m_1'{\bf k  }}^{ \sigma  }
+\rangle
+P_{m_1' n }^{ \sigma  ({\bf k  })}
+</math>
+The projector method usually results in larger (smaller) Hubbard-Kanamori interactions than the weighted-cRPA (disentanglement-cRPA) method.
+{{NB|mind|The projector method is the default cRPA.}}
+
+==== Caveats of p-cRPA====
+The p-cRPA method employs a regularization of the projectors. This regularization is not conserving the number of electrons.{{cite|kaltak:prb:2025}}
+As a consequence, the long-wave limit calculated from k-p perturbation theory can become negative and deteriorate '''k'''-point convergence drastically.
+For such cases, the {{FILE|WAVEDER}} file should be deleted before the cRPA step. Other cRPA methods do not suffer from this problem and the usage of the long-wave limit is strongly encouraged.
+
+=== Spectral-cRPA method (s-cRPA) ===
+The spectral-cRPA method (s-cRPA) is a robust approach that remedies the main drawbacks of both w-cRPA and p-cRPA.{{cite|kaltak:prb:2025}}
+This method uses the eigenspectrum of the original projectors
+::<math>
+P_{nm}^{({\bf k})} \approx \Theta_{n}^{({\bf k})}\delta_{nm}
+</math>
+where the eigenvalues <math>\Theta_{n}^{({\bf k})}</math> are ordered by the leverage score. The leverage score measures how strongly each Bloch state contributes to the Wannier orbitals in the target space.
+At each '''k'''-point, it selects exactly <math>N</math> target states (typically <math>N=5</math> for d-electrons). Bloch states with the strongest contribution from Wannier orbitals are included in the calculation of the correlated polarizability <math>\tilde\chi</math>, while states with the weakest contribution are neglected and allowed to screen the effective interaction.
+
+The key advantages of s-cRPA are:
+* '''Positive interactions''': The electron number is always conserved (in contrast to p-cRPA)
+* '''Largest interaction values''': removes most intra-d screening effects (in contrast to w-cRPA)
+{{NB|mind|Select the s-cRPA method with {{TAG|LSCRPA}}.}}
+{{NB|tip|Recommended for all cRPA calculations as of VASP version 6.6.0}}
+
+== Off-center interactions ==
+Off-center Coulomb integrals can be evaluated using {{TAG|ALGO|2e4wa}} or by adding {{TAG|LTWO_CENTRE|T}}.
+
+When chosen, the system calculates two types of integrals:
+
+* Bare integrals (stored in the {{FILE|VRijkl}} file)
+::<math>
+V_{ijkl}^{\sigma\sigma'} =  \int {\rm d}{\bf r}\int {\rm d}{\bf r}'
+\frac{w_{i}^{*\sigma}({\bf r}) w_{j}^{\sigma}({\bf r}) w_{k}^{*\sigma'}({\bf r}'+{\bf R}) w_{l}^{\sigma'}({\bf r}'+{\bf R})}{|{\bf r}-{\bf r}'|}
+</math>
+* Effectively screened integrals (stored in the {{FILE|URijkl}} file)
+::<math>
+U_{ijkl}^{\sigma\sigma'} =  \int {\rm d}{\bf r}\int {\rm d}{\bf r}'
+w_{i}^{*\sigma}({\bf r}) w_{j}^{\sigma}({\bf r}) U({\bf r},{\bf r}',\omega)
+w_{k}^{*\sigma'}({\bf r}'+{\bf R}) w_{l}^{\sigma'}({\bf r}'+{\bf R})
+</math>
+
+The extent of displacement vectors <math>{\bf R}</math> is automatically determined based on the selected '''k'''-point grid.
+
+The calculation of these integrals occurs as a post-processing step. For bare, off-center Coulomb integrals ({{FILE|VRijkl}}), a valid {{FILE|WAVECAR}} file must be present in the working directory. For effectively screened Coulomb integrals ({{FILE|URijkl}}), both a valid {{FILE|WAVECAR}} file and {{FILE|WFULLxxxx.tmp}} files are required. The {{FILE|WFULLxxxx.tmp}} files are automatically generated following a successful {{TAG|ALGO|CRPA}} job.
+
+The basis orbitals can be selected with {{TAG|LOCALIZED_BASIS}}.
+{{Available|6.6.0}}
+
+== Additional resources ==
+=== Lectures ===
+* {{Video|optical:merzuk:2025|Optical gap and the constrained random-phase approximation}}
+
+== Related tags and articles ==
+{{TAG|ALGO}},
+{{TAG|NTARGET_STATES}},
+{{TAG|NCRPA_BANDS}},
+{{TAG|LOCALIZED_BASIS}},
+{{TAG|LDISENTANGLED}},
+{{TAG|LWEIGHTED}},
+{{TAG|NUM_WANN}},
+{{TAG|WANNIER90_WIN}},
+{{TAG|ENCUTGW}},
+{{TAG|VCUTOFF}},
+{{TAG|VIJKL}},
+{{TAG|UIJKL}},
+{{TAG|URijkl}},
+{{TAG|VRijkl}},
+{{TAG|LTWO_CENTRE}},
+{{FILE|WFULLxxxx.tmp}}
+
+[[CRPA_of_SrVO3|cRPA of SrVO3]],
+[[Bandstructure and CRPA of SrVO3]]
+
+== References ==
+<references/>
+
+[[Category:Theory]][[Category:Many-body perturbation theory]][[Category:Constrained-random-phase approximation]][[Category:Wannier functions]][[Category:Strongly correlated electrons]]

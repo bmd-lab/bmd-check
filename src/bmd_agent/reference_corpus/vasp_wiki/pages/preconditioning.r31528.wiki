@@ -1,0 +1,34 @@
+The idea is to find a matrix that multiplied with the residual vector gives the
+exact error in the wavefunction. Formally this matrix (the Greens function) can be written
+down and is given by
+
+::<math>
+ \frac{1}{{\bf H} - \epsilon_n},
+</math>
+
+where <math> \epsilon_n</math> is the exact eigenvalue for the band in interest.
+Actually the evaluation of this matrix is not possible, recognizing that the
+kinetic energy dominates the Hamiltonian for large <math>\mathbf{G}</math>-vectors
+(i.e. <math>H_{\mathbf{G},\mathbf{G'}} \to \delta_{\mathbf{G},\mathbf{G'}} \frac{\hbar^2}{2m} \mathbf{G}^2</math>), it
+is  a good idea to approximate the matrix by a diagonal
+function which converges to  <math>\frac{2m}{\hbar^2 \mathbf{G}^2}</math> for large <math>\mathbf{G}</math> vectors, and possess
+a constant value for small <math>\mathbf{G}</math> vectors.
+We actually use the preconditioning function proposed by Teter et. al{{cite|teter:prb:1989}}
+
+::<math>
+ \langle \mathbf{G} | {\bf K} | \mathbf{G'}\rangle = \delta_{\mathbf{G} \mathbf{G'}} \frac{ 27 + 18 x+12 x^2 + 8x^3}
+      {27 + 18x + 12x^2+8x^3 +16x^4} \quad \mbox{and} \quad
+   x = \frac{\hbar^2}{2m} \frac{G^2} {1.5 E^{\rm kin}( \mathbf{R}) },
+</math>
+
+with <math>E^{\rm kin}(\mathbf{R})</math> being the kinetic energy of the residual vector.
+The preconditioned residual vector is then simply
+
+::<math>
+| p_n \rangle = {\bf K} |  R_n \rangle.
+</math>
+
+== References ==
+<references/>
+----
+[[Category:Electronic minimization]][[Category:Theory]]

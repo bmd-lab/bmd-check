@@ -260,6 +260,33 @@ def write_manifest(
     rewrite_sums(directory)
 
 
+def write_unpopulated_corpus(directory: Path, readme: bytes | None = None) -> Path:
+    """An unpopulated corpus (the release-ledger anchor only), as the committed
+    corpus was before its first population. Maintainer-tool tests start from
+    it so that they exercise first acquisitions independently of the packaged
+    corpus release."""
+
+    manifest = corpus.unpopulated_manifest()
+    releases = {
+        "schema": corpus.RELEASES_SCHEMA,
+        "schema_version": corpus.SCHEMA_VERSION,
+        "releases": [corpus.unpopulated_release_anchor()],
+    }
+    if readme is None:
+        readme = (Path(__file__).resolve().parents[1] / "src" / "bmd_agent" / "reference_corpus" / "vasp_wiki" / "README.md").read_bytes()
+    files = {
+        corpus.MANIFEST_FILE: corpus.canonical_manifest_bytes(manifest),
+        corpus.RELEASES_FILE: corpus.canonical_releases_bytes(releases),
+        corpus.NOTICE_FILE: corpus.render_notice(manifest),
+        corpus.README_FILE: readme,
+    }
+    directory.mkdir(parents=True)
+    for name, data in files.items():
+        (directory / name).write_bytes(data)
+    (directory / corpus.SHA256SUMS_FILE).write_bytes(corpus.render_sha256sums(files))
+    return directory
+
+
 def build_synthetic_fixture(directory: Path) -> None:
     build_corpus(directory)
 
@@ -299,6 +326,21 @@ class FakeWiki:
         self.license_text = TEST_AUTHORITATIVE_LICENSE_TEXT
         self.requests: list[str] = []
         self.mutate: Callable[[dict[str, Any], dict[str, str]], Any] | None = None
+        # Discovery support (``fetch --all``).
+        self.categories: dict[str, list[str]] = {}
+        self.other_namespace_pages: dict[int, list[str]] = {}
+        self.namespaces: dict[int, tuple[str, bool]] = {
+            0: ("", True),
+            1: ("Talk", False),
+            2: ("User", False),
+            6: ("File", False),
+            10: ("Template", False),
+            14: ("Category", False),
+        }
+        self.list_limit = 500
+        self.category_page_size = 10_000
+        self.content_batch_limit = 50  # larger batches get a continuation
+        self.redirect_page_ids: dict[str, int] = {}
 
     def add_page(self, title: str, page_id: int, revisions: Sequence[FakeRevision]) -> None:
         self.pages[title] = (page_id, list(revisions))
@@ -310,10 +352,20 @@ class FakeWiki:
             assert expected == "text"
             return self.license_text
         params = dict(parse_qsl(parts.query, keep_blank_values=True))
-        if params.get("meta") == "siteinfo":
-            payload: Any = {"batchcomplete": True, "query": {"general": dict(self.general), "rightsinfo": dict(self.rights)}}
+        if params.get("meta") == "siteinfo" and params.get("siprop") == "namespaces":
+            payload: Any = {"batchcomplete": True, "query": {"namespaces": self._namespaces()}}
+        elif params.get("meta") == "siteinfo":
+            payload = {"batchcomplete": True, "query": {"general": dict(self.general), "rightsinfo": dict(self.rights)}}
+        elif params.get("list") == "allpages":
+            payload = self._allpages(params)
+        elif params.get("prop") == "categories":
+            payload = self._categories(params)
+        elif "revids" in params and "inprop" not in params:
+            payload = self._by_revisions([int(item) for item in params["revids"].split("|")])
         elif "revids" in params:
             payload = self._by_revision(int(params["revids"]), params)
+        elif "|" in params.get("titles", ""):
+            payload = self._by_titles(params["titles"].split("|"), params)
         else:
             payload = self._by_title(params["titles"], params)
         if self.mutate is not None:
@@ -325,6 +377,113 @@ class FakeWiki:
         except UnicodeEncodeError:
             # Lone surrogates can only travel as JSON escapes, as a server would send them.
             return json.dumps(payload, ensure_ascii=True).encode("ascii")
+
+    def _namespaces(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
+            "-2": {"id": -2, "case": "first-letter", "name": "Media", "canonical": "Media"},
+            "-1": {"id": -1, "case": "first-letter", "name": "Special", "canonical": "Special"},
+        }
+        for number, (name, content) in self.namespaces.items():
+            item: dict[str, Any] = {"id": number, "case": "first-letter", "name": name}
+            if name:
+                item["canonical"] = name
+            if content:
+                item["content"] = True
+            result[str(number)] = item
+        return result
+
+    def _allpages(self, params: Mapping[str, str]) -> dict[str, Any]:
+        namespace = int(params["apnamespace"])
+        redirects = params.get("apfilterredir") == "redirects"
+        if namespace == 0:
+            if redirects:
+                entries = sorted((title, self._redirect_id(title)) for title in self.redirects)
+            else:
+                entries = sorted((title, page_id) for title, (page_id, _) in self.pages.items())
+        else:
+            entries = [] if redirects else [
+                (title, 100_000 + namespace * 1_000 + index)
+                for index, title in enumerate(sorted(self.other_namespace_pages.get(namespace, [])))
+            ]
+        start = params.get("apcontinue")
+        if start is not None:
+            entries = [entry for entry in entries if entry[0].replace(" ", "_") >= start]
+        limit = min(int(params["aplimit"]), self.list_limit)
+        chunk, rest = entries[:limit], entries[limit:]
+        payload: dict[str, Any] = {
+            "query": {"allpages": [{"pageid": page_id, "ns": namespace, "title": title} for title, page_id in chunk]}
+        }
+        if rest:
+            payload["continue"] = {"apcontinue": rest[0][0].replace(" ", "_"), "continue": "-||"}
+        else:
+            payload["batchcomplete"] = True
+        return payload
+
+    def _redirect_id(self, title: str) -> int:
+        if title not in self.redirect_page_ids:
+            self.redirect_page_ids[title] = 90_000 + sorted(self.redirects).index(title)
+        return self.redirect_page_ids[title]
+
+    def _categories(self, params: Mapping[str, str]) -> dict[str, Any]:
+        titles = params["titles"].split("|")
+        pairs = [(title, category) for title in titles for category in sorted(self.categories.get(title, []))]
+        offset = int(params.get("clcontinue", "0"))
+        chunk = pairs[offset : offset + self.category_page_size]
+        pages = []
+        for title in titles:
+            page_id = self.pages[title][0] if title in self.pages else None
+            entry: dict[str, Any] = {"ns": 0, "title": title}
+            if page_id is None:
+                entry["missing"] = True
+            else:
+                entry["pageid"] = page_id
+            mine = [{"ns": 14, "title": category} for owner, category in chunk if owner == title]
+            if mine:
+                entry["categories"] = mine
+            pages.append(entry)
+        payload: dict[str, Any] = {"query": {"pages": pages}}
+        if offset + self.category_page_size < len(pairs):
+            payload["continue"] = {"clcontinue": str(offset + self.category_page_size), "continue": "||"}
+        else:
+            payload["batchcomplete"] = True
+        return payload
+
+    def _by_titles(self, requested: Sequence[str], params: Mapping[str, str]) -> dict[str, Any]:
+        query: dict[str, Any] = {"pages": []}
+        with_revisions = "revisions" in params.get("prop", "")
+        if with_revisions and len(requested) > self.content_batch_limit:
+            first = self._by_titles(requested[: self.content_batch_limit], params)
+            first["continue"] = {"rvcontinue": "1|2", "continue": "||"}
+            first.pop("batchcomplete", None)
+            return first
+        seen_hops: set[str] = set()
+        for title in requested:
+            # Like ApiPageSet, follow redirect chains hop by hop and report
+            # every hop once; omit the key entirely when nothing resolves.
+            visited = {title}
+            while params.get("redirects") == "1" and title in self.redirects:
+                if title not in seen_hops:
+                    query.setdefault("redirects", []).append({"from": title, "to": self.redirects[title]})
+                    seen_hops.add(title)
+                title = self.redirects[title]
+                if title in visited:
+                    break
+                visited.add(title)
+            if title not in self.pages:
+                query["pages"].append({"ns": 0, "title": title, "missing": True})
+                continue
+            page_id, revisions = self.pages[title]
+            query["pages"].append(self._page(title, page_id, revisions[-1] if with_revisions else None))
+        return {"batchcomplete": True, "query": query}
+
+    def _by_revisions(self, revids: Sequence[int]) -> dict[str, Any]:
+        pages: dict[int, dict[str, Any]] = {}
+        for title, (page_id, revisions) in self.pages.items():
+            for revision in revisions:
+                if revision.revid in revids:
+                    entry = pages.setdefault(page_id, self._page(title, page_id, None))
+                    entry.setdefault("revisions", []).extend(self._page(title, page_id, revision)["revisions"])
+        return {"batchcomplete": True, "query": {"pages": list(pages.values())}}
 
     @staticmethod
     def normalize(title: str) -> str:

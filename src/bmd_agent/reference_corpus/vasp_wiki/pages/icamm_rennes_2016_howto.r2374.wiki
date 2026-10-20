@@ -1,0 +1,57 @@
+Here is a brief tutorial on how to run a calculation and how to run post-treatment tools during the VASP training school in Rennes.
+* '''First thing to do''':
+<ol>
+:<li>launch terminal:</li>
+:go to '''openSUSE''' booklet (down left of the screen), select '''Système''' and choose '''Terminal'''
+:<li>source the environment via the following command:</li>
+:<code>source /etc/bash.bashrc</code>
+:<li>export the proper LC_NUMERIC environment using the following command:</li>
+:<code>export LC_NUMERIC="en_US.UTF-8"</code>
+:<li>execute to following command:
+:<code>/bin/bash</code>
+</ol>
+* '''VASP calculations''': 
+::3 versions of the VASP code are available:
+<ol>
+
+:<li>the so-called ''standard'' version which allows you to make ''standard'' calculation with several K-points</li>
+:To use it, enter the following command on a terminal
+
+:<code>vasp_std</code>
+
+:<li>the so-called ''non-colinear'' version which allows you to make ''non-colinear'' calculation with several K-points</li>
+:To use it, enter the following command on a terminal
+
+:<code>vasp_ncl</code>
+
+:<li>the so-called ''gamma'' version which allows you to make ''gamma'' calculation but with only 1 K-point</li>
+:To use it, enter the following command on a terminal
+
+:<code>vasp_gam</code>
+</ol>
+
+:'''Please always keep in mind that our local workstation are quite limited so please avoid to run two VASP calculations simultaneously.'''
+
+*'''wannier90'''
+:To use wannier90, use the following command:
+:<code>/ICAMM/wannier/wannier90-1.2/wannier90.x</code>
+
+*'''phonopy'''
+:To use phonopy, use the following command:
+:<code>phonopy</code>
+
+* '''Gnuplot''':
+:Gnuplot is a portable command-line driven graphing utility.
+:To use it, enter the following command on a terminal
+
+:<code>gnuplot</code>
+
+:For more infos about gnuplot, visit the [http://www.gnuplot.info following website]
+
+* '''p4vasp''':
+To use the p4vasp visualization software, use the following command:
+:<code>p4v</code>
+
+* '''vmd''':
+To use the vmd visualization software, use the following command:
+:<code>vmd</code>

@@ -1,0 +1,135 @@
+In the {{TAG|ICONST}} file, geometric parameters are defined, which are then monitored or controlled in a molecular-dynamics simulation. For instance, the distance between two sites can be constrained or affected by the action of a bias potential. Finally, VASP writes the output to the {{TAG|REPORT}} file.
+
+== Overview ==
+Two kinds of geometric parameters can be defined: 
+primitive parameters (e.g., bond lengths or angles), and complex parameters (i.e., linear combinations of primitive coordinates). Each line defines one coordinate, and the complex coordinates must be defined after all primitive ones. 
+The syntax reads as follows:
+
+ flag item(1) ... item(N) status
+ ...
+ ...
+ flag  c_1  ...  c_M  status
+
+where <code>flag</code> specifies the type of primitive coordinate, <code>item(1) ... item(N)</code> is a space-separated list of integers that, e.g., specifies the ions enumerated in the order they appear in the {{TAG|POSCAR}} file (starting at 1), and <code>status</code> is an integer that sets the status, e.g., constrained or monitored. Here, the first line defines the syntax of a primitive coordinates <math>q_i</math>. Assuming that <math>M</math> primitive coordinates were specified on the first <math>M</math> lines of the {{TAG|ICONST}} file, the last line defines a complex coordinate, where <code>c_1  ...  c_M</code> is a space-separated list of the coefficients <math>c_i</math> for the primitive coordinate defined in line <math>i</math>. 
+
+For instance, the following {{TAG|ICONST}} file defines two primitive coordinates and one complex coordinate.
+ R 1 6 0
+ R 1 5 0
+ S 1 -1 0
+The first two lines define the bonds between atom <math>1</math> and atom <math>6</math>, and between atom <math>1</math> and <math>5</math>. The complex coordinate is the difference between the two bond lengths, which is defined on the third line.
+
+== Settings for <code>flag</code> ==
+===In case of primitive coordinates===
+*<code>flag</code> = R: interatomic distance between atoms <code>item(1)</code> and <code>item(2)</code>.
+*<code>flag</code> = A: angle defined by atoms <code>item(1)</code>, <code>item(2)</code> and <code>item(3)</code> (with the atom <code>item(2)</code> being the apex).
+*<code>flag</code> = T: torsional angle defined by atoms <code>item(1)</code>, <code>item(2)</code>, <code>item(3)</code> and <code>item(4)</code>.
+*<code>flag</code> = M: distance between atom <code>item(1)</code> and the center of bond between atoms <code>item(2)</code> and <code>item(3)</code>.
+*<code>flag</code> = B: distance between the center of bond between atoms <code>item(1)</code> and <code>item(2)</code> and the center of bond between atoms <code>item(3)</code> and <code>item(4)</code>
+*<code>flag</code> = P: ratio of length of the bond between atoms <code>item(1)</code> and <code>item(2)</code> and the length of the bond between atoms <code>item(3)</code> and <code>item(4)</code>
+*<code>flag</code> = W: function <math>\frac{1-\left(R/c\right)^M}{1-\left(R/c\right)^{N}}</math> with <math>R</math> being the bond length (in <math>\AA</math>) between the atoms <code>item(1)</code> and <code>item(2)</code>, <math>c</math> is the reference bond length specified as <code>item(3)</code>, and the exponents <math>M</math> and <math>N</math> are defined as <code>item(4)</code> and <code>item(5)</code>, respectively.
+*<code>flag</code> = X, Y, and Z: fractional (direct) coordinate of atom <code>item(1)</code> associated with the lattice vectors <math>a</math>, <math>b</math>, and <math>c</math>.
+*<code>flag</code> = cX, cY, and cZ: Cartesian coordinate of atom <code>item(1)</code> in the Cartesian directions <math>x</math>, <math>y</math>, and <math>z</math>, respectively.
+*<code>flag</code> = LR: length of lattice vector <code>item(1)</code>
+*<code>flag</code> = LA: angle between lattice vectors <code>item(1)</code> and <code>item(2)</code>
+*<code>flag</code> = LV: cell volume (no <code>item(i)</code> is defined in this case)
+
+===In case of complex coordinates===
+*<code>flag</code> = S: simple linear combination of primitive coordinates, i.e., <math>\left ( \xi=\sum_{i=1}^{M} c_i\,q_i \right)</math>.
+*<code>flag</code> = C: norm of the vector of primitive coordinates, which reads <math>\left( \xi=\sqrt{\sum_{i=1}^{M} \,(c_i\,q_i)^2} \right)</math>.
+*<code>flag</code> = D: coordination number<ref>[https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.90.238302 M. Iannuzzi, A. Laio, M. Parrinello, Phys. Rev. Lett. 90, 238302 (2003)]</ref>, i.e.,  <math>\left( \xi=\sum_{i=1}^{M} \frac{1-\left(q_{i}/c_{i}\right)^9}{1-\left(q_{i}/c_{i}\right)^{14}} \right)</math>.
+*<code>flag</code> = IS: path-based coordinate<ref name="branduardi:jcp:07">[https://aip.scitation.org/doi/abs/10.1063/1.2432340 D. Branduardi, F. L. Gervasio, M. Parinello, J. Chem. Phys. 126, 54103 (2007)]</ref> measuring progress along discretized path represented by <math> N </math> points <math> \tilde{q}(j) </math> predefined in file {{TAG|IRCCAR}}, i.e., <math>\xi=\frac{1}{N-1}\frac{\sum_{i=1}^{N}(i-1)\exp\left(-\sum_{j=1}^{M}c_{j}(q_{j}-\tilde{q}_{j}(i))^2 \right) }{\sum_{i=1}^{N} \exp\left(-\sum_{j=1}^{M}c_{j}(q_{j}-\tilde{q}_{j}(i))^2 \right)} </math>
+*<code>flag</code> = IZ: path-based coordinate<ref name="branduardi:jcp:07"/> measuring orthogonal distance from the path <math> \tilde{q} </math> predefined in file {{TAG|IRCCAR}}, i.e., <math>\xi=-\frac{1}{c_1} \log \sum_{i=1}^{N}\exp\left(-\sum_{j=1}^{M}c_{j}(q-\tilde{q}(i))^2 \right) </math> with 
+<math> N </math>  as defined above
+The complex coordinates are functions defined in the space spanned by the primitive coordinates.
+{{NB|mind|All complex coordinates must be defined after the last primitive coordinate. Whenever complex coordinates are defined, the primitive coordinates are only the basis for their definition, and their status is ignored.}}
+
+== Settings for <code>item(i)</code> ==
+
+It depends on the setting of <code>flag</code>. In most cases, <code>item(i)</code> is an integer specifying either the position of the atom or the lattice vector in the {{TAG|POSCAR}} file. Mind that two atoms are needed to define a bond length, three atoms are required for a bonding angle, etc. In the special case of the flag <code>W</code>, also some additional parameters, i.e., the reference bond length (generally a floating-point number) and exponents used in the definition (integers) are defined via <code>item(i)</code>. See the description of the corresponding <code>flag</code>. 
+
+== Settings for <code>status</code> ==
+
+* <code>status</code> = 0: the coordinate is constrained.
+* <code>status</code> = 3: Harmonic forcefield via {{FILE|HESSEMAT}} ({{TAG|TILAMBDA}})
+* <code>status</code> = 4: the coordinate is affected by a Fermi-type step function
+* <code>status</code> = 5: the coordinate defines the collective variable in [[Metadynamics_calculations|metadynamics]]
+* <code>status</code> = 7: the coordinate is monitored. Optionally, set the upper and/or lower limits for the coordinates by means of the {{TAG|VALUE_MAX}} and {{TAG|VALUE_MIN}} tags, respectively.
+* <code>status</code> = 8: the coordinate is affected by a harmonic potential ({{TAG|SPRING_R0}}, {{TAG|SPRING_K}})
+
+== Use cases and examples ==
+
+=== Define two constraints ===
+The following constrains the bond lengths between atoms 1 and 5, and between atoms 1 and 6.
+  R 1 5 0
+  R 1 6 0 
+
+=== Use complex coordinates === 
+Consider, for instance, the {{TAG|ICONST}} file with the following lines:
+ R 1 6 0
+ R 1 5 0
+ S 1 -1 0
+The first two lines define two primitive coordinates - bonds between the atoms <math>1</math> and <math>6</math>, and between the atoms <math>1</math> and <math>5</math>. The complex coordinate is the difference between the two bond lengths which is defined on the third line. Mind that whenever complex coordinates are defined, the primitives are used only as a basis for their definition. Consequently, the two primitive coordinates are not constrained in the simulation (despite <code>status</code>=0). Thus, the only controlled parameter is the complex coordinate. Therefore, to fix the first bond length and the complex coordinate at the same time, the {{TAG|ICONST}} file should be modified as follows:
+ R 1 6 0
+ R 1 5 0
+ S 1 -1 0
+ S 1 0 0
+
+Consider the same system as discussed above and assume that the reference distance for the bond between atoms 1 and 6 is 1.1 <math>\AA</math>, while that for the bond between 1 and 5 is 1.5 <math>\AA</math>.  
+The coordination number can be fixed in two equivalent ways.
+The first definition makes use of the complex type D, in which case the corresponding ICONST would be written like this:
+ R 1 6 0
+ R 1 5 0
+ D 1.1 1.5 0
+
+In this case, the exponents appearing in numerator and denominator of the defining formula for D (see above) are fixed at the values 9 and 14, respectively. Alternatively, one can fix the same coordination number using the W primitive and S complex coordinates. This can be accomplished as follows:
+ W 1 6 1.1 9 14 0
+ W 1 5 1.5 9 14 0
+ S 1 1 0
+
+The advantage of this format is that the coefficients M and N (see above the definition of W) can be set for each distance separately. Moreover, this format allows for an easy and intuitive definition of scaled sums of (and/or differences between) multiple coordination numbers - simply via a suitable choice of coefficients linked with S, which can be positive, negative, or zero.   
+
+=== Restrictions on the volume and/or shape of the simulation cell ===
+In the context of a [https://www.vasp.at/wiki/index.php/MDALGO#NpT-simulation_with_Langevin_thermostat molecular dynamics simulation in NpT ensemble], the {{TAG|ICONST}} file can be used to impose restrictions on the volume and/or shape of the simulation cell. The following examples cover some of the most important scenarios:   
+
+1.) Simulation with a constant cell volume and variable shape.  
+ LV 0
+2.) Variable lengths of lattice vectors but fixed lattice angles.  
+ LA 1 2 0
+ LA 1 3 0
+ LA 2 3 0
+3.) A cubic cell with variable volume but fixed shape. Note that the S type constraints involving the lengths of the lattice vectors (<math>a_i - a_j = 0</math>) are chosen so as to preserve ratios <math>a_1:a_2:a_3=1:1:1</math>, as required by the cubic shape.  
+ LA 1 2 0
+ LA 1 3 0
+ LA 2 3 0
+ LR 1 0
+ LR 2 0
+ LR 3 0
+ S  1  0  0  0  0  0 0
+ S  0  1  0  0  0  0 0
+ S  0  0  1  0  0  0 0
+ S  0  0  0  1 -1  0 0
+ S  0  0  0  1  0 -1 0
+ S  0  0  0  0  1 -1 0
+4.) An orthorhombic cell with variable volume but fixed shape. Here, in order to fix ratios between the lengths of the lattice vectors (<math>a_1:a_2:a_3</math>), 
+we define the constraints of the form <math>c_i*a_i + c_j*a_j = 0</math>.  For instance, if the cell vectors are such that the relative proportions of their lengths are <math>a_1:a_2:a_3=1:1.5:2</math>,  the following {{TAG|ICONST}} can be used:  
+ LA 1 2 0
+ LA 1 3 0
+ LA 2 3 0
+ LR 1 0
+ LR 2 0
+ LR 3 0
+ S  1  0  0  0      0    0 0
+ S  0  1  0  0      0    0 0
+ S  0  0  1  0      0    0 0
+ S  0  0  0  1.5 -1.0  0.0 0
+ S  0  0  0  2.0  0.0 -1.0 0
+ S  0  0  0  0.0  4.0 -3.0 0
+{{NB|mind| Note that {{TAG|ICONST}} can only be used in molecular dynamics simulations {{TAG|IBRION|0}}.}}
+==Related tags and articles==
+{{TAG|SHAKETOL}},
+{{TAG|SHAKEMAXITER}},
+{{TAG|MDALGO}}, {{FILE|REPORT}}
+
+==References==
+
+[[Category:Files]][[Category:Input files]][[Category:Symmetry]][[Category:Molecular dynamics]][[Category:Advanced molecular-dynamics sampling]][[Category:Ensemble properties]]

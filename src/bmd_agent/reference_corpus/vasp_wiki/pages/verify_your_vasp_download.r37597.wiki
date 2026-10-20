@@ -1,0 +1,78 @@
+Every VASP release on the download portal is published together with a signed
+checksums file, so you can confirm that the files you downloaded are both
+'''authentic''' (genuinely from VASP Software GmbH) and '''intact''' (not corrupted
+or altered in transit). We recommend verifying every download, especially
+before installing on shared or HPC systems.
+
+For each release you will find three items on the portal:
+
+* the release archive(s), e.g. <code>vasp.<version>.tgz</code>
+* <code>SHA256SUMS_<version></code> — the SHA-256 checksums of the release files
+* <code>SHA256SUMS_<version>.asc</code> — our detached GPG signature of the <code>SHA256SUMS_<version></code> file
+
+You need [https://gnupg.org GnuPG] installed (<code>gpg</code>), which is already
+available on most Linux and HPC systems.
+
+== One-time setup: import and verify our signing key ==
+
+[[:File:vasp-release-pubkey.asc | Download our public signing key]] and import it:
+
+ gpg --import vasp-release-pubkey.asc
+
+Then confirm the key's fingerprint:
+
+ gpg --fingerprint "VASP Software GmbH (release signing)"
+
+The fingerprint shown must exactly match:
+
+ B6B8 DA17 E026 0987 9C3A  A6A7 0AB6 9231 7329 6690
+
+(Check this against [https://www.vasp.at/info/faq/verification/ the value on our website] as well for additional security.) 
+
+You only need to do this once.
+
+== For each download: verify the signature, then the checksums ==
+
+Run both commands in the directory containing the downloaded files.
+
+=== 1. Confirm the checksums file is authentic: ===
+
+ gpg --verify SHA256SUMS_<version>.asc SHA256SUMS_<version>
+
+Look for a line reading <code>Good signature from "VASP Software GmbH ..."</code>. 
+{{NB|mind|Seeing the following warning is normal:
+ WARNING: This key is not certified with a trusted signature!
+          There is no indication that the signature belongs to the owner.</code> 
+It means that GnuPG does not trust this public key because you have not marked the key as [https://www.gnupg.org/faq/gnupg-faq.html#define_trust trusted]. The key fingerprint will also be given and '''must''' match the one above.
+}}
+
+=== 2. Confirm your downloaded files match the checksums: ===
+
+ sha256sum -c SHA256SUMS_<versions>
+
+(On macOS, use <code>shasum -a 256 -c SHA256SUMS_<version></code> instead.)
+
+Each file should report <code>OK</code>.
+
+== Interpreting the result ==
+
+{| class="wikitable"
+! What you see !! Meaning
+|-
+| <code>Good signature</code> '''and''' every file reports <code>OK</code> || The download is authentic and intact. Proceed with installation.
+|-
+| <code>gpg: WARNING: This key is not certified with a trusted signature!</code> || '''Normal, not an error.''' It appears whenever a key has not been marked as trusted on your machine. As long as you verified the fingerprint above, the signature is valid.
+|-
+| <code>BAD signature</code>, or any file reports <code>FAILED</code> || '''Do not use the files.''' Re-download the release. If the problem persists, contact us at '''support@vasp.at'''.
+|-
+| <code>Can't check signature: No public key</code> || You have not imported our signing key. Return to the one-time setup step above.
+|}
+
+If you have any doubt about the integrity of a download, stop and contact us at
+'''support@vasp.at''' before installing.
+
+== Related tags and articles ==
+[[Installing VASP.6.X.X]], [[Personal computer installation]], [https://vasp.at/info/faq/verification/ Verification FAQ]
+
+[[Category:VASP]]
+[[Category:Installation]]
