@@ -23,3 +23,14 @@ and `SHA256SUMS` files in that directory are BMD-authored metadata.
 
 VASP itself, POTCAR/PAW datasets and other third-party dependencies remain
 governed by their own licenses and access terms.
+
+## Recorded VASP test fixtures (pymatgen)
+
+Location: `tests/fixtures/electronic_character/`
+
+The `*.vasprun.xml.gz` files are unmodified copies of recorded VASP outputs
+from the pymatgen test suite (commit `52e69c26e45b0205e4f5206e30c94a0619c0d64a`).
+They are distributed under pymatgen's MIT License, reproduced in
+`tests/fixtures/electronic_character/LICENSE.pymatgen`; the directory's
+`README.md` lists each file's upstream path and SHA-256. They are test data
+only and are not part of the installed package.

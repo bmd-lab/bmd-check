@@ -140,6 +140,74 @@ bmd-check remains independently callable on a cluster with these same commands.
 Its Python interfaces may also be called by bmd-compute in the future, but this
 repository does not implement that integration.
 
+## Electronic character assessment
+
+```bash
+bmd-check assess electronic-character RUN_ROOT [--stage-index N] [--format json]
+```
+
+This read-only assessment reports whether one completed VASP stage supports
+classifying the calculated system as `metallic` or `nonmetallic`; otherwise it
+reports `uncertain`. A workflow with several declared stages requires
+`--stage-index`. It reads only that stage's `vasprun.xml` and the same local
+completion evidence used by `assess completion`; it contacts no scheduler and
+writes nothing.
+
+The method (`electronic_character`, method version `1.0.0-c2`) counts
+electrons per spin channel and examines band dispersion relative to the Fermi
+level:
+
+- a clearly fractionally filled channel with a band clearly crossing the Fermi
+  level, or a clearly integer-filled channel whose valence and conduction bands
+  overlap across it, is metallic; one such channel in a collinear
+  spin-polarized calculation is enough (a half-metal is metallic);
+- every channel clearly integer-filled, with no band edge passing the Fermi
+  level by more than 0.01 eV and a gap of at least 0.1 eV that is also at least
+  four times `SIGMA` for smearing methods, is nonmetallic;
+- evidence between these criteria (near-integer filling, shallow Fermi-level
+  crossings, small band overlaps) is `uncertain`;
+- noncollinear and spin-orbit calculations are treated as one spinor channel.
+
+Sampling density is accepted only from a k-point mesh that VASP generated and
+recorded in `vasprun.xml` (`Gamma`, `Monkhorst-Pack` or `Auto`), and only when
+every weighted k-point lies on that mesh and the weights are integer symmetry
+multiplicities of it. Explicit k-point lists never establish a mesh. Every
+numerical input is validated; NaN, infinite or malformed values give
+`uncertain` with `INVALID_NUMERICAL_EVIDENCE`. A recorded `NELECT` that is not
+an integer (beyond 1e-6) is a deliberately fractional electron count and gives
+`uncertain`; occupations must reproduce `NELECT` within 0.005 electrons.
+`NBANDS` must be recorded and must equal the number of bands present in every
+spin channel, otherwise the result is `uncertain`.
+Published band edges, gaps and gap types all come from one named evidence set
+(`band_edge_evidence`), which includes zero-weight k-points when present. Band
+extrema within 1 meV are treated as degenerate and counted; the gap is `direct`
+when one k-point holds both extrema, `indirect` when the smallest same-k gap
+is at least 10 meV larger, and `undetermined` in between. Two k-points are the
+same when their reduced coordinates differ by at most 1e-4 on every axis after
+removing reciprocal-lattice vectors. A chain of such matches that joins points
+further apart than that is ambiguous and sets `kpoint_equivalence_ambiguous`.
+If it could set the smallest direct gap, `min_direct_gap_ev` is withheld
+(`null`) and only `min_direct_gap_lower_bound_ev` is reported; `direct` then
+requires an unambiguous k-point, `indirect` requires the lower bound to clear
+10 meV, and anything else is `undetermined`.
+
+Fractional occupations caused by smearing never establish metallicity, and a
+small gap never establishes nonmetallicity. Unconverged or unfinished stages,
+truncated or missing `vasprun.xml`, a missing Fermi level, a single k-point,
+meshes coarser than 0.5 1/Angstrom, unverified meshes, band paths,
+non-self-consistent runs without a verified mesh, too few bands,
+contradictory occupations, fixed-occupation runs and many-body methods all
+give `uncertain`. Every threshold is listed in the JSON output under
+`thresholds`; they are provisional tolerances, not validated physical
+boundaries.
+
+The JSON contract (`bmd_check.electronic_character_assessment`, schema version
+1) contains the classification, assessment status, structured reason codes,
+per-channel band-edge evidence, k-point and spin information, provenance and
+limitations. It contains no eigenvalue arrays, POTCAR data or absolute paths.
+bmd-check does not choose `ISMEAR`, `SIGMA` or any other VASP setting; any
+mapping from this classification to methodology belongs to bmd-compute.
+
 ## bmd-compute run records
 
 For bmd-compute runs, bmd-check reads two bmd-compute-owned records: the Prepare-time
