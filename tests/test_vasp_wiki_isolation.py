@@ -88,15 +88,52 @@ def test_reference_corpus_package_contains_no_code() -> None:
     assert not list(PACKAGED.rglob("*.py"))
 
 
-def test_no_existing_bmd_check_module_consumes_the_corpus_in_r1() -> None:
+INDEX_MODULE = SRC / "vasp_manual_index.py"
+GUIDANCE_MODULE = SRC / "resources" / "manual_guidance.py"
+INDEX_ALLOWED_IMPORTS = {"__future__", "bmd_agent", "collections.abc", "dataclasses", "functools", "hashlib", "html", "math", "re", "typing"}
+
+
+def test_only_the_manual_index_consumes_the_corpus_and_only_guidance_consumes_the_index() -> None:
+    """R3 boundary: the corpus is read by the loader, indexed by
+    ``vasp_manual_index`` and consulted only through ``manual_guidance``."""
+
     for path in SRC.rglob("*.py"):
         if path in (RUNTIME_MODULE, SRC / "reference_corpus" / "__init__.py"):
             continue
         source = path.read_text(encoding="utf-8")
         modules = _imported_modules(_tree(path))
+        assert "fetch_corpus" not in source and "tools.vasp_reference" not in source, path
+        if path == INDEX_MODULE:
+            continue
         assert not any("vasp_wiki_corpus" in module or "reference_corpus" in module for module in modules), path
         assert "vasp_wiki_corpus" not in source and "reference_corpus" not in source, path
-        assert "fetch_corpus" not in source and "tools.vasp_reference" not in source, path
+        if path != GUIDANCE_MODULE:
+            assert "vasp_manual_index" not in source, path
+
+
+def test_manual_index_imports_only_pure_standard_library_modules_and_never_prints_or_writes() -> None:
+    tree = _tree(INDEX_MODULE)
+    assert _imported_modules(tree) <= INDEX_ALLOWED_IMPORTS
+    forbidden_names = {"eval", "exec", "compile", "__import__", "breakpoint", "input", "print", "open"}
+    forbidden_attributes = {"import_module", "system", "popen", "Popen", "run", "check_output", "urlopen",
+                            "connect", "write_text", "write_bytes", "mkdir", "unlink", "load_module", "exec_module"}
+    for path in (INDEX_MODULE, GUIDANCE_MODULE):
+        for node in ast.walk(_tree(path)):
+            if isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Name):
+                    assert node.func.id not in forbidden_names, (path, node.func.id)
+                if isinstance(node.func, ast.Attribute):
+                    assert node.func.attr not in forbidden_attributes, (path, node.func.attr)
+
+
+def test_guidance_module_imports_the_index_only_lazily() -> None:
+    tree = _tree(GUIDANCE_MODULE)
+    top_level = {
+        node.module
+        for node in tree.body
+        if isinstance(node, ast.ImportFrom) and node.module
+    } | {alias.name for node in tree.body if isinstance(node, ast.Import) for alias in node.names}
+    assert not any("vasp_manual_index" in module or "vasp_wiki_corpus" in module for module in top_level)
 
 
 def test_importing_and_running_bmd_check_does_not_load_the_corpus() -> None:

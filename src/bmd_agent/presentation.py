@@ -26,6 +26,11 @@ from bmd_agent.resources.custodian import (
     TerminationEvidenceAssessment,
 )
 from bmd_agent.resources.lifecycle import LifecycleAnalysis, LifecycleState
+from bmd_agent.resources.manual_guidance import (
+    GUIDANCE_AVAILABLE,
+    GUIDANCE_UNAVAILABLE,
+    ManualGuidance,
+)
 from bmd_agent.resources.oom import (
     INSUFFICIENT_OOM_EVIDENCE,
     NO_OOM_EVIDENCE,
@@ -41,6 +46,12 @@ from bmd_agent.resources.run import (
     WorkflowStage,
 )
 
+
+MANUAL_GUIDANCE_TITLE = "VASP manual guidance"
+MANUAL_GUIDANCE_CONCISE_FINDINGS = 2
+# Guidance is shown only once a calculation has stopped: findings for a queued,
+# running or not-yet-started calculation are not final.
+_MANUAL_GUIDANCE_STATUSES = frozenset({"FAILED", "INCOMPLETE", "UNKNOWN", "COMPLETED"})
 
 BMDEX_CONTEXT_TITLE = "Context from BMDex"
 BMDEX_CONTEXT_PREFACE = (
@@ -163,6 +174,7 @@ def build_lifecycle_concise_summary(
     *,
     contextual_enrichment: BmdexDomainContextEnrichment | None = None,
     detailed_evidence_command: str | None = None,
+    manual_guidance: ManualGuidance | None = None,
 ) -> ConciseDiagnosticSummary:
     """Build a concise local/path summary from the existing lifecycle analysis."""
 
@@ -231,6 +243,10 @@ def build_lifecycle_concise_summary(
             sections.append(ConciseSection("Progress", progress))
         sections.extend(section for section in unsuccessful if section.title == "Assessment")
 
+    guidance = manual_guidance_section(manual_guidance, status=status)
+    if guidance is not None:
+        sections.append(guidance)
+
     return ConciseDiagnosticSummary(
         calculation_label=_lifecycle_calculation_label(analysis),
         status=status,
@@ -285,6 +301,54 @@ def render_concise_summary(summary: ConciseDiagnosticSummary) -> str:
             )
         )
     return "\n".join(lines) + "\n"
+
+
+def manual_guidance_section(
+    guidance: ManualGuidance | None,
+    *,
+    status: str,
+) -> ConciseSection | None:
+    """Concise, cited guidance for the most significant findings.
+
+    BMD Check's own finding ("Observed") is kept separate from what the VASP
+    Wiki says ("VASP Wiki ...", quoted) and from the suggested next step.
+    """
+
+    if guidance is None or status not in _MANUAL_GUIDANCE_STATUSES or not guidance.findings:
+        return None
+    if guidance.status == GUIDANCE_UNAVAILABLE:
+        return ConciseSection(
+            MANUAL_GUIDANCE_TITLE,
+            (
+                "VASP manual references are unavailable "
+                f"({(guidance.unavailable_reason or 'unknown reason').split(':', 1)[0]}); "
+                "the findings above do not depend on them.",
+            ),
+        )
+    if guidance.status != GUIDANCE_AVAILABLE:
+        return None
+    cited = [item for item in guidance.findings if item.references]
+    if not cited:
+        return None
+    lines: list[str] = []
+    for item in cited[:MANUAL_GUIDANCE_CONCISE_FINDINGS]:
+        reference = item.references[0]
+        where = reference.title + (f", {reference.section}" if reference.section else "")
+        if lines:
+            lines.append("")
+        lines.append(f"Observed: {item.finding.observed}")
+        lines.append(f'VASP Wiki ({where}): "{reference.excerpt}"')
+        if item.next_step:
+            lines.append(f"Next step: {item.next_step}")
+    remaining = len(guidance.findings) - min(len(cited), MANUAL_GUIDANCE_CONCISE_FINDINGS)
+    lines.append("")
+    if remaining > 0:
+        lines.append(f"{remaining} further finding(s) and all citations: see detailed evidence.")
+    lines.append(
+        f"Quoted from the frozen VASP Wiki corpus {guidance.corpus_version} "
+        "(pinned revisions); the observations are BMD Check's own."
+    )
+    return ConciseSection(MANUAL_GUIDANCE_TITLE, tuple(lines))
 
 
 def _unsuccessful_job_sections(

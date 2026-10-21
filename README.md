@@ -331,8 +331,50 @@ reviewed through normal pull requests.
 Release 1.0.0 holds the complete public VASP Wiki documentation as of
 2026-10-20: 1,047 main-namespace pages (one further page is excluded under the
 archival character policy), with revision pinning, SHA-256 verification and
-recorded GFDL 1.2 licensing. bmd-check does not use it in its output yet. Preserved pages are third-party material; see
+recorded GFDL 1.2 licensing. Preserved pages are third-party material; see
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+### VASP manual guidance
+
+When `bmd-check` (or `bmd-check PATH`) finds a significant problem in a
+calculation that has stopped, it consults the frozen corpus and adds a short
+"VASP manual guidance" section:
+
+```
+VASP manual guidance
+--------------------
+Observed: The calculation: the final completed electronic cycle did not
+reach EDIFF = 1e-06 after using all NELM = 8 electronic iterations.
+VASP Wiki (Troubleshooting electronic convergence): "There can be many
+reasons why convergence to the electronic ground state fails. ..."
+Next step: Read the cited guidance on electronic convergence; BMD Check has
+not established the cause.
+```
+
+- **Observed** is BMD Check's own finding, restated from its existing
+  assessments (electronic and ionic convergence progress, memory evidence,
+  VASP log messages, workflow stage completion and, for completed
+  calculations, the electronic-character assessment). The manual never
+  changes those findings or any C1/C2 verdict.
+- **VASP Wiki** is a verbatim excerpt (markup simplified) of the
+  best-matching passage, retrieved from all 1,047 pages with a query built
+  from the evidence: the settings and criteria the finding involves, method
+  settings such as `LHFCALC`, `LDAU`, `ISPIN` or `METAGGA`, and distinctive
+  tokens of error messages. In a multistage workflow each finding is read
+  with the executed INCAR of its own stage only; settings are never taken
+  from another stage, and are omitted when that stage's INCAR is not
+  available. Passages whose own text is about a method that stage does not
+  use (hybrid functionals, DFT+U, GW, machine-learned force fields, phonons,
+  magnetism, ...) are excluded, in both the concise and the verbose output;
+  general guidance that only mentions such a method in passing is kept.
+- **Next step** never prescribes a value. A setting is named only when it is
+  set in this calculation and named in the cited passage.
+
+`--verbose` lists every finding with up to three citations: page title,
+section, pinned revision, permanent URL, corpus version and the quoted
+passage. If the corpus is missing or fails its integrity checks, the report
+says that references are unavailable and is otherwise unchanged. Successful
+calculations, running jobs and jobs inspected by SLURM job ID are unaffected.
 
 ## License
 
