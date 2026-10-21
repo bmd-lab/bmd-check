@@ -306,6 +306,35 @@ Examples include:
 - ML-derived predictions;
 - human scientific assessment.
 
+### Documentation evidence (R3)
+
+The frozen VASP Wiki corpus is reference evidence, not calculation evidence.
+`bmd_agent.resources.manual_guidance` restates findings that existing
+assessments already established and attaches passages retrieved from the
+corpus by `bmd_agent.vasp_manual_index` (an in-memory BM25 passage index
+derived from the verified corpus, never persisted). The data flow is one-way:
+
+    calculation evidence -> existing assessments (C1, C2, convergence, OOM)
+                         -> findings -> evidence-weighted query -> cited passages
+
+Retrieved passages never feed back into an assessment, a verdict or a
+completion state. Only `vasp_manual_index` reads the corpus, only
+`manual_guidance` reads the index, and the corpus is loaded only when a finding
+exists.
+
+Each finding carries the stage it comes from and that stage's executed
+settings: the stage's retained INCAR (`LocalExecutionDiagnostics.executed_inputs`)
+with its trajectory criteria taking precedence. Nothing is borrowed from
+another stage or from the analyzed directory's INCAR. Stage identity is the
+stage index within one workflow (labels only as a fallback; a C2 assessment
+must identify the same calculation). Out-of-memory evidence is attributed to
+the stage whose bound directory holds the decisive marker; evidence in several
+stages, or job-level evidence in a multistage workflow, attaches no stage
+settings. Method filtering is
+per finding and based on passage content: a passage whose text, title or
+heading is about a method the finding's stage does not use is excluded before
+ranking.
+
 ## 10. Tool boundaries
 
 bmd-check consumes controlled observational interfaces and evidence from

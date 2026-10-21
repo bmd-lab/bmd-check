@@ -200,6 +200,10 @@ class LocalExecutionDiagnostics:
     suggested_checks: tuple[str, ...] = ()
     oom: OomDiagnosticEvidence | None = None
     termination: TerminationEvidenceAssessment | None = None
+    # The retained INCAR of each stage with execution evidence (one entry per
+    # trajectory, same stage index and label), so that evidence about a stage
+    # can be read with that stage's own executed settings.
+    executed_inputs: tuple[IncarObservation, ...] = ()
 
 
 def analyze_calculation_directory(
@@ -802,6 +806,7 @@ def _derive_bmd_execution_diagnostics(
         trajectories,
         scheduler=scheduler,
         explicit_log_paths=declared_logs,
+        executed_inputs=tuple(_local_incar_observation(binding) for binding in bindings),
     )
 
 
@@ -815,7 +820,12 @@ def _derive_direct_execution_diagnostics(directory: Path) -> LocalExecutionDiagn
         label=None,
     )
     trajectory = _observe_local_stage_trajectory(binding, stage)
-    return _local_execution_diagnostics(directory, (directory,), (trajectory,))
+    return _local_execution_diagnostics(
+        directory,
+        (directory,),
+        (trajectory,),
+        executed_inputs=(_local_incar_observation(binding),),
+    )
 
 
 def _local_execution_diagnostics(
@@ -825,6 +835,7 @@ def _local_execution_diagnostics(
     *,
     scheduler: SlurmAccountingRecord | None = None,
     explicit_log_paths: Sequence[Path] = (),
+    executed_inputs: Sequence[IncarObservation] = (),
 ) -> LocalExecutionDiagnostics:
     unique_directories = _unique_paths((root, *directories))
     logs = _observe_local_logs(unique_directories, explicit_paths=explicit_log_paths)
@@ -857,6 +868,7 @@ def _local_execution_diagnostics(
         source_limitations.append("custodian.json could not be parsed for diagnostic evidence")
     return LocalExecutionDiagnostics(
         trajectories=tuple(trajectories),
+        executed_inputs=tuple(executed_inputs),
         assessments=assessments,
         logs=logs,
         custodian=custodian,

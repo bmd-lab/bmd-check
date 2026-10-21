@@ -69,6 +69,12 @@ from bmd_agent.resources.lifecycle import (
     LifecycleState,
     analyze_calculation_directory,
 )
+from bmd_agent.resources.manual_guidance import (
+    GUIDANCE_AVAILABLE,
+    GUIDANCE_UNAVAILABLE,
+    ManualGuidance,
+    build_manual_guidance,
+)
 from bmd_agent.resources.oom import MemoryObservation, OomDiagnosticEvidence
 from bmd_agent.resources.remote import ReusableSshSession
 from bmd_agent.resources.run import (
@@ -308,8 +314,13 @@ def show_current_directory(
         analysis,
         bmdex_repository(registry) if registry is not None else None,
     )
+    manual_guidance = lifecycle_manual_guidance(analysis)
     if verbose:
-        print_lifecycle_analysis(analysis, contextual_enrichment=contextual_enrichment)
+        print_lifecycle_analysis(
+            analysis,
+            contextual_enrichment=contextual_enrichment,
+            manual_guidance=manual_guidance,
+        )
     else:
         command = detailed_evidence_command or _path_detail_command(directory)
         print(
@@ -318,11 +329,38 @@ def show_current_directory(
                     analysis,
                     contextual_enrichment=contextual_enrichment,
                     detailed_evidence_command=command,
+                    manual_guidance=manual_guidance,
                 )
             ),
             end="",
         )
     return 0
+
+
+def lifecycle_manual_guidance(analysis: LifecycleAnalysis) -> ManualGuidance | None:
+    """VASP Wiki guidance for the findings of one local analysis.
+
+    Purely additive and fail-safe: it reuses the existing assessments (and,
+    for a completed calculation, the C2 electronic-character assessment), reads
+    only the packaged corpus, and never affects the scientific checks. Any
+    unexpected failure omits the guidance instead of the report.
+    """
+
+    if analysis.calculation_kind == "none" or analysis.state in (
+        LifecycleState.RUNNING,
+        LifecycleState.PRE_RUN,
+    ):
+        return None
+    try:
+        electronic = None
+        if analysis.state == LifecycleState.COMPLETED:
+            try:
+                electronic = assess_electronic_character(electronic_character_input_from_lifecycle(analysis))
+            except Exception:
+                electronic = None
+        return build_manual_guidance(analysis, electronic_character=electronic)
+    except Exception:
+        return None
 
 
 def show_completion_assessment(
@@ -453,6 +491,7 @@ def print_lifecycle_analysis(
     analysis: LifecycleAnalysis,
     *,
     contextual_enrichment: BmdexDomainContextEnrichment | None = None,
+    manual_guidance: ManualGuidance | None = None,
 ) -> None:
     """Print the detailed lifecycle evidence report."""
 
@@ -596,6 +635,51 @@ def print_lifecycle_analysis(
 
     if contextual_enrichment is not None:
         _print_bmdex_contextual_enrichment(contextual_enrichment)
+
+    if manual_guidance is not None:
+        print_manual_guidance(manual_guidance)
+
+
+def print_manual_guidance(guidance: ManualGuidance) -> None:
+    """Detailed findings, citations and provenance (verbose mode)."""
+
+    if not guidance.findings:
+        return
+    print("VASP manual guidance (vasp_manual_guidance):")
+    if guidance.status == GUIDANCE_UNAVAILABLE:
+        print(f"  references unavailable: {guidance.unavailable_reason}")
+        print("  findings are reported without citations; the scientific checks above are unaffected")
+    elif guidance.status == GUIDANCE_AVAILABLE:
+        print(f"  corpus: VASP Wiki {guidance.corpus_version} ({guidance.corpus_digest})")
+        print(f"  derived index: {guidance.index_identity}")
+    for number, item in enumerate(guidance.findings, start=1):
+        finding = item.finding
+        print(f"  finding {number}: {finding.kind}")
+        print(f"    observed (BMD Check, {finding.source}): {finding.observed}")
+        if finding.settings_source:
+            print(f"    settings considered: {finding.settings_source}")
+        if finding.signals:
+            signals = ", ".join(
+                f"{signal.name} = {signal.value}" if signal.value else signal.name
+                for signal in finding.signals
+            )
+            print(f"    evidence signals: {signals}")
+        for reference in item.references:
+            section = f" / {reference.section}" if reference.section else ""
+            print(f"    VASP Wiki reference: {reference.title}{section}")
+            print(f"      revision: {reference.revision_id} ({reference.page_id}, passage {reference.passage_position})")
+            print(f"      permanent URL: {reference.permalink}")
+            print(f"      matched terms: {', '.join(reference.matched_terms)} (score {reference.score:.1f})")
+            print(f'      passage: "{reference.excerpt}"')
+        if item.linked_settings:
+            print(f"    settings named in both this run and the first cited passage: {', '.join(item.linked_settings)}")
+        if item.next_step:
+            print(f"    suggested next step: {item.next_step}")
+        if item.limitation:
+            print(f"    limitation: {item.limitation}")
+    for limitation in guidance.limitations:
+        print(f"  limitation: {limitation}")
+    print()
 
 
 def _print_bmdex_contextual_enrichment(
