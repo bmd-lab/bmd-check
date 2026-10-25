@@ -158,6 +158,15 @@ _OUTCAR_FORCE_HEADER_RE = re.compile(
     r"^\s*POSITION\s+TOTAL-FORCE\s+\(eV/Angst\)\s*$"
 )
 _OUTCAR_FORCE_SEPARATOR_RE = re.compile(r"^\s*-{3,}\s*$")
+# VASP's own declaration that the ionic relaxation met EDIFFG, and the lines it
+# writes when a run terminates normally.
+VASP_STRUCTURAL_CONVERGENCE_MARKER = "reached required accuracy - stopping structural energy minimisation"
+VASP_NORMAL_TERMINATION_MARKERS = (
+    "General timing and accounting informations for this job",
+    "Voluntary context switches",
+)
+_OUTCAR_RUN_HEADER_RE = re.compile(r"^\s*vasp\.\d", re.MULTILINE)
+_OUTCAR_FORCE_HEADER_ANY_LINE_RE = re.compile(_OUTCAR_FORCE_HEADER_RE.pattern, re.MULTILINE)
 
 
 class RunInspectionError(RuntimeError):
@@ -487,6 +496,13 @@ class StageTrajectoryObservation:
     converged_electronic: bool | None = None
     converged_ionic: bool | None = None
     unavailable: tuple[str, ...] = ()
+    # True when this stage's OUTCAR declares VASP's structural convergence
+    # ("reached required accuracy"), followed by normal termination and by no
+    # later ionic step or VASP run (see
+    # ``outcar_structural_convergence_declaration``); None otherwise. This is
+    # VASP-reported convergence, kept distinct from convergence reconstructed
+    # from forces.
+    vasp_reported_ionic_convergence: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -1939,6 +1955,30 @@ def _assess_ionic_progress(
         basis.append("trajectory_observation: vasprun converged_ionic=True")
     elif explicit is False:
         counter.append("trajectory_observation: vasprun converged_ionic=False")
+    reported = trajectory.vasp_reported_ionic_convergence is True
+    if reported:
+        basis.append(
+            "vasp_reported: OUTCAR declares 'reached required accuracy - stopping structural energy "
+            "minimisation', followed by normal termination"
+        )
+        # Supporting consistency checks against the stage's OSZICAR: an obvious
+        # contradiction makes the evidence contradictory, never converged.
+        nsw = _positive_int(trajectory.criteria.get("NSW"))
+        if completed_steps is not None and trajectory.incomplete_electronic_iteration_count is not None:
+            counter.append(
+                "trajectory_observation: OSZICAR ends in an unfinished ionic step, so a newer run "
+                "follows the OUTCAR convergence declaration"
+            )
+        elif nsw is not None and completed_steps is not None and completed_steps > nsw:
+            counter.append(
+                f"trajectory_observation: OSZICAR records {completed_steps} completed ionic steps, "
+                f"more than NSW = {nsw}"
+            )
+        if _is_variable_cell_relaxation(trajectory):
+            limitations.append(
+                "ISIF indicates cell degrees of freedom; cell convergence is as reported by VASP and was "
+                "not independently reconstructed from stress evidence"
+            )
 
     if completed_steps is None:
         limitations.append("completed ionic step count unavailable")
@@ -1964,6 +2004,7 @@ def _assess_ionic_progress(
             basis.append(f"trajectory_observation: final {force_label} reached EDIFFG")
             if (
                 explicit is not True
+                and not reported
                 and getattr(final_step, "max_force_source", None) == "OUTCAR"
                 and _is_variable_cell_relaxation(trajectory)
             ):
@@ -2216,6 +2257,7 @@ def _assessment_features(trajectory: StageTrajectoryObservation) -> Mapping[str,
         "final_electronic_iteration_count": trajectory.final_electronic_iteration_count,
         "converged_electronic": trajectory.converged_electronic,
         "converged_ionic": trajectory.converged_ionic,
+        "vasp_reported_ionic_convergence": trajectory.vasp_reported_ionic_convergence,
     }
     for key in _DIAGNOSE_CRITERIA_KEYS:
         if key in trajectory.criteria:
@@ -3344,6 +3386,37 @@ def parse_outcar_force_blocks(
         finish("incomplete")
 
     return tuple(blocks)
+
+
+def outcar_structural_convergence_declaration(contents: bytes | str) -> tuple[bool | None, str | None]:
+    """Whether an OUTCAR (or its tail) declares VASP's structural convergence
+    for its final calculation segment.
+
+    Returns ``(True, None)`` only when the last ``reached required accuracy -
+    stopping structural energy minimisation`` line is followed by VASP's
+    normal-termination lines and by no further ionic force block and no later
+    VASP run header. Returns ``(None, None)`` when there is no declaration and
+    ``(None, reason)`` when a declaration exists but cannot be associated with
+    the final segment (a later step or run follows it, or the run did not
+    terminate normally after it). The absence of the line is never treated as
+    evidence against convergence.
+    """
+
+    text = contents.decode("utf-8", "replace") if isinstance(contents, bytes) else contents
+    position = text.rfind(VASP_STRUCTURAL_CONVERGENCE_MARKER)
+    if position < 0:
+        return None, None
+    after = text[position + len(VASP_STRUCTURAL_CONVERGENCE_MARKER):]
+    if _OUTCAR_FORCE_HEADER_ANY_LINE_RE.search(after) or _OUTCAR_RUN_HEADER_RE.search(after):
+        return None, (
+            "OUTCAR structural-convergence declaration is followed by further ionic steps or a later "
+            "VASP run; it is not associated with the final calculation segment"
+        )
+    if not any(marker in after for marker in VASP_NORMAL_TERMINATION_MARKERS):
+        return None, (
+            "OUTCAR structural-convergence declaration is not followed by VASP normal-termination evidence"
+        )
+    return True, None
 
 
 def parse_outcar_force_extraction(
