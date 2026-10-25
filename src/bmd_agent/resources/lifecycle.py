@@ -48,8 +48,10 @@ from bmd_agent.resources.run import (
     IonicStepObservation,
     ScientificResult,
     StageTrajectoryObservation,
+    VASP_NORMAL_TERMINATION_MARKERS,
     WorkflowStage,
     assess_convergence_progress,
+    outcar_structural_convergence_declaration,
     parse_incar_contents,
     parse_oszicar_trajectory,
     parse_outcar_force_blocks,
@@ -186,10 +188,7 @@ _INACTIVE_UNSUCCESSFUL_STATES = {
     "SPECIAL_EXIT",
     "TIMEOUT",
 }
-_NORMAL_COMPLETION_MARKERS = (
-    "General timing and accounting informations for this job",
-    "Voluntary context switches",
-)
+_NORMAL_COMPLETION_MARKERS = VASP_NORMAL_TERMINATION_MARKERS
 @dataclass(frozen=True)
 class LocalExecutionDiagnostics:
     trajectories: tuple[StageTrajectoryObservation, ...] = ()
@@ -968,6 +967,9 @@ def _observe_local_stage_trajectory(
         binding,
         vasprun["parameters"],
     )
+    vasp_reported_ionic = outcar.get("structural_convergence_declared")
+    if outcar.get("structural_convergence_note"):
+        unavailable.append(str(outcar["structural_convergence_note"]))
     return StageTrajectoryObservation(
         stage_index=binding.stage_index,
         stage_label=binding.label,
@@ -1018,6 +1020,7 @@ def _observe_local_stage_trajectory(
         vasprun_ionic_steps=vasprun["ionic_steps"],
         converged_electronic=vasprun["converged_electronic"],
         converged_ionic=vasprun["converged_ionic"],
+        vasp_reported_ionic_convergence=vasp_reported_ionic,
         unavailable=tuple(unavailable),
     )
 
@@ -1113,11 +1116,14 @@ def _observe_local_outcar_force_trajectory(directory: Path) -> Mapping[str, Any]
             "expected_site_count": expected,
             "blocks": (),
         }
+    declared, declaration_note = outcar_structural_convergence_declaration(contents)
     return {
         "present": True,
         "error": None,
         "expected_site_count": expected,
         "blocks": blocks,
+        "structural_convergence_declared": declared,
+        "structural_convergence_note": declaration_note,
     }
 
 
