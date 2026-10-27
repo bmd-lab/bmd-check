@@ -208,6 +208,14 @@ limitations. It contains no eigenvalue arrays, POTCAR data or absolute paths.
 bmd-check does not choose `ISMEAR`, `SIGMA` or any other VASP setting; any
 mapping from this classification to methodology belongs to bmd-compute.
 
+A producer that holds one completed stage in a directory of its own can call
+`bmd_agent.resources.electronic_character.assess_stage_directory(directory,
+stage_index=..., stage_type=..., theory=...)`. It reads only that directory
+(`vasprun.xml`, and `OUTCAR` and `OSZICAR` for completion and convergence),
+never discovers workflow records in parent directories, and returns the same
+C1/C2 verdict with scope `stage_directory`. Unusable evidence gives `uncertain`;
+only an invalid `stage_index` raises.
+
 ## bmd-compute run records
 
 For bmd-compute runs, bmd-check reads two bmd-compute-owned records: the Prepare-time

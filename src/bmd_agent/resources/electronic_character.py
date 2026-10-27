@@ -52,7 +52,7 @@ from bmd_agent.resources.assessment import (
     _submission_subject_id,
 )
 from bmd_agent.resources.completion import STAGE_CONVERGED, StageCompletion
-from bmd_agent.resources.lifecycle import LifecycleAnalysis
+from bmd_agent.resources.lifecycle import LifecycleAnalysis, _analyze_direct_vasp_directory
 
 
 SCHEMA_ID = "bmd_check.electronic_character_assessment"
@@ -63,6 +63,8 @@ METHOD_VERSION = "1.0.0-c2"
 CLASSIFICATION_METALLIC = "metallic"
 CLASSIFICATION_NONMETALLIC = "nonmetallic"
 CLASSIFICATION_UNCERTAIN = "uncertain"
+
+SCOPE_STAGE_DIRECTORY = "stage_directory"
 
 STATUS_ASSESSED = "assessed"
 STATUS_UNSUPPORTED = "unsupported"
@@ -571,6 +573,59 @@ def electronic_character_input_from_lifecycle(
         producer_provenance=provenance,
         limitations=tuple(limitations),
         assessor_version=_package_version(),
+    )
+
+
+def assess_stage_directory(
+    directory: Path | str,
+    *,
+    stage_index: int,
+    stage_type: str,
+    theory: str | None = None,
+    label: str | None = None,
+    subject_id: str | None = None,
+) -> ElectronicCharacterAssessment:
+    """Assess one completed stage from the files in a single directory.
+
+    For a producer that holds one stage's outputs in a directory of its own
+    (BMD Compute gives a later stage copies of the previous stage's
+    ``vasprun.xml``, ``OUTCAR`` and ``OSZICAR``). The caller declares which
+    stage the files belong to. Only ``directory`` is read: workflow records in
+    parent directories are not discovered, nothing is written and no
+    scheduler is contacted.
+
+    Completion and convergence come from C1's direct-calculation analysis of
+    that directory and the verdict from :func:`assess_electronic_character`,
+    both unchanged. Missing, unreadable or incomplete evidence is an
+    ``uncertain`` assessment, never an exception; only an invalid
+    ``stage_index`` raises (:class:`ValueError`).
+    """
+
+    if isinstance(stage_index, bool) or not isinstance(stage_index, int) or stage_index < 1:
+        raise ValueError("stage_index must be a positive integer")
+    target = Path(directory).expanduser().resolve()
+    analysis = _analyze_direct_vasp_directory(target)
+    completion = next(iter(analysis.stage_completion), None)
+    stage = SelectedStage(
+        index=stage_index,
+        label=label or _stage_label(stage_index, {"stage_type": stage_type, "theory": theory}),
+        stage_type=_stage_type(stage_type),
+        theory=_optional_text(theory),
+    )
+    if completion is not None:
+        completion = replace(completion, index=stage_index, label=stage.label)
+    return assess_electronic_character(
+        ElectronicCharacterInput(
+            subject_id=subject_id or target.name or "stage",
+            calculation_type=analysis.calculation_kind,
+            scope=SCOPE_STAGE_DIRECTORY,
+            stage=stage,
+            stage_completion=completion,
+            evidence=read_vasprun_electronic_evidence(target / "vasprun.xml"),
+            producer_provenance=ProducerProvenance(status="unavailable"),
+            limitations=tuple(analysis.limitations),
+            assessor_version=_package_version(),
+        )
     )
 
 
