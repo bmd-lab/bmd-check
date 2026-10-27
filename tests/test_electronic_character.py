@@ -783,6 +783,117 @@ def test_direct_calculation_has_only_stage_one(tmp_path: Path) -> None:
     assert electronic_character_input_from_lifecycle(analysis, stage_index=1).stage.index == 1
 
 
+# --- single stage directory (a producer's copy of one completed stage) ----------------------
+
+
+def write_stage_copy(directory: Path, fixture: str, *, oszicar: bool = True) -> Path:
+    """Exactly the files a later atomate2 stage holds from the previous one."""
+
+    directory.mkdir(parents=True, exist_ok=True)
+    lifecycle_fixtures.write_inputs(directory)
+    (directory / "CONTCAR").write_bytes((directory / "POSCAR").read_bytes())
+    for name in ("POSCAR", "KPOINTS", "POTCAR"):
+        (directory / name).unlink(missing_ok=True)
+    (directory / "OUTCAR").write_text(lifecycle_fixtures.NORMAL_OUTCAR, encoding="utf-8")
+    if oszicar:
+        (directory / "OSZICAR").write_text(lifecycle_fixtures.OSZICAR_STATIC_CONVERGED, encoding="utf-8")
+    (directory / "vasprun.xml").write_bytes(gzip.decompress((FIXTURES / fixture).read_bytes()))
+    return directory
+
+
+def assess_copy(directory: Path, **kwargs):
+    return ec.assess_stage_directory(directory, stage_index=2, stage_type="static", theory="hse06", **kwargs)
+
+
+@pytest.mark.parametrize(("fixture", "classification", "code"), RECORDED)
+def test_stage_directory_reuses_the_unchanged_c1_and_c2_verdict(
+    tmp_path: Path, fixture: str, classification: str, code: str
+) -> None:
+    directory = write_stage_copy(tmp_path / "copy", fixture)
+    result = assess_copy(directory)
+    # The same files analysed as a direct calculation give the same verdict.
+    reference = assess_electronic_character(
+        electronic_character_input_from_lifecycle(analyze_calculation_directory(directory), stage_index=1)
+    )
+
+    assert result.classification == reference.classification == classification
+    assert code in codes(result)
+    assert codes(result) == codes(reference)
+    assert result.evidence == reference.evidence
+    assert result.method_version == ec.METHOD_VERSION
+    assert result.thresholds == ec.THRESHOLDS
+
+
+def test_stage_directory_records_the_declared_stage(tmp_path: Path) -> None:
+    result = assess_copy(write_stage_copy(tmp_path / "copy", "Al_mp_smearing.vasprun.xml.gz"), subject_id="run-1")
+    payload = serialize_electronic_character_assessment(result)
+
+    assert result.scope == ec.SCOPE_STAGE_DIRECTORY == "stage_directory"
+    assert (result.stage.index, result.stage.stage_type, result.stage.theory) == (2, "static", "hse06")
+    assert result.subject_id == "run-1"
+    assert result.evidence_references[0].stage_index == 2
+    assert payload["classification"] == "metallic"
+    assert str(tmp_path) not in json.dumps(payload)
+
+
+def test_stage_directory_without_oszicar_cannot_establish_convergence(tmp_path: Path) -> None:
+    # C1 needs the OSZICAR trajectory; the producer must supply it.
+    result = assess_copy(write_stage_copy(tmp_path / "copy", "Al_mp_smearing.vasprun.xml.gz", oszicar=False))
+
+    assert result.classification == "uncertain"
+    assert "STAGE_CONVERGENCE_NOT_ESTABLISHED" in codes(result)
+
+
+@pytest.mark.parametrize("damage", ["missing_directory", "empty_directory", "no_vasprun", "truncated", "empty_vasprun"])
+def test_stage_directory_with_unusable_evidence_is_uncertain(tmp_path: Path, damage: str) -> None:
+    directory = tmp_path / "copy"
+    if damage != "missing_directory":
+        directory.mkdir()
+    if damage in ("no_vasprun", "truncated", "empty_vasprun"):
+        write_stage_copy(directory, "Si_static.vasprun.xml.gz")
+        vasprun = directory / "vasprun.xml"
+        data = vasprun.read_bytes()
+        if damage == "no_vasprun":
+            vasprun.unlink()
+        elif damage == "truncated":
+            vasprun.write_bytes(data[: len(data) // 2])
+        else:
+            vasprun.write_bytes(b"")
+
+    result = assess_copy(directory)
+
+    assert result.classification == "uncertain"
+    assert result.assessment_status in {"insufficient_evidence", "unsupported"}
+
+
+def test_stage_directory_ignores_workflow_records_in_parent_directories(tmp_path: Path) -> None:
+    # Inside a BMD Compute run, stage_03 holds a copy of stage_02; only that
+    # directory's files may be assessed, never the declared workflow stage 3.
+    root = three_stage_workflow(tmp_path / "flow")
+    copy = write_stage_copy(root / "stage_03", "Al_mp_smearing.vasprun.xml.gz")
+
+    result = assess_copy(copy)
+
+    assert result.scope == "stage_directory"
+    assert result.classification == "metallic"
+    assert result.stage.index == 2
+
+
+def test_stage_directory_is_read_only(tmp_path: Path) -> None:
+    directory = write_stage_copy(tmp_path / "copy", "LiF_tetrahedron.vasprun.xml.gz")
+    before = {path.name: (path.stat().st_mtime_ns, path.stat().st_size) for path in directory.iterdir()}
+
+    assess_copy(directory)
+
+    assert {path.name: (path.stat().st_mtime_ns, path.stat().st_size) for path in directory.iterdir()} == before
+
+
+@pytest.mark.parametrize("stage_index", [0, -1, True, "2", 2.0])
+def test_stage_directory_requires_a_valid_stage_index(tmp_path: Path, stage_index) -> None:
+    with pytest.raises(ValueError):
+        ec.assess_stage_directory(tmp_path, stage_index=stage_index, stage_type="static")
+
+
 # --- CLI -----------------------------------------------------------------------------------
 
 
